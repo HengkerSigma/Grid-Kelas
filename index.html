@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Grid Kelas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Unbounded:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top" id="top">
+  <div class="inner gut bar">
+    <a class="brand" href="#beranda" data-view="beranda" aria-label="Grid Kelas, ke Beranda">
+      <svg class="mark" viewBox="0 0 64 30" aria-hidden="true"><path d="M14 0H64L59 9H9Z"/><path d="M8 11H52L47 20H3Z"/><path d="M0 22H28L24 30H0Z"/></svg>
+      <span class="wm">Grid Kelas</span>
+    </a>
+    <nav class="nav" aria-label="Navigasi utama">
+      <button type="button" class="nl" data-view="beranda">Beranda</button>
+      <button type="button" class="nl" data-view="mahasiswa">Mahasiswa</button>
+      <button type="button" class="nl" data-view="mata-kuliah">Mata Kuliah</button>
+      <button type="button" class="nl" data-view="pengelola" id="navAdmin" hidden>Pengelola</button>
+    </nav>
+    <div class="hright">
+      <button type="button" class="login" id="loginBtn" data-act="open-login">Masuk / Daftar</button>
+      <button type="button" class="avbtn" id="meChip" data-act="open-login" aria-label="Akun"></button>
+    </div>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="inner gut srow">
+    <div class="sem"><b>Ganjil 2026/27</b><span>Kelas baru · absen 1–32</span></div>
+    <button type="button" class="arr" id="railPrev" aria-label="Geser daftar mahasiswa ke kiri">&#8249;</button>
+    <div class="rail" id="rail" role="list" aria-label="Mahasiswa menurut nomor absen"></div>
+    <button type="button" class="arr" id="railNext" aria-label="Geser daftar mahasiswa ke kanan">&#8250;</button>
+  </div>
+</div>
+
+<main>
+  <section class="view" id="v-beranda">
+    <div class="inner gut">
+      <h1 class="title">Beranda Kelas</h1>
+      <p class="lede" id="homeLede">Ringkasan tugas, absensi, dan pengumuman kelas.</p>
+      <div id="home"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-mahasiswa" hidden>
+    <div class="inner gut">
+      <h2 class="title">Mahasiswa Ganjil 2026</h2>
+      <p class="lede">Temukan 32 mahasiswa kelas baru menurut nomor absen. Pilih kartu untuk melihat profil atau mengganti foto.</p>
+      <p class="note" id="snote" hidden></p>
+      <ul class="sgrid" id="sgrid" aria-busy="true"></ul>
+    </div>
+  </section>
+
+  <section class="view" id="v-mata-kuliah" hidden>
+    <div class="inner gut">
+      <h2 class="title">Mata Kuliah Ganjil 2026</h2>
+      <p class="lede">Temukan 9 mata kuliah semester ini. Klik gambar mata kuliah untuk mengisi absen dan tugas.</p>
+      <ul class="courses" id="cgrid" aria-busy="true"></ul>
+    </div>
+  </section>
+
+  <section class="view" id="v-pengelola" hidden>
+    <div class="inner gut">
+      <h2 class="title">Pengelola Kelas</h2>
+      <p class="lede">Kelola pengumuman, pantau rekap absen dan tugas, lalu buka mata kuliah atau mahasiswa untuk mengubah datanya.</p>
+      <div id="admin"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="inner gut">Nama, jadwal, dan dosen di halaman ini masih contoh. Pengelola dapat mengubahnya lewat kartu mahasiswa dan tab Pengaturan di tiap mata kuliah.</div>
+</footer>
+
+<dialog id="dlg" aria-labelledby="dtitle"><div class="box" id="dbox"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
