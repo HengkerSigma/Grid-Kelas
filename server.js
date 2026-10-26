@@ -97,18 +97,27 @@ async function getAllDocs() {
   return map;
 }
 
-/* ---------- sesi login ---------- */
-const SESSIONS = new Map(); // token -> {no, exp}
-let sessTimer = null;
-function saveSessions() {
-  clearTimeout(sessTimer);
-  sessTimer = setTimeout(() => {
-    // Sesi disimpan secara memori / bisa diabaikan atau disesuaikan jika perlu
-  }, 300);
+/* ---------- sesi login ----------
+ * Sesi disimpan di dalam cookie bertanda tangan (HMAC), bukan di memori server.
+ * Jadi tetap sah setelah server restart / berpindah instance (Vercel, dsb.)
+ * dan berlaku selama SESSION_MS. Wajib set env SESSION_SECRET (acak, panjang).
+ */
+let SECRET = process.env.SESSION_SECRET;
+if (!SECRET) {
+  console.error('PERINGATAN: SESSION_SECRET belum di-set. Sesi akan hilang tiap server restart / ganti instance.');
+  SECRET = crypto.randomBytes(32).toString('hex');
 }
-function dropSessions(no, exceptToken) {
-  SESSIONS.forEach((v, k) => { if (v.no === no && k !== exceptToken) SESSIONS.delete(k); });
+const b64u = (b) => Buffer.from(b).toString('base64url');
+function accVer(acc) {
+  // berubah saat password diganti / direset -> sesi lama otomatis tidak berlaku
+  return crypto.createHash('sha256').update(String(acc && acc.hash || '') + '|' + String(acc && acc.salt || '')).digest('hex').slice(0, 12);
 }
+function signToken(no, acc) {
+  const body = b64u(JSON.stringify({ no: no, exp: Date.now() + SESSION_MS, v: accVer(acc) }));
+  const sig = crypto.createHmac('sha256', SECRET).update(body).digest('base64url');
+  return body + '.' + sig;
+}
+function dropSessions() { /* tidak perlu: tanda tangan memuat versi password */ }
 function cookies(req) {
   const o = {};
   String(req.headers.cookie || '').split(';').forEach((p) => {
@@ -117,17 +126,22 @@ function cookies(req) {
   });
   return o;
 }
+async function getSession(req) {
+  const t = cookies(req).gk_session;
+  if (!t || t.indexOf('.') < 0) return null;
+  const [body, sig] = t.split('.');
+  const want = crypto.createHmac('sha256', SECRET).update(body).digest('base64url');
+  if (!sig || sig.length !== want.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want))) return null;
+  let s;
+  try { s = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')); } catch (e) { return null; }
+  if (!s || !Number.isInteger(s.no) || s.exp < Date.now()) return null;
+  const acc = await getDoc('akun/' + pad(s.no));
+  if (!acc || accVer(acc) !== s.v) return null;
+  return { token: t, no: s.no, admin: acc.admin === true };
+}
 async function isAdminNo(no) {
   const a = await getDoc('akun/' + pad(no));
   return !!(a && a.admin === true);
-}
-async function getSession(req) {
-  const t = cookies(req).gk_session;
-  if (!t) return null;
-  const s = SESSIONS.get(t);
-  if (!s) return null;
-  if (s.exp < Date.now()) { SESSIONS.delete(t); return null; }
-  return { token: t, no: s.no, admin: await isAdminNo(s.no) };
 }
 function setCookie(req, res, token, maxAgeSec) {
   const secure = process.env.COOKIE_SECURE === '1' ||
@@ -483,15 +497,13 @@ const server = http.createServer(async (req, res) => {
         ok = String(acc.nim).toLowerCase() === String(body.nim).trim().toLowerCase() && await checkPw(acc, body.password);
       }
       if (!ok) return fail(res, 401, 'bad_credentials', 'NIM atau password salah.');
-      const token = crypto.randomBytes(32).toString('hex');
-      SESSIONS.set(token, { no: no, exp: Date.now() + SESSION_MS });
+      const token = signToken(no, acc);
       setCookie(req, res, token, Math.floor(SESSION_MS / 1000));
       return json(res, 200, { no: no, admin: await isAdminNo(no) });
     }
 
     if (pathname === '/api/logout' && method === 'POST') {
       const s = await getSession(req);
-      if (s) SESSIONS.delete(s.token);
       setCookie(req, res, '', 0);
       return json(res, 200, { ok: true });
     }
@@ -509,7 +521,7 @@ const server = http.createServer(async (req, res) => {
       acc.salt = salt;
       acc.resetReq = null;
       await setDoc('akun/' + pad(s.no), acc);
-      dropSessions(s.no, s.token);
+      setCookie(req, res, signToken(s.no, acc), Math.floor(SESSION_MS / 1000));
       broadcast('akun/' + pad(s.no));
       return json(res, 200, { ok: true });
     }
@@ -561,7 +573,7 @@ const server = http.createServer(async (req, res) => {
       const f = STATIC[pathname];
       const buf = fs.readFileSync(path.join(process.cwd(), f[0]));
       const h = { 'Content-Type': f[1], 'Cache-Control': 'no-cache' };
-      if (f[0] === 'index.html') h['Content-Security-Policy'] = CSP;
+      if (f[0] === 'public/index.html') h['Content-Security-Policy'] = CSP;
       res.writeHead(200, h);
       return res.end(method === 'HEAD' ? undefined : buf);
     }
