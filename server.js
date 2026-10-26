@@ -1,4 +1,10 @@
 'use strict';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uboroxjkcvjbywcshdbq.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_qLLQZbVK3R06BVeMArZ5Hw_zpDhdXA1';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 /*
  * Server Grid Kelas: menyajikan halaman, menyimpan data kelas, dan memeriksa login di sisi server.
  * Tanpa paket tambahan. Jalankan: node server.js
