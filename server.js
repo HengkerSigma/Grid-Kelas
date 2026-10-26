@@ -28,11 +28,11 @@ const MAX_FILE = 20 * 1024 * 1024;
 const SESSION_MS = 14 * 24 * 3600 * 1000;
 const FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const STATIC = {
-  '/': ['index.html', 'text/html; charset=utf-8'],
-  '/index.html': ['index.html', 'text/html; charset=utf-8'],
-  '/style.css': ['style.css', 'text/css; charset=utf-8'],
-  '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
-  '/db.js': ['db.js', 'text/javascript; charset=utf-8']
+  '/': ['public/index.html', 'text/html; charset=utf-8'],
+  '/index.html': ['public/index.html', 'text/html; charset=utf-8'],
+  '/style.css': ['public/style.css', 'text/css; charset=utf-8'],
+  '/app.js': ['public/app.js', 'text/javascript; charset=utf-8'],
+  '/db.js': ['public/db.js', 'text/javascript; charset=utf-8']
 };
 const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
