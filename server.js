@@ -4,6 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uboroxjkcvjbywcshdbq.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_qLLQZbVK3R06BVeMArZ5Hw_zpDhdXA1';
 
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error("Supabase URL or Key is missing!");
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const http = require('http');
