@@ -559,7 +559,7 @@ const server = http.createServer(async (req, res) => {
 
     if ((method === 'GET' || method === 'HEAD') && STATIC[pathname]) {
       const f = STATIC[pathname];
-      const buf = fs.readFileSync(path.join(ROOT, f[0]));
+      const buf = fs.readFileSync(path.join(process.cwd(), f[0]));
       const h = { 'Content-Type': f[1], 'Cache-Control': 'no-cache' };
       if (f[0] === 'index.html') h['Content-Security-Policy'] = CSP;
       res.writeHead(200, h);
