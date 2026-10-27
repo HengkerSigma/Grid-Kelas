@@ -298,6 +298,7 @@ function view(p, data, sess) {
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
   if (root === 'students' || root === 'courses' || root === 'media' || root === 'pengumuman') return data;
+  if (root === 'drives') return sess ? data : null; // folder Drive: hanya untuk yang sudah masuk
   if (root === 'akun') {
     const out = { no: data.no, admin: data.admin === true };
     if (admin) { out.nim = data.nim; out.resetReq = data.resetReq || null; out.hash = !!data.hash; }
@@ -385,6 +386,14 @@ async function decide(method, p, body, sess, existing) {
       return { data: Object.assign(clone(existing), body) };
     }
     return { data: body };
+  }
+
+  if (root === 'drives') {
+    if (!admin || parts.length !== 2 || !/^[A-Za-z0-9_]{1,20}$/.test(id)) return ERR_FORBID;
+    if (method === 'DELETE') return { del: true };
+    if (method !== 'PUT' && method !== 'PATCH') return ERR_FORBID;
+    if (!isObj(body) || !onlyKeys(body, ['url']) || !isStr(body.url, 500) || !isDriveUrl(body.url)) return ERR_BAD('Tautan folder harus dari Google Drive (drive.google.com atau docs.google.com).');
+    return { data: { url: body.url.trim() } };
   }
 
   if (root === 'media') {

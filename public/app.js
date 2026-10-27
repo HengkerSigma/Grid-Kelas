@@ -8,6 +8,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>ESC[c]);
 const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/[A-Za-z0-9_]{1,40}\?v=\d+$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
+const driveOf=k=>{const d=S.dr[k];return d&&okDrive(d.url)?d.url:'';};
 const okDrive=u=>{try{const x=new URL(String(u||'').trim());return x.protocol==='https:'&&DRIVE_HOSTS.indexOf(x.hostname)>=0;}catch(e){return false;}};
 const okId=i=>/^[0-9a-f]{32}$/.test(i||'');
 const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';
@@ -20,7 +21,7 @@ let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='load
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null};
-const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{}};
+const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},dr:{}};
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -419,7 +420,7 @@ function courseDlg(){
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
   const head='<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button>'+
     '<div class="dk">'+esc(c.k)+' · '+esc(c.sks)+' SKS</div><h2 id="dtitle">'+esc(c.nama)+'</h2>'+
-    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(c.hari)+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p></div>';
+    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(c.hari)+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+driveBtn(c.k)+'</div>';
   const tabs=[['absen','Absen'],['tugas','Tugas']];
   if(adm())tabs.push(['set','Pengaturan']);
   if(D.tab==='set'&&!adm())D.tab='absen';
@@ -489,6 +490,11 @@ function absenAdmin(c){
   return h+'</ol>';
 }
 
+/* Folder Google Drive tiap mata kuliah (hanya terlihat setelah masuk). */
+function driveBtn(k){
+  const u=driveOf(k);
+  return u&&(ME||adm())?'<p class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Folder Drive mata kuliah <span aria-hidden="true">&#8599;</span></a></p>':'';
+}
 /* Tombol tugas: "Kerjakan" membuka soal (LMS kampus / PDF / dll.), "Kumpulkan" meminta tautan Google Drive hasil tugas. */
 function taskActions(t,mine){
   const id=t.id,open=D.subOpen===id,can=ME&&canWrite;
@@ -498,7 +504,7 @@ function taskActions(t,mine){
   h+='</div>';
   if(mine&&!open)h+='<div class="tdone"><span class="s">Terkumpul '+fmtTime(mine.at)+':</span> '+(okUrl(mine.tautan)?'<a class="lnk2" href="'+esc(mine.tautan)+'" target="_blank" rel="noopener noreferrer">Buka file di Google Drive</a>':esc(mine.tautan||''))+(mine.berkas&&mine.berkas.id?' '+fileHtml(mine.berkas,true):'')+(mine.catatan?'<br><span class="s">'+esc(mine.catatan)+'</span>':'')+'</div>';
   if(open&&can){
-    h+='<div class="tform"><div class="field"><label for="sl-'+esc(id)+'">Tautan Google Drive</label><input id="sl-'+esc(id)+'" data-dr="sl-'+esc(id)+'" type="url" inputmode="url" placeholder="https://drive.google.com/…" value="'+esc(dv('sl-'+id,mine&&mine.tautan||''))+'"><span class="s">Unggah file tugas ke Google Drive, buka Bagikan, atur &quot;Siapa saja yang memiliki link&quot; (Pelihara/Viewer), lalu tempel tautannya di sini.</span></div>'+
+    h+='<div class="tform">'+(driveOf(t.k)?'<div class="row2"><a class="btn sm" href="'+esc(driveOf(t.k))+'" target="_blank" rel="noopener noreferrer">Buka folder Drive '+esc(t.k)+' <span aria-hidden="true">&#8599;</span></a><span class="s">Unggah file tugas ke folder ini, lalu tempel tautannya di bawah.</span></div>':'')+'<div class="field"><label for="sl-'+esc(id)+'">Tautan Google Drive</label><input id="sl-'+esc(id)+'" data-dr="sl-'+esc(id)+'" type="url" inputmode="url" placeholder="https://drive.google.com/…" value="'+esc(dv('sl-'+id,mine&&mine.tautan||''))+'"><span class="s">Unggah file tugas ke Google Drive, buka Bagikan, atur &quot;Siapa saja yang memiliki link&quot; (Pelihara/Viewer), lalu tempel tautannya di sini.</span></div>'+
       '<div class="field"><label for="sc-'+esc(id)+'">Catatan (opsional)</label><textarea id="sc-'+esc(id)+'" data-dr="sc-'+esc(id)+'" maxlength="500">'+esc(dv('sc-'+id,mine&&mine.catatan||''))+'</textarea></div>'+
       '<div class="row2"><button type="button" class="btn pri" data-act="tsub" data-id="'+esc(id)+'">'+(mine?'Perbarui':'Kirim')+'</button><button type="button" class="btn" data-act="tsub-open" data-id="'+esc(id)+'">Batal</button></div></div>';
   }
@@ -558,6 +564,7 @@ function settingsHtml(c){
     '<div class="field"><label for="f-hari">Hari</label><select id="f-hari">'+HARI.map(x=>'<option'+(x===c.hari?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
     '<div class="field"><label for="f-jam">Jam</label><input id="f-jam" type="text" maxlength="20" value="'+esc(c.jam)+'"></div>'+
     '<div class="field"><label for="f-ruang">Ruang</label><input id="f-ruang" type="text" maxlength="20" value="'+esc(c.ruang)+'"></div>'+
+    '<div class="field" style="grid-column:1/-1"><label for="f-drive">Folder Google Drive mata kuliah</label><input id="f-drive" type="url" inputmode="url" maxlength="500" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(driveOf(c.k))+'"><span class="s">Hanya terlihat oleh yang sudah masuk. Atur akses folder agar mahasiswa bisa menambah file (Editor) atau melihat (Viewer).</span></div>'+
     '<div class="field"><label for="f-warna">Warna kartu</label><input id="f-warna" type="color" value="'+colr(c.warna)+'"></div></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="save-course">Simpan perubahan</button></div>'+
     '<div><div class="lbl" style="margin-bottom:8px">Gambar</div><div class="row2">'+
@@ -842,7 +849,12 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const c=S.co[D.key];
       const sks=Math.max(1,Math.min(6,parseInt($('f-sks').value,10)||c.sks||2));
-      await run(()=>db.doc('courses/'+c.k).update({nama:$('f-nama').value.trim()||c.nama,sks:sks,hari:$('f-hari').value,jam:$('f-jam').value.trim(),ruang:$('f-ruang').value.trim(),warna:$('f-warna').value,dosen:$('f-dosen').value.trim()}),'Perubahan disimpan');
+      const drv=$('f-drive').value.trim();
+      if(drv&&!okDrive(drv)){toast('Tautan folder harus dari Google Drive (drive.google.com atau docs.google.com).');break;}
+      await run(async()=>{
+        await db.doc('courses/'+c.k).update({nama:$('f-nama').value.trim()||c.nama,sks:sks,hari:$('f-hari').value,jam:$('f-jam').value.trim(),ruang:$('f-ruang').value.trim(),warna:$('f-warna').value,dosen:$('f-dosen').value.trim()});
+        if(drv)await db.doc('drives/'+c.k).set({url:drv});else await db.doc('drives/'+c.k).delete();
+      },'Perubahan disimpan');
       break;
     }
     case 'save-student':{
@@ -1013,7 +1025,7 @@ refreshAll();
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();refreshAll();
   },onErr);
-  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');
+  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('drives','dr');
   if(AUTH){
     AUTH.me().then(m=>{ME=m&&m.no||null;if(ME)loadSektor();refreshAll();});
   }else if(uid){
