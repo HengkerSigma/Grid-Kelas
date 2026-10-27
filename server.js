@@ -620,6 +620,21 @@ const server = http.createServer(async (req, res) => {
       return res.end();
     }
 
+    if (pathname === '/api/sektor' && method === 'GET') {
+      // Hanya jumlah hadir per mahasiswa per mata kuliah (bukan status/bukti), untuk peringkat Sektor Absensi.
+      const s = await getSession(req);
+      if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
+      const out = {};
+      (await listCol('sessions')).forEach((row) => {
+        const d = row.data;
+        if (!isObj(d) || !isObj(d.present) || !Object.values(d.present).some(Boolean)) return;
+        const c = out[d.k] || (out[d.k] = { t: 0, h: {} });
+        c.t++;
+        Object.keys(d.present).forEach((no) => { if (d.present[no] === 'H') c.h[no] = (c.h[no] || 0) + 1; });
+      });
+      return json(res, 200, { courses: out });
+    }
+
     if (pathname.startsWith('/api/c/')) {
       const cp = parsePath(pathname.slice(7), 'col');
       if (!cp) return fail(res, 400, 'invalid_argument', 'Path koleksi tidak valid.');

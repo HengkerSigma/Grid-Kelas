@@ -142,6 +142,118 @@ function setView(v,scroll){
   if(scroll)window.scrollTo(0,0);
 }
 
+/* ---------- Pit Tugas & Sektor Absensi ---------- */
+const FLAGNAME={r:'merah',y:'kuning',g:'hijau'};
+const flagSvg=c=>'<svg class="pflag '+c+'" viewBox="0 0 16 16" role="img" aria-label="Bendera '+FLAGNAME[c]+'"><path d="M3 1.5v13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M3.8 2.2h9l-2.2 3.4 2.2 3.4h-9z" fill="currentColor" stroke="rgba(0,0,0,.35)" stroke-width=".6" stroke-linejoin="round"/></svg>';
+function dayDiff(s){
+  const p=String(s||'').split('-');if(p.length!==3)return null;
+  const a=new Date(+p[0],+p[1]-1,+p[2]),n=new Date(),b=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  return Math.round((a-b)/86400000);
+}
+function flagOf(t){const d=dayDiff(t.tenggat);return d===null?'g':d<1?'r':d<3?'y':'g';} // merah <1 hari (hari ini/lewat), kuning <3 hari, hijau selebihnya
+function dueText(t){
+  const d=dayDiff(t.tenggat);
+  if(d===null)return 'Tanpa tenggat';
+  if(d<0)return 'Lewat '+(-d)+' hari · '+fmtDate(t.tenggat);
+  if(d===0)return 'Hari ini · '+fmtDate(t.tenggat);
+  if(d===1)return 'Besok · '+fmtDate(t.tenggat);
+  return d+' hari lagi · '+fmtDate(t.tenggat);
+}
+function pitData(no){
+  const all=taskList().map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
+  const open=all.filter(x=>!x.done),done=all.filter(x=>x.done);
+  const n={r:0,y:0,g:0};open.forEach(x=>{n[flagOf(x.t)]++;});
+  return{open:open,done:done,a:done.length,b:all.length,n:n};
+}
+function missingOf(no){
+  const td=today(),m=[];
+  Object.values(S.se).forEach(se=>{if(se.tanggal&&se.tanggal<=td&&!(se.present&&se.present[no]))m.push(se);});
+  return m.sort((x,y)=>(x.tanggal||'').localeCompare(y.tanggal||''));
+}
+/* Jumlah hadir tiap mahasiswa per mata kuliah. Dari server (/api/sektor) agar semua mahasiswa terhitung;
+ * tanpa server, dihitung dari data yang terlihat. */
+let SK=null,skTimer=null;
+function loadSektor(){
+  if(!ME||!AUTH||!AUTH.sektor)return;
+  clearTimeout(skTimer);
+  skTimer=setTimeout(async()=>{try{SK=await AUTH.sektor();refreshAll();}catch(e){/* tetap pakai data lokal */}},400);
+}
+function sektorRaw(){
+  if(SK&&SK.courses)return SK.courses;
+  const out={};
+  Object.values(S.se).forEach(se=>{
+    const p=se.present||{};
+    if(!(se.rec===true||Object.values(p).some(Boolean)))return;
+    const c=out[se.k]||(out[se.k]={t:0,h:{}});
+    c.t++;Object.keys(p).forEach(n=>{if(p[n]==='H')c.h[n]=(c.h[n]||0)+1;});
+  });
+  return out;
+}
+/* Peringkat: tiap mata kuliah = satu sektor. 5 teratas ungu, 10 berikutnya hijau, sisanya kuning.
+ * Seri diurutkan menurut kehadiran keseluruhan, lalu nomor absen. */
+function sektorData(){
+  const raw=sektorRaw(),cl=courseList().map(c=>c.k);
+  let tt=0;cl.forEach(k=>{tt+=(raw[k]&&raw[k].t)||0;});
+  const rows=[];
+  for(let no=1;no<=N;no++){
+    let h=0;const cells={};
+    cl.forEach(k=>{const r=raw[k]||{t:0,h:{}},hh=r.h[no]||0;h+=hh;cells[k]={h:hh,t:r.t,p:r.t?Math.round(hh/r.t*100):null,c:null,rk:null};});
+    rows.push({no:no,h:h,t:tt,p:tt?h/tt:0,cells:cells,rank:0});
+  }
+  rows.sort((x,y)=>y.p-x.p||x.no-y.no);
+  rows.forEach((r,i)=>{r.rank=i+1;});
+  cl.forEach(k=>{
+    if(!((raw[k]&&raw[k].t)||0))return;
+    rows.slice().sort((x,y)=>y.cells[k].h-x.cells[k].h||x.rank-y.rank).forEach((r,i)=>{r.cells[k].c=i<5?'p':i<15?'g':'y';r.cells[k].rk=i+1;});
+  });
+  const byNo={};rows.forEach(r=>{byNo[r.no]=r;});
+  return{rows:rows,cl:cl,t:tt,byNo:byNo};
+}
+const SXNAME={p:'Sektor ungu',g:'Sektor hijau',y:'Sektor kuning'};
+function sxStrip(row,cl){return '<span class="sxm" aria-hidden="true">'+cl.map(k=>'<i class="sxc '+(row.cells[k].c||'n')+'"></i>').join('')+'</span>';}
+function homeTiles(no){
+  const pit=pitData(no),sx=sektorData(),r=sx.byNo[no],miss=missingOf(no);
+  const pitD=pit.b?(pit.open.length?pit.open.length+' belum dikumpulkan':'Semua sudah dikumpulkan'):'Belum ada tugas';
+  const flags=pit.open.length?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+'</span>':'';
+  return '<div class="tiles">'+
+    '<button type="button" class="tile tilebtn" data-act="open-pit" aria-haspopup="dialog"><div class="v">'+pit.a+'/'+pit.b+'</div><div class="l">Pit Tugas</div><div class="d">'+pitD+'</div>'+flags+'<span class="more">Lihat daftar &rsaquo;</span></button>'+
+    '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
+      '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
+}
+function dlgHead(kind,title,sub,col){
+  return '<div class="dh" style="--tc:'+col+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">'+kind+'</div><h2 id="dtitle">'+title+'</h2>'+(sub?'<p class="jadwal">'+sub+'</p>':'')+'</div>';
+}
+function pitDlg(){
+  if(!ME)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Pit Tugas.</p></div>';
+  const p=pitData(ME);
+  let h=dlgHead('PIT TUGAS',p.a+'/'+p.b+' tugas selesai','Diurutkan menurut tenggat terdekat.','#e10600');
+  h+='<div class="db"><ul class="pleg"><li>'+flagSvg('r')+'Kurang dari 1 hari atau lewat</li><li>'+flagSvg('y')+'Kurang dari 3 hari</li><li>'+flagSvg('g')+'3 hari atau lebih</li></ul>';
+  if(!p.b)return h+'<p class="empty">Belum ada tugas dari dosen.</p></div>';
+  if(p.open.length){
+    h+='<ul class="plist">'+p.open.map(x=>{const f=flagOf(x.t),late=dayDiff(x.t.tenggat)<0&&x.t.tenggat;
+      return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">'+(late?'Kumpulkan sekarang':'Kumpulkan')+'</button></li>';}).join('')+'</ul>';
+  }else h+='<p class="empty">Semua tugas sudah Anda kumpulkan.</p>';
+  if(p.done.length)h+='<h3 class="ph3" style="margin-top:6px">Sudah dikumpulkan</h3><ul class="plist">'+p.done.map(x=>'<li class="pit-it done"><span class="pck" aria-hidden="true">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button></li>').join('')+'</ul>';
+  return h+'</div>';
+}
+function sektorDlg(){
+  if(!ME)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Sektor Absensi.</p></div>';
+  const sx=sektorData(),me=sx.byNo[ME],miss=missingOf(ME);
+  let h=dlgHead('SEKTOR ABSENSI',sx.t?'Anda peringkat '+me.rank+' dari '+N+' · '+Math.round(me.p*100)+'%':'Belum ada absensi tercatat','Setiap mata kuliah adalah satu sektor. Diurutkan menurut kehadiran keseluruhan.','#7b2ff7');
+  h+='<div class="db"><ul class="pleg"><li><i class="sxc p"></i>Sektor ungu · 5 teratas</li><li><i class="sxc g"></i>Sektor hijau · 10 berikutnya</li><li><i class="sxc y"></i>Sektor kuning · sisanya</li></ul>';
+  if(sx.t){
+    h+='<div class="tblw"><table class="sx"><thead><tr><th class="num">#</th><th>Mahasiswa</th><th class="num">Total</th>'+sx.cl.map(k=>'<th class="num" title="'+esc(cname(k))+'">'+esc(k)+'</th>').join('')+'</tr></thead><tbody>';
+    sx.rows.forEach(r=>{
+      h+='<tr'+(r.no===ME?' class="sxme"':'')+'><td class="num">'+r.rank+'</td><td class="sxn"><b>'+r.no+'</b> '+esc(nameOf(r.no))+'</td><td class="num"><b>'+Math.round(r.p*100)+'%</b></td>'+
+        sx.cl.map(k=>{const c=r.cells[k];return '<td class="num">'+(c.c?'<span class="sxc '+c.c+' big" title="'+SXNAME[c.c]+' · peringkat '+c.rk+' di '+esc(k)+'"><span class="sxsr">'+SXNAME[c.c]+', </span>'+c.p+'%</span>':'<span class="sxc n big">—</span>')+'</td>';}).join('')+'</tr>';
+    });
+    h+='</tbody></table></div>';
+  }else h+='<p class="empty">Belum ada pertemuan yang diisi absennya.</p>';
+  h+='<h3 class="ph3" style="margin-top:6px">Absen belum diisi</h3>';
+  h+=miss.length?'<ul class="plist">'+miss.slice(0,12).map(se=>'<li class="pit-it"><div><b>'+esc(cname(se.k))+' · Pertemuan '+se.n+'</b><span class="s">'+fmtDate(se.tanggal)+(se.topik?' · '+esc(se.topik):'')+'</span></div><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(se.k)+'" data-tab="absen" data-pert="'+se.n+'">Isi absen</button></li>').join('')+'</ul>':'<p class="empty">Tidak ada absen yang tertinggal.</p>';
+  return h+'</div>';
+}
+
 function renderHome(force){
   const a0=document.activeElement;
   if(!force&&a0&&$('home').contains(a0)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a0.tagName))return;
@@ -159,28 +271,10 @@ function renderHome(force){
     $('homeLede').textContent='Ringkasan tugas, absensi, dan pengumuman kelas untuk Anda.';
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname">Halo, '+esc(s0&&s0.depan?s0.depan:'Mahasiswa')+(isAd(ME)?' '+FLAG:'')+'</div></div></div>';
     if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password Anda masih password bawaan. Ganti sekarang agar akun lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
-    h+='<div class="tiles">'+
-      '<div class="tile"><div class="v">'+(p==null?'—':p+'%')+'</div><div class="l">Kehadiran saya</div><div class="d">'+a.h+' hadir dari '+a.t+' pertemuan terisi</div></div>'+
-      '<div class="tile"><div class="v">'+ts.a+'/'+ts.b+'</div><div class="l">Tugas dikumpulkan</div><div class="d">'+(belum>0?belum+' belum dikumpulkan':'Semua sudah dikumpulkan')+'</div></div>'+
-      '<div class="tile'+(missing.length?' warn':'')+'"><div class="v">'+missing.length+'</div><div class="l">Absen belum diisi</div><div class="d">Pertemuan yang sudah lewat</div></div></div>';
+    h+=homeTiles(ME);
     const left=[],right=[];
-    const todo=tasks.filter(t=>!(t.subs&&t.subs[ME]));
-    let li='';
-    todo.forEach(t=>{
-      const late=t.tenggat&&t.tenggat<td;
-      li+='<li class="it"><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?(late?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat):'Tanpa tenggat')+'</span></div><button type="button" class="btn sm'+(late?' pri':'')+'" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">Kumpulkan</button></li>';
-    });
-    left.push('<div class="panel"><h3 class="ph3">Tugas belum dikumpulkan</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(ts.b?'Semua tugas sudah Anda kumpulkan.':'Belum ada tugas dari dosen.')+'</p>')+'</div>');
-    let ml='';
-    missing.slice(0,8).forEach(se=>{
-      ml+='<li class="it"><div><b>'+esc(cname(se.k))+' · Pertemuan '+se.n+'</b><span class="s">'+fmtDate(se.tanggal)+(se.topik?' · '+esc(se.topik):'')+'</span></div><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(se.k)+'" data-tab="absen" data-pert="'+se.n+'">Isi absen</button></li>';
-    });
-    left.push('<div class="panel"><h3 class="ph3">Absen belum diisi</h3>'+(ml?'<ul>'+ml+'</ul>':'<p class="empty">Tidak ada absen yang tertinggal.</p>')+'</div>');
     left.push(schedPanel(sched,dayN));
     right.push(annPanel(anns));
-    let rk='';
-    cl.forEach(c=>{const b=st.by[c.k]||{h:0,t:0},pp=pct(b.h,b.t);rk+='<li><span class="c">'+esc(c.k)+'</span><span class="n">'+esc(c.nama)+'</span><span class="b track" aria-hidden="true"><i style="width:'+(pp||0)+'%"></i></span><span class="v">'+b.h+'/'+b.t+'</span></li>';});
-    right.push('<div class="panel"><h3 class="ph3">Absensi saya per mata kuliah</h3>'+(rk?'<ul class="rk">'+rk+'</ul>':'<p class="empty">Belum ada mata kuliah.</p>')+'</div>');
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
     h+='<div class="cols" style="margin-top:14px"><div class="col">'+berPanel('ser')+'</div><div class="col">'+berPanel('dok')+'</div></div>';
   }else if(adm()){
@@ -312,6 +406,8 @@ function renderDialog(force){
   const sc=box.scrollTop;
   if(D.kind==='course')box.innerHTML=courseDlg();
   else if(D.kind==='student')box.innerHTML=studentDlg();
+  else if(D.kind==='pit')box.innerHTML=pitDlg();
+  else if(D.kind==='sektor')box.innerHTML=sektorDlg();
   else box.innerHTML=loginDlg();
   box.scrollTop=sc;
 }
@@ -540,7 +636,7 @@ async function setMe(no){
   else{ME=no;try{localStorage.setItem('gk_me',String(no));}catch(e){}refreshAll();}
 }
 async function clearMe(){
-  if(AUTH){await AUTH.logout();ME=null;refreshAll();return;}
+  if(AUTH){await AUTH.logout();ME=null;SK=null;refreshAll();return;}
   if(uid&&db){await db.doc('data/users/'+uid+'/profil').delete();}
   else{ME=null;try{localStorage.removeItem('gk_me');}catch(e){}refreshAll();}
 }
@@ -623,7 +719,7 @@ async function loginGo(){
   if(AUTH){
     try{
       const r=await AUTH.login(D.no,nim,pw);
-      fails=0;ME=r.no;dlg.close();setView('beranda',true);toast('Selamat datang, '+nameOf(r.no));refreshAll();
+      fails=0;ME=r.no;loadSektor();dlg.close();setView('beranda',true);toast('Selamat datang, '+nameOf(r.no));refreshAll();
     }catch(e){
       if(D){D.err=(e&&e.message)||'Tidak bisa masuk. Coba lagi.';renderDialog(true);const el=$('lg-pw');if(el)el.focus();}
     }
@@ -687,6 +783,8 @@ document.addEventListener('click',async e=>{
   switch(a){
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
     case 'open-student':openD('student',+d.no);break;
+    case 'open-pit':openD('pit');break;
+    case 'open-sektor':openD('sektor');break;
     case 'close':dlg.close();break;
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
@@ -908,11 +1006,11 @@ refreshAll();
   const onErr=err=>{console.error(err);dbState='err';refreshAll();};
   const sub=(path,key)=>db.collection(path).onSnapshot(snap=>{
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
-    S[key]=o;if(key in loaded)loaded[key]=true;refreshAll();
+    S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();refreshAll();
   },onErr);
   sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');
   if(AUTH){
-    AUTH.me().then(m=>{ME=m&&m.no||null;refreshAll();});
+    AUTH.me().then(m=>{ME=m&&m.no||null;if(ME)loadSektor();refreshAll();});
   }else if(uid){
     db.doc('data/users/'+uid+'/profil').onSnapshot(s=>{
       const x=s.data();ME=x&&Number.isInteger(x.absen)?x.absen:null;refreshAll();
