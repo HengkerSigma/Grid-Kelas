@@ -5,7 +5,7 @@ const $=id=>document.getElementById(id);
 const PAD=n=>String(n).padStart(2,'0');
 const ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>ESC[c]);
-const okImg=u=>typeof u==='string'&&/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u);
+const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/[A-Za-z0-9_]{1,40}\?v=\d+$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const okId=i=>/^[0-9a-f]{32}$/.test(i||'');
 const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';

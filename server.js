@@ -14,9 +14,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
  * (HANYA di server, jangan pernah dimasukkan ke public/ atau di-commit). */
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const BUCKET = process.env.UPLOAD_BUCKET || 'uploads';
-const storage = SERVICE_KEY
-  ? createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }).storage.from(BUCKET)
-  : null;
+const svc = SERVICE_KEY ? createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
+const storage = svc ? svc.storage.from(BUCKET) : null;
+/* Foto mahasiswa, foto dosen, dan logo: bucket PUBLIK (boleh dilihat tamu), dilayani langsung oleh CDN Supabase. */
+const MEDIA_BUCKET = process.env.MEDIA_BUCKET || 'media';
+const mediaStore = svc ? svc.storage.from(MEDIA_BUCKET) : null;
 if (!storage) console.error('PERINGATAN: SUPABASE_SERVICE_KEY belum di-set, unggah berkas tidak akan berfungsi.');
 const SUPA_ORIGIN = (() => { try { return new URL(SUPABASE_URL).origin; } catch (e) { return ''; } })();
 
@@ -171,9 +173,12 @@ async function checkPw(acc, pw) {
   return safeEq(pw, DEFAULT_PW);
 }
 
-/* ---------- pembatas ---------- */
+/* ---------- pembatas ----------
+ * Disimpan di Supabase (app_data, kunci "rl:..."), bukan di memori, karena di Vercel memori
+ * dibuang tiap instance berganti sehingga pembatas biasa mudah dilewati.
+ */
 const HITS = new Map();
-function take(key, max, windowMs) {
+function take(key, max, windowMs) { // ringan, hanya di memori: untuk unggahan
   const now = Date.now();
   const a = (HITS.get(key) || []).filter((t) => now - t < windowMs);
   if (a.length >= max) { HITS.set(key, a); return false; }
@@ -181,12 +186,39 @@ function take(key, max, windowMs) {
   HITS.set(key, a);
   return true;
 }
+const RL = (k) => 'rl:' + k;
+async function rlWait(keys) { // detik tersisa bila salah satu kunci sedang dikunci, selain itu 0
+  const now = Date.now();
+  const rows = await Promise.all(keys.map((k) => getDoc(RL(k))));
+  let wait = 0;
+  rows.forEach((r) => { if (r && r.until > now) wait = Math.max(wait, Math.ceil((r.until - now) / 1000)); });
+  return wait;
+}
+async function rlFail(k, max, windowMs, lockMs) {
+  const now = Date.now();
+  let r = await getDoc(RL(k));
+  if (!r || now - r.t > windowMs) r = { n: 0, t: now, until: 0 };
+  r.n++;
+  if (r.n >= max) r = { n: 0, t: now, until: now + lockMs };
+  await setDoc(RL(k), r);
+}
+const LIMITS = {
+  pair: [6, 15 * 60000, 10 * 60000],   // satu akun dari satu IP: 6 gagal / 15 menit -> kunci 10 menit
+  acc: [40, 60 * 60000, 15 * 60000],   // satu akun dari mana saja: 40 gagal / jam -> kunci 15 menit
+  ip: [40, 10 * 60000, 10 * 60000]     // satu IP ke akun mana saja: 40 gagal / 10 menit -> kunci 10 menit
+};
 function clientIp(req) {
-  if (TRUST_PROXY) {
-    const f = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-    if (f) return f;
-  }
-  return req.socket.remoteAddress || 'x';
+  const h = req.headers;
+  let f = '';
+  if (process.env.VERCEL) f = String(h['x-vercel-forwarded-for'] || h['x-forwarded-for'] || '').split(',')[0].trim();
+  else if (TRUST_PROXY) f = String(h['x-forwarded-for'] || '').split(',')[0].trim();
+  return f || req.socket.remoteAddress || 'x';
+}
+const ipKey = (req) => crypto.createHash('sha256').update(clientIp(req)).digest('hex').slice(0, 16); // IP tidak disimpan mentah
+function loginKeys(req, no) { const ip = ipKey(req); return { pair: 'pair:' + pad(no) + ':' + ip, acc: 'acc:' + pad(no), ip: 'ip:' + ip }; }
+async function recordFail(req, no) {
+  const k = loginKeys(req, no);
+  await Promise.all([rlFail(k.pair, ...LIMITS.pair), rlFail(k.acc, ...LIMITS.acc), rlFail(k.ip, ...LIMITS.ip)]);
 }
 
 /* ---------- utilitas ---------- */
@@ -237,6 +269,14 @@ function broadcast(p) {
 
 /* ---------- unggahan ---------- */
 const UPL = (id) => 'upl:' + id;
+async function putMedia(id, dataUrl) {
+  const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+\/=]+)$/.exec(dataUrl);
+  if (!m) throw new Error('gambar tidak valid');
+  const { error } = await mediaStore.upload(id, Buffer.from(m[2], 'base64'), { contentType: m[1], upsert: true, cacheControl: '31536000' });
+  if (error) throw error;
+  const { data } = mediaStore.getPublicUrl(id);
+  return data.publicUrl + '?v=' + Date.now(); // ?v= memaksa browser mengambil foto baru saat diganti
+}
 async function readMeta(id) {
   if (!/^[0-9a-f]{32}$/.test(String(id || ''))) return null;
   return await getDoc(UPL(id));
@@ -352,14 +392,14 @@ async function decide(method, p, body, sess, existing) {
   }
 
   if (root === 'media') {
-    if (parts.length !== 2) return ERR_FORBID;
+    if (parts.length !== 2 || !/^[A-Za-z0-9_]{1,40}$/.test(id)) return ERR_FORBID;
     const m = /^s(\d\d)$/.exec(id);
     const own = m && Number(m[1]) === sess.no;
     if (!admin && !own) return ERR_FORBID;
     if (method === 'DELETE') return { del: true };
     if (method !== 'PUT') return ERR_FORBID;
     if (!isObj(body) || !onlyKeys(body, ['data']) || !isStr(body.data, 260000) || !/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(body.data)) return ERR_BAD('Gambar tidak valid.');
-    return { data: { data: body.data } };
+    return { upload: { id: id, dataUrl: body.data } };
   }
 
   if (root === 'sessions') {
@@ -459,8 +499,15 @@ async function decide(method, p, body, sess, existing) {
 
 async function commit(res, p, d) {
   if (d.err) return fail(res, d.err[0], d.err[1], d.err[2]);
-  if (d.del) await deleteDoc(p);
-  else await setDoc(p, d.data);
+  if (d.del) {
+    await deleteDoc(p);
+    if (mediaStore && p.startsWith('media/')) { try { await mediaStore.remove([p.slice(6)]); } catch (e) { /* sudah tidak ada */ } }
+  } else if (d.upload) {
+    if (mediaStore) {
+      try { await setDoc(p, { data: await putMedia(d.upload.id, d.upload.dataUrl) }); }
+      catch (e) { console.error(e); return fail(res, 500, 'unavailable', 'Gagal menyimpan gambar.'); }
+    } else await setDoc(p, { data: d.upload.dataUrl }); // tanpa kunci service: tetap simpan di database seperti sebelumnya
+  } else await setDoc(p, d.data);
   if (d.resetNo) dropSessions(d.resetNo);
   broadcast(p);
   return json(res, 200, { ok: true });
@@ -498,13 +545,17 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/login' && method === 'POST') {
       const body = await readJson(req, res); if (!body) return;
       const no = Number(body.no);
-      if (!Number.isInteger(no) || no < 1 || no > N) return fail(res, 401, 'bad_credentials', 'NIM atau password salah.');
+      if (!Number.isInteger(no) || no < 1 || no > N) { await rlFail('ip:' + ipKey(req), ...LIMITS.ip); return fail(res, 401, 'bad_credentials', 'NIM atau password salah.'); }
+      const lk = loginKeys(req, no);
+      const wait = await rlWait([lk.pair, lk.acc, lk.ip]);
+      if (wait) { res.setHeader('Retry-After', String(wait)); return fail(res, 429, 'rate_limited', 'Terlalu banyak percobaan. Coba lagi dalam ' + Math.ceil(wait / 60) + ' menit.'); }
       const acc = await getDoc('akun/' + pad(no));
       let ok = false;
       if (acc && acc.nim && isStr(body.nim, 40) && isStr(body.password, 200)) {
         ok = String(acc.nim).toLowerCase() === String(body.nim).trim().toLowerCase() && await checkPw(acc, body.password);
       }
-      if (!ok) return fail(res, 401, 'bad_credentials', 'NIM atau password salah.');
+      if (!ok) { await recordFail(req, no); return fail(res, 401, 'bad_credentials', 'NIM atau password salah.'); }
+      await deleteDoc(RL(lk.pair)); // login benar: hitungan gagal dari perangkat ini dikosongkan
       const token = signToken(no, acc);
       setCookie(req, res, token, Math.floor(SESSION_MS / 1000));
       return json(res, 200, { no: no, admin: await isAdminNo(no) });
@@ -522,7 +573,10 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req, res); if (!body) return;
       const acc = await getDoc('akun/' + pad(s.no));
       if (!acc || !isStr(body.old, 200) || !isStr(body.new, 200)) return fail(res, 400, 'invalid_argument', 'Data tidak valid.');
-      if (!(await checkPw(acc, body.old))) return fail(res, 400, 'invalid_argument', 'Password lama salah.');
+      const pk = 'pw:' + pad(s.no);
+      const pwait = await rlWait([pk]);
+      if (pwait) { res.setHeader('Retry-After', String(pwait)); return fail(res, 429, 'rate_limited', 'Terlalu banyak percobaan. Coba lagi nanti.'); }
+      if (!(await checkPw(acc, body.old))) { await rlFail(pk, 5, 15 * 60000, 15 * 60000); return fail(res, 400, 'invalid_argument', 'Password lama salah.'); }
       if (body.new.length < 6) return fail(res, 400, 'invalid_argument', 'Password baru minimal 6 karakter.');
       const salt = crypto.randomBytes(12).toString('hex');
       acc.hash = await pbk(body.new, salt);
