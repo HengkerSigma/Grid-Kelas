@@ -1,0 +1,15 @@
+# dependensi (Vercel menjalankan npm install sendiri dari package.json)
+node_modules/
+
+# rahasia
+.env
+.env.*
+!.env.example
+
+# data lokal (berisi NIM/akun), jangan diunggah ke repo
+data/
+
+# Vercel & sistem
+.vercel/
+.DS_Store
+*.log
