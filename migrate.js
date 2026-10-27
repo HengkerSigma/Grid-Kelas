@@ -9,7 +9,8 @@ const __dirname = path.dirname(__filename);
 
 // Gunakan kredensial Supabase yang sama
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uboroxjkcvjbywcshdbq.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_qLLQZbVK3R06BVeMArZ5Hw_zpDhdXA1';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY; // service_role: tabel dikunci RLS, kunci anon tidak bisa menulis
+if (!SUPABASE_KEY) { console.error('Isi SUPABASE_SERVICE_KEY dulu.'); process.exit(1); }
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const DATA_FILE = path.join(__dirname, 'data', 'db.json');

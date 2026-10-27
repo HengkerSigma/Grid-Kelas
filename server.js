@@ -2,24 +2,17 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uboroxjkcvjbywcshdbq.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_qLLQZbVK3R06BVeMArZ5Hw_zpDhdXA1';
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("Supabase URL or Key is missing!");
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-/* Penyimpanan berkas: Supabase Storage (bucket privat). Butuh kunci service_role
- * (HANYA di server, jangan pernah dimasukkan ke public/ atau di-commit). */
+/* Server memakai kunci service_role untuk SEMUA akses database & Storage. Kunci ini melewati RLS,
+ * jadi tabel bisa dikunci total dari kunci publik (anon). Kunci ini hanya boleh ada di environment
+ * variable server — jangan di kode, repo, atau folder public/. */
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const BUCKET = process.env.UPLOAD_BUCKET || 'uploads';
-const svc = SERVICE_KEY ? createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
-const storage = svc ? svc.storage.from(BUCKET) : null;
-/* Foto mahasiswa, foto dosen, dan logo: bucket PUBLIK (boleh dilihat tamu), dilayani langsung oleh CDN Supabase. */
-const MEDIA_BUCKET = process.env.MEDIA_BUCKET || 'media';
-const mediaStore = svc ? svc.storage.from(MEDIA_BUCKET) : null;
-if (!storage) console.error('PERINGATAN: SUPABASE_SERVICE_KEY belum di-set, unggah berkas tidak akan berfungsi.');
+const MEDIA_BUCKET = process.env.MEDIA_BUCKET || 'media'; // bucket PUBLIK: foto mahasiswa/dosen, logo
+if (!SERVICE_KEY) console.error('PERINGATAN: SUPABASE_SERVICE_KEY belum di-set. Database dan unggah berkas tidak akan berfungsi.');
+
+const supabase = createClient(SUPABASE_URL, SERVICE_KEY || 'missing-key', { auth: { persistSession: false, autoRefreshToken: false } });
+const storage = SERVICE_KEY ? supabase.storage.from(BUCKET) : null;
+const mediaStore = SERVICE_KEY ? supabase.storage.from(MEDIA_BUCKET) : null;
 const SUPA_ORIGIN = (() => { try { return new URL(SUPABASE_URL).origin; } catch (e) { return ''; } })();
 
 const http = require('http');
