@@ -10,6 +10,16 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+/* Penyimpanan berkas: Supabase Storage (bucket privat). Butuh kunci service_role
+ * (HANYA di server, jangan pernah dimasukkan ke public/ atau di-commit). */
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+const BUCKET = process.env.UPLOAD_BUCKET || 'uploads';
+const storage = SERVICE_KEY
+  ? createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }).storage.from(BUCKET)
+  : null;
+if (!storage) console.error('PERINGATAN: SUPABASE_SERVICE_KEY belum di-set, unggah berkas tidak akan berfungsi.');
+const SUPA_ORIGIN = (() => { try { return new URL(SUPABASE_URL).origin; } catch (e) { return ''; } })();
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -18,7 +28,6 @@ const crypto = require('crypto');
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = __dirname;
 const DATA = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'data');
-const UPLOADS = path.join(DATA, 'uploads');
 const DEFAULT_PW = process.env.DEFAULT_PASSWORD || '12345678';
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const N = 32;
@@ -34,13 +43,8 @@ const STATIC = {
   '/app.js': ['public/app.js', 'text/javascript; charset=utf-8'],
   '/db.js': ['public/db.js', 'text/javascript; charset=utf-8']
 };
-const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: " + SUPA_ORIGIN + "; script-src 'self'; connect-src 'self' " + SUPA_ORIGIN + "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
-try { 
-  if (!process.env.VERCEL) {
-    fs.mkdirSync(UPLOADS, { recursive: true }); 
-  }
-} catch (e) {}
 const pad = (n) => String(n).padStart(2, '0');
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const isStr = (v, max) => typeof v === 'string' && v.length <= max;
@@ -84,17 +88,19 @@ async function deleteDoc(p) {
   }
 }
 
-async function getAllDocs() {
-  const map = new Map();
-  const { data: cData } = await supabase.from('courses').select('*');
-  if (cData) {
-    cData.forEach((c) => map.set('courses/' + c.k, c));
+/* Ambil hanya dokumen anak langsung dari satu koleksi (bukan seluruh database). */
+async function listCol(cp) {
+  const out = [];
+  if (cp === 'courses') {
+    const { data } = await supabase.from('courses').select('*');
+    (data || []).forEach((c) => out.push({ key: 'courses/' + c.k, data: c }));
+    return out;
   }
-  const { data: aData } = await supabase.from('app_data').select('*');
-  if (aData) {
-    aData.forEach((row) => map.set(row.key, row.content));
-  }
-  return map;
+  const { data } = await supabase.from('app_data').select('key,content').like('key', cp + '/%');
+  (data || []).forEach((row) => {
+    if (row.key.startsWith(cp + '/') && row.key.indexOf('/', cp.length + 1) === -1) out.push({ key: row.key, data: row.content });
+  });
+  return out;
 }
 
 /* ---------- sesi login ----------
@@ -230,13 +236,15 @@ function broadcast(p) {
 }
 
 /* ---------- unggahan ---------- */
-function readMeta(id) {
-  try { return JSON.parse(fs.readFileSync(path.join(UPLOADS, id + '.json'), 'utf8')); } catch (e) { return null; }
+const UPL = (id) => 'upl:' + id;
+async function readMeta(id) {
+  if (!/^[0-9a-f]{32}$/.test(String(id || ''))) return null;
+  return await getDoc(UPL(id));
 }
-function cleanFile(f, sess) {
+async function cleanFile(f, sess) {
   if (f === null || f === undefined) return null;
   if (!isObj(f) || !/^[0-9a-f]{32}$/.test(f.id || '')) return undefined;
-  const meta = readMeta(f.id);
+  const meta = await readMeta(f.id);
   if (!meta) return undefined;
   if (!sess.admin && meta.owner !== sess.no) return undefined;
   return { id: f.id, name: String(f.name || 'berkas').slice(0, 80), type: meta.type };
@@ -388,7 +396,7 @@ async function decide(method, p, body, sess, existing) {
     if (body.bukti !== undefined) {
       if (!isObj(body.bukti) || !onlyKeys(body.bukti, [me])) return ERR_FORBID;
       if (body.bukti[me] !== undefined) {
-        const f = cleanFile(body.bukti[me], sess);
+        const f = await cleanFile(body.bukti[me], sess);
         if (f === undefined) return ERR_BAD('Berkas bukti tidak valid.');
         out.bukti[me] = f;
       }
@@ -416,7 +424,7 @@ async function decide(method, p, body, sess, existing) {
         if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me])) return ERR_FORBID;
         const s = body.subs[me];
         const tautan = String(s.tautan || '').trim().slice(0, 500);
-        const berkas = cleanFile(s.berkas, sess);
+        const berkas = await cleanFile(s.berkas, sess);
         const catatan = String(s.catatan || '').slice(0, 500);
         if (!tautan && !catatan && !berkas) return ERR_BAD('Isi tautan, catatan, atau kirim berkas dulu.');
         const out = clone(existing);
@@ -441,7 +449,7 @@ async function decide(method, p, body, sess, existing) {
     const jenis = body.jenis;
     if (jenis !== 'ser' && jenis !== 'dok') return ERR_BAD('Jenis berkas tidak valid.');
     const judul = String(body.judul || '').trim().slice(0, 100);
-    const file = cleanFile(body.file, sess);
+    const file = await cleanFile(body.file, sess);
     if (!file) return ERR_BAD('Pilih berkas dulu.');
     return { data: { no: sess.no, jenis: jenis, judul: judul, file: file, at: Date.now() } };
   }
@@ -526,18 +534,54 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
 
+    if (pathname === '/api/upload' && method === 'POST') {
+      const s = await getSession(req);
+      if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
+      if (!storage) return fail(res, 500, 'unavailable', 'Penyimpanan berkas belum dikonfigurasi.');
+      if (!take('up:' + s.no, 60, 600000)) return fail(res, 429, 'rate_limited', 'Terlalu banyak unggahan. Coba lagi nanti.');
+      const body = await readJson(req, res); if (!body) return;
+      const type = String(body.type || '').split(';')[0].trim().toLowerCase();
+      const size = Number(body.size);
+      if (FILE_TYPES.indexOf(type) < 0) return fail(res, 415, 'unsupported_type', 'Format belum didukung.');
+      if (!Number.isFinite(size) || size <= 0) return fail(res, 400, 'invalid_request', 'Berkas kosong.');
+      if (size > MAX_FILE) return fail(res, 413, 'too_large', 'Berkas lebih dari 20 MB.');
+      const id = crypto.randomBytes(16).toString('hex');
+      const { data, error } = await storage.createSignedUploadUrl(id);
+      if (error || !data) { console.error(error); return fail(res, 500, 'unavailable', 'Tidak bisa menyiapkan unggahan.'); }
+      await setDoc(UPL(id), { type: type, size: size, owner: s.no, at: Date.now() });
+      return json(res, 200, { id: id, uploadUrl: data.signedUrl, contentType: type });
+    }
+    if (pathname.startsWith('/api/upload/') && method === 'DELETE') {
+      const s = await getSession(req);
+      if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
+      const id = pathname.slice(12);
+      const meta = await readMeta(id);
+      if (meta && (s.admin || meta.owner === s.no)) {
+        if (storage) { try { await storage.remove([id]); } catch (e) { /* sudah tidak ada */ } }
+        await deleteDoc(UPL(id));
+      }
+      return json(res, 200, { deleted: !!meta });
+    }
+    if (pathname.startsWith('/_blob/') && method === 'GET') {
+      const id = pathname.slice(7);
+      const s = await getSession(req);
+      const meta = await readMeta(id);
+      if (!meta || !s || !storage || !(s.admin || meta.owner === s.no)) { res.writeHead(404); return res.end(); }
+      const { data, error } = await storage.createSignedUrl(id, 300);
+      if (error || !data) { res.writeHead(404); return res.end(); }
+      res.writeHead(302, { Location: data.signedUrl, 'Cache-Control': 'private, max-age=120' });
+      return res.end();
+    }
+
     if (pathname.startsWith('/api/c/')) {
       const cp = parsePath(pathname.slice(7), 'col');
       if (!cp) return fail(res, 400, 'invalid_argument', 'Path koleksi tidak valid.');
       const sess = await getSession(req);
-      const allDocs = await getAllDocs();
       if (method === 'GET') {
         const docs = [];
-        allDocs.forEach((data, key) => {
-          if (key.startsWith(cp + '/') && key.indexOf('/', cp.length + 1) === -1) {
-            const v = view(key, data, sess);
-            if (v !== null) docs.push({ id: key.slice(cp.length + 1), data: v });
-          }
+        (await listCol(cp)).forEach((row) => {
+          const v = view(row.key, row.data, sess);
+          if (v !== null) docs.push({ id: row.key.slice(cp.length + 1), data: v });
         });
         docs.sort((a, b) => (a.id < b.id ? -1 : 1));
         return json(res, 200, { docs: docs });
