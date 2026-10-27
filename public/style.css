@@ -344,3 +344,9 @@ h2 .flag,.gname .flag{width:.85em;height:.85em;vertical-align:-.1em}
 .sx th:nth-child(2),.sx td:nth-child(2){left:2.6rem}
 .sx th{z-index:2}.sx th:nth-child(-n+2){z-index:3}
 @media (max-width:640px){.sx th,.sx td{padding:6px 5px}.sx .sxn{min-width:6.5rem;font-size:.88rem}.sxc.big{min-width:2.8rem;padding:3px 5px;font-size:.78rem}}
+
+/* tombol tugas: Kerjakan / Kumpulkan */
+.tact{align-items:center}
+.tdone{background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:8px;padding:8px 12px;overflow-wrap:anywhere}
+.tform{display:grid;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px}
+.field .s{font-size:.85rem;color:var(--muted)}

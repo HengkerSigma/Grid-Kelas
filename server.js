@@ -43,6 +43,9 @@ const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.
 const pad = (n) => String(n).padStart(2, '0');
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const isStr = (v, max) => typeof v === 'string' && v.length <= max;
+const DRIVE_HOSTS = ['drive.google.com', 'docs.google.com', 'drive.usercontent.google.com'];
+function isDriveUrl(u) { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' && DRIVE_HOSTS.indexOf(x.hostname) >= 0; } catch (e) { return false; } }
+function isHttpUrl(u) { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' || x.protocol === 'http:'; } catch (e) { return false; } }
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
 /* ---------- penyimpanan data ke Supabase ---------- */
@@ -448,7 +451,9 @@ async function decide(method, p, body, sess, existing) {
       const tenggat = String(body.tenggat || '');
       if (tenggat && !/^\d{4}-\d{2}-\d{2}$/.test(tenggat)) return ERR_BAD('Tenggat tidak valid.');
       const deskripsi = String(body.deskripsi || '').slice(0, 1000);
-      return { data: { k: k, judul: judul, tenggat: tenggat, deskripsi: deskripsi, subs: existing && isObj(existing.subs) ? existing.subs : {}, dibuat: existing && existing.dibuat ? existing.dibuat : Date.now() } };
+      const link = String(body.link || '').trim();
+      if (link && (link.length > 500 || !isHttpUrl(link))) return ERR_BAD('Tautan kerjakan harus diawali http:// atau https://.');
+      return { data: { k: k, judul: judul, tenggat: tenggat, deskripsi: deskripsi, link: link, subs: existing && isObj(existing.subs) ? existing.subs : {}, dibuat: existing && existing.dibuat ? existing.dibuat : Date.now() } };
     }
     if (method === 'PATCH') {
       if (!existing) return ERR_MISSING;
@@ -459,14 +464,18 @@ async function decide(method, p, body, sess, existing) {
         const tautan = String(s.tautan || '').trim().slice(0, 500);
         const berkas = await cleanFile(s.berkas, sess);
         const catatan = String(s.catatan || '').slice(0, 500);
-        if (!tautan && !catatan && !berkas) return ERR_BAD('Isi tautan, catatan, atau kirim berkas dulu.');
+        if (!isDriveUrl(tautan)) return ERR_BAD('Tautan harus dari Google Drive (drive.google.com atau docs.google.com).');
         const out = clone(existing);
         if (!isObj(out.subs)) out.subs = {};
         out.subs[me] = { tautan: tautan, catatan: catatan, berkas: berkas, at: Date.now() };
         return { data: out };
       }
       if (!admin) return ERR_FORBID;
-      const out = Object.assign(clone(existing), pick(body, ['judul', 'tenggat', 'deskripsi']));
+      const out = Object.assign(clone(existing), pick(body, ['judul', 'tenggat', 'deskripsi', 'link']));
+      if (out.link !== undefined) {
+        out.link = String(out.link || '').trim();
+        if (out.link && (out.link.length > 500 || !isHttpUrl(out.link))) return ERR_BAD('Tautan kerjakan harus diawali http:// atau https://.');
+      }
       return { data: out };
     }
     return ERR_FORBID;
