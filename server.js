@@ -60,17 +60,52 @@ function isHttpUrl(u) { try { const x = new URL(String(u || '').trim()); return 
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
 /* ---------- penyimpanan data ke Supabase ---------- */
+/* Kolom rentang hari di tabel courses (mis. hari_sampai). Aplikasi memakai nama "hariSampai";
+ * nama kolom di Supabase dikenali otomatis dari beberapa kemungkinan, atau paksa lewat env COURSE_RANGE_COLUMN. */
+const RANGE_COLS = ['hari_sampai', 'hariSampai', 'harisampai', 'hari_akhir', 'hari_selesai', 'sampai_hari', 'hari_end'];
+let rangeCol = process.env.COURSE_RANGE_COLUMN || null;
+function detectRangeCol(row) {
+  if (!rangeCol && row && typeof row === 'object') rangeCol = RANGE_COLS.find((c) => Object.prototype.hasOwnProperty.call(row, c)) || null;
+  return rangeCol;
+}
+function courseFromRow(row) {
+  if (!row) return row;
+  const col = detectRangeCol(row);
+  if (!col) return row;
+  const out = Object.assign({}, row);
+  delete out[col];
+  out.hariSampai = row[col] || '';
+  return out;
+}
+async function rangeColumn() {
+  if (rangeCol) return rangeCol;
+  const { data } = await supabase.from('courses').select('*').limit(1);
+  if (data && data[0]) detectRangeCol(data[0]);
+  return rangeCol;
+}
+async function courseToRow(val) {
+  const v = Object.assign({}, val);
+  if (!Object.prototype.hasOwnProperty.call(v, 'hariSampai')) return v;
+  const r = v.hariSampai;
+  delete v.hariSampai;
+  const col = await rangeColumn();
+  if (col) v[col] = r || null;
+  else if (r) throw new Error('Kolom rentang hari tidak ditemukan di tabel courses. Tambahkan: alter table public.courses add column hari_sampai text; (atau isi env COURSE_RANGE_COLUMN).');
+  return v;
+}
+const must = (r) => { if (r && r.error) throw r.error; return r; };
+
 async function getDoc(p) {
   const parts = p.split('/');
   const root = parts[0];
   const id = parts.slice(1).join('/');
 
   if (root === 'courses') {
-    const { data } = await supabase.from('courses').select('*').eq('k', id).maybeSingle();
-    return data;
+    const r = must(await supabase.from('courses').select('*').eq('k', id).maybeSingle());
+    return courseFromRow(r.data);
   } else {
-    const { data } = await supabase.from('app_data').select('content').eq('key', p).maybeSingle();
-    return data ? data.content : null;
+    const r = must(await supabase.from('app_data').select('content').eq('key', p).maybeSingle());
+    return r.data ? r.data.content : null;
   }
 }
 
@@ -79,9 +114,9 @@ async function setDoc(p, val) {
   const root = parts[0];
 
   if (root === 'courses') {
-    await supabase.from('courses').upsert(val);
+    must(await supabase.from('courses').upsert(await courseToRow(val)));
   } else {
-    await supabase.from('app_data').upsert({ key: p, content: val });
+    must(await supabase.from('app_data').upsert({ key: p, content: val }));
   }
 }
 
@@ -91,9 +126,9 @@ async function deleteDoc(p) {
   const id = parts.slice(1).join('/');
 
   if (root === 'courses') {
-    await supabase.from('courses').delete().eq('k', id);
+    must(await supabase.from('courses').delete().eq('k', id));
   } else {
-    await supabase.from('app_data').delete().eq('key', p);
+    must(await supabase.from('app_data').delete().eq('key', p));
   }
 }
 
@@ -101,12 +136,12 @@ async function deleteDoc(p) {
 async function listCol(cp) {
   const out = [];
   if (cp === 'courses') {
-    const { data } = await supabase.from('courses').select('*');
-    (data || []).forEach((c) => out.push({ key: 'courses/' + c.k, data: c }));
+    const r = must(await supabase.from('courses').select('*'));
+    (r.data || []).forEach((c) => out.push({ key: 'courses/' + c.k, data: courseFromRow(c) }));
     return out;
   }
-  const { data } = await supabase.from('app_data').select('key,content').like('key', cp + '/%');
-  (data || []).forEach((row) => {
+  const r2 = must(await supabase.from('app_data').select('key,content').like('key', cp + '/%'));
+  (r2.data || []).forEach((row) => {
     if (row.key.startsWith(cp + '/') && row.key.indexOf('/', cp.length + 1) === -1) out.push({ key: row.key, data: row.content });
   });
   return out;
@@ -539,7 +574,17 @@ async function decide(method, p, body, sess, existing) {
   return ERR_FORBID;
 }
 
+/* Semua kegagalan simpan (mis. kolom belum ada di Supabase) dijawab rapi sebagai error 500, tidak menjatuhkan server. */
 async function commit(res, p, d) {
+  try { return await commitInner(res, p, d); }
+  catch (e) {
+    console.error(e);
+    if (res.headersSent) return res.end();
+    const msg = e && /^Kolom rentang hari/.test(e.message || '') ? e.message : 'Gagal menyimpan data. Coba lagi.';
+    return fail(res, 500, 'unavailable', msg);
+  }
+}
+async function commitInner(res, p, d) {
   if (d.err) return fail(res, d.err[0], d.err[1], d.err[2]);
   if (d.del) {
     await deleteDoc(p);
