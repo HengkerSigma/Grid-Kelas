@@ -14,12 +14,27 @@ const okId=i=>/^[0-9a-f]{32}$/.test(i||'');
 const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';
 const SIL='<svg class="sil" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="34" r="18"/><path d="M12 100c2-27 18-42 38-42s36 15 38 42z"/></svg>';
 const FLAG=(function(){let r='';for(let y=0;y<3;y++)for(let x=0;x<4;x++)if((x+y)%2===0)r+='<rect x="'+(6+x*4)+'" y="'+(3+y*4)+'" width="4" height="4" fill="#111"/>';return '<svg class="flag" viewBox="0 0 24 24" role="img" aria-label="Admin"><title>Admin</title><path d="M4.5 2v20" stroke="#8a8a99" stroke-width="2" stroke-linecap="round"/><rect x="6" y="3" width="16" height="12" fill="#fff" stroke="#8a8a99" stroke-width="1"/>'+r+'</svg>';})();
-const HARI=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const HARI=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+const HARI_ALL=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']; // urutan Date.getDay()
+const DNF_DAYS=3; // tugas lewat tenggat tampil sebagai DNF selama 3 hari, lalu hilang
+/* Jadwal boleh satu hari atau rentang (Senin–Jumat). Data lama berupa teks "Senin-Jumat" juga dikenali. */
+function hariRange(c){
+  let a=String(c.hari||'').trim(),b=String(c.hariSampai||'').trim();
+  const m=a.split(/\s*[-–—]\s*/);if(m.length===2){a=m[0];b=m[1];}
+  const i=HARI_ALL.indexOf(a),j=b?HARI_ALL.indexOf(b):-1,ok=i>=0&&j>=0&&j!==i;
+  return{a:a,b:ok?b:'',i:i,j:ok?j:-1};
+}
+const hariLabel=c=>{const r=hariRange(c);return r.b?r.a+'–'+r.b:r.a;};
+function onDay(c,dayN){
+  const r=hariRange(c),k=HARI_ALL.indexOf(dayN);
+  if(r.j<0)return r.a===dayN;
+  return r.i<=r.j?(k>=r.i&&k<=r.j):(k>=r.i||k<=r.j);
+}
 const VIEWS=['beranda','mahasiswa','mata-kuliah','pengelola'];
 
 let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='loading';
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
-let ownerMode=false,view='beranda',annDel=null,berDel=null,fails=0,lockUntil=0;
+let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},dr:{}};
 const loaded={st:false,co:false};
@@ -39,7 +54,9 @@ const stu=n=>S.st[PAD(n)]||null;
 const nameOf=n=>{const s=stu(n);return s?((s.depan||'')+' '+(s.belakang||'')).trim():'Mahasiswa '+n;};
 const courseList=()=>Object.values(S.co).sort((a,b)=>(a.urut||0)-(b.urut||0));
 const dn=c=>Array.isArray(c.dosen)?(c.dosen[0]||''):(c.dosen||'');
-const taskList=()=>Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
+const taskGone=t=>{const d=dayDiff(t.tenggat);return d!==null&&d<-DNF_DAYS;};
+const isLocked=t=>{const d=dayDiff(t.tenggat);return d!==null&&d<0;};
+const taskList=()=>Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>!taskGone(t)).sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
 const cname=k=>S.co[k]?S.co[k].nama:k;
 
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},4200);}
@@ -61,7 +78,7 @@ function stats(no){
   });
   return{by:by,tot:tot};
 }
-function tugasStat(no){let a=0,b=0;Object.values(S.tu).forEach(t=>{b++;if(t.subs&&t.subs[no])a++;});return{a:a,b:b};}
+function tugasStat(no){let a=0,b=0;taskList().forEach(t=>{b++;if(t.subs&&t.subs[no])a++;});return{a:a,b:b};}
 const pct=(h,t)=>t?Math.round(h/t*100):null;
 function fileHtml(f,sm){
   if(!f||!okId(f.id))return '';
@@ -116,7 +133,7 @@ function renderCourses(){
     h+='<li class="course" style="--tc:'+colr(c.warna)+'">'+
       '<div class="ctop"><h3>'+esc(c.nama)+'</h3><span class="badge" aria-hidden="true">'+esc(c.k)+'</span></div>'+
       '<ul class="dosen">'+dosenHtml(c)+'</ul>'+
-      '<p class="jadwal">'+esc(c.sks)+' SKS · '+esc(c.hari)+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+
+      '<p class="jadwal">'+esc(c.sks)+' SKS · '+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+
       '<button type="button" class="pic" data-act="open-course" data-k="'+esc(c.k)+'" aria-label="Buka absen dan tugas '+esc(c.nama)+'">'+
       (logo&&okImg(logo.data)?'<img class="logo" src="'+logo.data+'" alt="">':'<span class="ph" aria-hidden="true">'+esc(c.k)+'</span>')+
       (ak?'<span class="aktif">'+ak+' tugas aktif</span>':'')+
@@ -162,11 +179,12 @@ function dueText(t){
   if(d===1)return 'Besok · '+fmtDate(t.tenggat);
   return d+' hari lagi · '+fmtDate(t.tenggat);
 }
+const removeIn=t=>{const d=dayDiff(t.tenggat);return d===null?null:Math.max(1,d+DNF_DAYS+1);};
 function pitData(no){
   const all=taskList().map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
-  const open=all.filter(x=>!x.done),done=all.filter(x=>x.done);
+  const done=all.filter(x=>x.done),dnf=all.filter(x=>!x.done&&isLocked(x.t)),open=all.filter(x=>!x.done&&!isLocked(x.t));
   const n={r:0,y:0,g:0};open.forEach(x=>{n[flagOf(x.t)]++;});
-  return{open:open,done:done,a:done.length,b:all.length,n:n};
+  return{open:open,done:done,dnf:dnf,a:done.length,b:all.length,n:n};
 }
 function missingOf(no){
   const td=today(),m=[];
@@ -216,8 +234,9 @@ const SXNAME={p:'Sektor ungu',g:'Sektor hijau',y:'Sektor kuning'};
 function sxStrip(row,cl){return '<span class="sxm" aria-hidden="true">'+cl.map(k=>'<i class="sxc '+(row.cells[k].c||'n')+'"></i>').join('')+'</span>';}
 function homeTiles(no){
   const pit=pitData(no),sx=sektorData(),r=sx.byNo[no],miss=missingOf(no);
-  const pitD=pit.b?(pit.open.length?pit.open.length+' belum dikumpulkan':'Semua sudah dikumpulkan'):'Belum ada tugas';
-  const flags=pit.open.length?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+'</span>':'';
+  const pp=[];if(pit.open.length)pp.push(pit.open.length+' belum dikumpulkan');if(pit.dnf.length)pp.push(pit.dnf.length+' DNF');
+  const pitD=pit.b?(pp.length?pp.join(' · '):'Semua sudah dikumpulkan'):'Belum ada tugas';
+  const flags=(pit.open.length||pit.dnf.length)?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+(pit.dnf.length?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+pit.dnf.length+'</span>':'')+'</span>':'';
   return '<div class="tiles">'+
     '<button type="button" class="tile tilebtn" data-act="open-pit" aria-haspopup="dialog"><div class="v">'+pit.a+'/'+pit.b+'</div><div class="l">Pit Tugas</div><div class="d">'+pitD+'</div>'+flags+'<span class="more">Lihat daftar &rsaquo;</span></button>'+
     '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
@@ -230,12 +249,13 @@ function pitDlg(){
   if(!ME)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Pit Tugas.</p></div>';
   const p=pitData(ME);
   let h=dlgHead('PIT TUGAS',p.a+'/'+p.b+' tugas selesai','Diurutkan menurut tenggat terdekat.','#e10600');
-  h+='<div class="db"><ul class="pleg"><li>'+flagSvg('r')+'Kurang dari 1 hari atau lewat</li><li>'+flagSvg('y')+'Kurang dari 3 hari</li><li>'+flagSvg('g')+'3 hari atau lebih</li></ul>';
+  h+='<div class="db"><ul class="pleg"><li>'+flagSvg('r')+'Kurang dari 1 hari</li><li>'+flagSvg('y')+'Kurang dari 3 hari</li><li>'+flagSvg('g')+'3 hari atau lebih</li><li><span class="dnfb">DNF</span>Lewat tenggat, tidak terselesaikan</li></ul>';
   if(!p.b)return h+'<p class="empty">Belum ada tugas dari dosen.</p></div>';
   if(p.open.length){
-    h+='<ul class="plist">'+p.open.map(x=>{const f=flagOf(x.t),late=dayDiff(x.t.tenggat)<0&&x.t.tenggat;
-      return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">'+(late?'Kumpulkan sekarang':'Kumpulkan')+'</button></li>';}).join('')+'</ul>';
-  }else h+='<p class="empty">Semua tugas sudah Anda kumpulkan.</p>';
+    h+='<ul class="plist">'+p.open.map(x=>{const f=flagOf(x.t);
+      return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Kumpulkan</button></li>';}).join('')+'</ul>';
+  }else if(!p.dnf.length)h+='<p class="empty">Semua tugas sudah Anda kumpulkan.</p>';
+  if(p.dnf.length)h+='<h3 class="ph3" style="margin-top:6px">DNF · Tidak terselesaikan</h3><ul class="plist">'+p.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+' · pengumpulan ditutup, hilang dalam '+removeIn(x.t)+' hari</span></div></li>').join('')+'</ul>';
   if(p.done.length)h+='<h3 class="ph3" style="margin-top:6px">Sudah dikumpulkan</h3><ul class="plist">'+p.done.map(x=>'<li class="pit-it done"><span class="pck" aria-hidden="true">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button></li>').join('')+'</ul>';
   return h+'</div>';
 }
@@ -263,7 +283,7 @@ function renderHome(force){
   const td=today(),dayN=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][new Date().getDay()];
   const tasks=taskList();
   const anns=Object.keys(S.an).map(id=>Object.assign({id:id},S.an[id])).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8);
-  const cl=courseList(),sched=cl.filter(c=>c.hari===dayN);
+  const cl=courseList(),sched=cl.filter(c=>onDay(c,dayN));
   let h='';
   if(ME){
     const st=stats(ME),a=st.tot,p=pct(a.h,a.t),ts=tugasStat(ME),belum=ts.b-ts.a;
@@ -322,7 +342,7 @@ function berPanel(j){
 }
 function schedPanel(sched,dayN){
   let li='';
-  sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+esc(c.jam)+' · '+esc(c.ruang)+'</span></div>'+(ME?'<button type="button" class="btn sm" data-act="open-course" data-k="'+esc(c.k)+'" data-tab="absen">Isi absen</button>':'')+'</li>';});
+  sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div>'+(ME?'<button type="button" class="btn sm" data-act="open-course" data-k="'+esc(c.k)+'" data-tab="absen">Isi absen</button>':'')+'</li>';});
   return '<div class="panel"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Tidak ada kuliah hari ini.</p>')+'</div>';
 }
 function annPanel(anns){
@@ -365,6 +385,13 @@ function renderAdmin(){
     '<div class="field"><label for="an-k">Untuk</label><select id="an-k" data-dr="an-k"><option value="">Semua mata kuliah</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(dv('an-k','')===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">Kirim pengumuman</button></div></div>'+
     (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div>';
+  let tk='';
+  tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
+    const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
+    tk+='<li class="it"><div><b>'+esc(t.judul)+(lk?' <span class="dnfb">DNF</span>':'')+'</b><span class="s">'+esc(cname(t.k))+' · '+dueText(t)+' · '+cnt+'/'+N+' terkumpul'+(lk?' · hilang otomatis dalam '+removeIn(t)+' hari':'')+'</span></div>'+
+      (tkDel===t.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="tk-del-yes" data-id="'+esc(t.id)+'">Hapus</button><button type="button" class="btn sm" data-act="tk-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="tk-del" data-id="'+esc(t.id)+'">Hapus</button>')+'</li>';
+  });
+  h+='<div class="stack"><div class="panel"><h3 class="ph3">Kelola tugas</h3><p class="s" style="margin-bottom:10px">Tugas yang lewat tenggat tampil sebagai DNF selama '+DNF_DAYS+' hari, lalu terhapus otomatis. Hapus manual kapan saja dari sini.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
   // akun
   let ar='';
   for(let n=1;n<=N;n++){
@@ -420,7 +447,7 @@ function courseDlg(){
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
   const head='<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button>'+
     '<div class="dk">'+esc(c.k)+' · '+esc(c.sks)+' SKS</div><h2 id="dtitle">'+esc(c.nama)+'</h2>'+
-    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(c.hari)+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+driveBtn(c.k)+'</div>';
+    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+driveBtn(c.k)+'</div>';
   const tabs=[['absen','Absen'],['tugas','Tugas']];
   if(adm())tabs.push(['set','Pengaturan']);
   if(D.tab==='set'&&!adm())D.tab='absen';
@@ -481,6 +508,7 @@ function absenAdmin(c){
   }
   h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
   if(w)h+='<div class="row2"><button type="button" class="btn sm" data-act="allpresent">Tandai semua hadir</button></div>';
+  if(ME&&AS&&w){const mb=bk[ME];h+='<div class="tcard"><div><b>Bukti absen saya · Pertemuan '+n+'</b></div><div class="row2"><label class="btn sm pickfile">'+(mb&&mb.id?'Ganti bukti':'Kirim bukti absen')+'<input type="file" accept="image/*,application/pdf" data-file="bukti"></label>'+(mb&&mb.id?'<button type="button" class="btn sm" data-act="bukti-del">Hapus bukti</button>':'')+'</div>'+(mb&&mb.id?'<div>'+fileHtml(mb)+'</div>':'<span class="s">Foto atau PDF, misalnya surat izin atau foto kehadiran.</span>')+'</div>';}
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
     h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span>'+
@@ -497,9 +525,9 @@ function driveBtn(k){
 }
 /* Tombol tugas: "Kerjakan" membuka soal (LMS kampus / PDF / dll.), "Kumpulkan" meminta tautan Google Drive hasil tugas. */
 function taskActions(t,mine){
-  const id=t.id,open=D.subOpen===id,can=ME&&canWrite;
-  let h='<div class="row2 tact">';
-  if(ME||adm())h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Soal belum ditautkan oleh dosen.</span>');
+  const id=t.id,open=D.subOpen===id,locked=isLocked(t),can=ME&&canWrite&&!locked;
+  let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">DNF</span><span class="s">Tenggat sudah lewat. Pengumpulan ditutup'+(removeIn(t)?' · hilang dalam '+removeIn(t)+' hari':'')+'.</span>':'');
+  if((ME||adm())&&!locked)h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Soal belum ditautkan oleh dosen.</span>');
   if(can)h+='<button type="button" class="btn sm pri" data-act="tsub-open" data-id="'+esc(id)+'" aria-expanded="'+open+'">'+(mine?'Ubah pengumpulan':'Kumpulkan')+'</button>';
   h+='</div>';
   if(mine&&!open)h+='<div class="tdone"><span class="s">Terkumpul '+fmtTime(mine.at)+':</span> '+(okUrl(mine.tautan)?'<a class="lnk2" href="'+esc(mine.tautan)+'" target="_blank" rel="noopener noreferrer">Buka file di Google Drive</a>':esc(mine.tautan||''))+(mine.berkas&&mine.berkas.id?' '+fileHtml(mine.berkas,true):'')+(mine.catatan?'<br><span class="s">'+esc(mine.catatan)+'</span>':'')+'</div>';
@@ -561,7 +589,8 @@ function settingsHtml(c){
     '<div class="field" style="grid-column:1/-1"><label for="f-nama">Nama mata kuliah</label><input id="f-nama" type="text" maxlength="80" value="'+esc(c.nama)+'"></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="f-dosen">Dosen pengampu</label><input id="f-dosen" type="text" maxlength="60" value="'+esc(dn(c))+'"></div>'+
     '<div class="field"><label for="f-sks">SKS</label><input id="f-sks" type="number" min="1" max="6" value="'+esc(c.sks)+'"></div>'+
-    '<div class="field"><label for="f-hari">Hari</label><select id="f-hari">'+HARI.map(x=>'<option'+(x===c.hari?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label for="f-hari">Hari mulai</label><select id="f-hari">'+HARI.map(x=>'<option'+(x===hariRange(c).a?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label for="f-hari2">Sampai hari (opsional)</label><select id="f-hari2"><option value="">Hanya satu hari</option>'+HARI.map(x=>'<option'+(x===hariRange(c).b?' selected':'')+'>'+x+'</option>').join('')+'</select><span class="s">Untuk mata kuliah yang berlangsung beberapa hari, misalnya Senin sampai Jumat.</span></div>'+
     '<div class="field"><label for="f-jam">Jam</label><input id="f-jam" type="text" maxlength="20" value="'+esc(c.jam)+'"></div>'+
     '<div class="field"><label for="f-ruang">Ruang</label><input id="f-ruang" type="text" maxlength="20" value="'+esc(c.ruang)+'"></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="f-drive">Folder Google Drive mata kuliah</label><input id="f-drive" type="url" inputmode="url" maxlength="500" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(driveOf(c.k))+'"><span class="s">Hanya terlihat oleh yang sudah masuk. Atur akses folder agar mahasiswa bisa menambah file (Editor) atau melihat (Viewer).</span></div>'+
@@ -839,6 +868,7 @@ document.addEventListener('click',async e=>{
       if(!ME)break;
       const id=d.id,link=$('sl-'+id).value.trim(),cat=$('sc-'+id).value.trim();
       const t=S.tu[id],mine=t&&t.subs?t.subs[ME]:null;
+      if(t&&isLocked(t)){toast('Tenggat sudah lewat. Pengumpulan ditutup.');break;}
       if(!okDrive(link)){toast('Tempel tautan Google Drive (drive.google.com atau docs.google.com).');break;}
       const ok=await run(()=>db.doc('tugas/'+id).update({subs:{[ME]:{tautan:link,catatan:cat.slice(0,500),berkas:mine&&mine.berkas||null,at:Date.now()}}}),'Tugas dikumpulkan');
       if(ok){D.subOpen=null;delete DR['sl-'+id];delete DR['sc-'+id];renderDialog(true);}
@@ -849,10 +879,10 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const c=S.co[D.key];
       const sks=Math.max(1,Math.min(6,parseInt($('f-sks').value,10)||c.sks||2));
-      const drv=$('f-drive').value.trim();
+      const drv=$('f-drive').value.trim(),h1=$('f-hari').value,h2=$('f-hari2').value;
       if(drv&&!okDrive(drv)){toast('Tautan folder harus dari Google Drive (drive.google.com atau docs.google.com).');break;}
       await run(async()=>{
-        await db.doc('courses/'+c.k).update({nama:$('f-nama').value.trim()||c.nama,sks:sks,hari:$('f-hari').value,jam:$('f-jam').value.trim(),ruang:$('f-ruang').value.trim(),warna:$('f-warna').value,dosen:$('f-dosen').value.trim()});
+        await db.doc('courses/'+c.k).update({nama:$('f-nama').value.trim()||c.nama,sks:sks,hari:h1,hariSampai:(h2&&h2!==h1?h2:''),jam:$('f-jam').value.trim(),ruang:$('f-ruang').value.trim(),warna:$('f-warna').value,dosen:$('f-dosen').value.trim()});
         if(drv)await db.doc('drives/'+c.k).set({url:drv});else await db.doc('drives/'+c.k).delete();
       },'Perubahan disimpan');
       break;
@@ -921,6 +951,14 @@ document.addEventListener('click',async e=>{
       const ok=await run(()=>db.doc('berkas/'+d.id).delete(),'Berkas dihapus');
       if(ok&&AS&&x.file&&x.file.id){try{await AS.delete(x.file.id);}catch(err){}}
       berDel=null;renderHome(true);
+      break;
+    }
+    case 'tk-del':tkDel=d.id;renderAdmin();break;
+    case 'tk-del-no':tkDel=null;renderAdmin();break;
+    case 'tk-del-yes':{
+      if(!adm())break;
+      await run(()=>db.doc('tugas/'+d.id).delete(),'Tugas dihapus');
+      tkDel=null;renderAdmin();
       break;
     }
     case 'ann-del':annDel=d.id;renderAdmin();break;

@@ -43,6 +43,17 @@ const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.
 const pad = (n) => String(n).padStart(2, '0');
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const isStr = (v, max) => typeof v === 'string' && v.length <= max;
+/* Tugas lewat tenggat: pengumpulan ditutup, tampil sebagai DNF selama DNF_DAYS hari, lalu dihapus otomatis
+ * (set AUTO_DELETE_TASKS=0 bila hanya ingin disembunyikan). Tanggal dihitung dalam waktu Jakarta (WIB). */
+const DNF_DAYS = Number(process.env.DNF_DAYS) || 3;
+const AUTO_DELETE = process.env.AUTO_DELETE_TASKS !== '0';
+function dayDiffWib(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  if (!m) return null;
+  const t = new Date(Date.now() + 7 * 3600 * 1000);
+  return Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate())) / 86400000);
+}
+function taskExpired(d) { if (!d || typeof d !== 'object') return false; const x = dayDiffWib(d.tenggat); return x !== null && x < -DNF_DAYS; }
 const DRIVE_HOSTS = ['drive.google.com', 'docs.google.com', 'drive.usercontent.google.com'];
 function isDriveUrl(u) { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' && DRIVE_HOSTS.indexOf(x.hostname) >= 0; } catch (e) { return false; } }
 function isHttpUrl(u) { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' || x.protocol === 'http:'; } catch (e) { return false; } }
@@ -263,6 +274,25 @@ function broadcast(p) {
   clients.forEach((res) => { try { res.write(msg); } catch (e) { clients.delete(res); } });
 }
 
+async function purgeTask(p, d) {
+  if (!AUTO_DELETE) return;
+  try {
+    for (const sb of Object.values(isObj(d.subs) ? d.subs : {})) {
+      const fid = sb && sb.berkas && sb.berkas.id;
+      if (fid && /^[0-9a-f]{32}$/.test(fid)) {
+        if (storage) { try { await storage.remove([fid]); } catch (e) { /* sudah tidak ada */ } }
+        await deleteDoc('upl:' + fid);
+      }
+    }
+    await deleteDoc(p);
+  } catch (e) { console.error(e); }
+}
+async function dropExpired(rows) {
+  const keep = [];
+  for (const r of rows) { if (taskExpired(r.data)) await purgeTask(r.key, r.data); else keep.push(r); }
+  return keep;
+}
+
 /* ---------- unggahan ---------- */
 const UPL = (id) => 'upl:' + id;
 async function putMedia(id, dataUrl) {
@@ -467,6 +497,7 @@ async function decide(method, p, body, sess, existing) {
     if (method === 'PATCH') {
       if (!existing) return ERR_MISSING;
       if (onlyKeys(body, ['subs'])) {
+        if (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0) return ERR_BAD('Tenggat sudah lewat. Pengumpulan ditutup.');
         const me = String(sess.no);
         if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me])) return ERR_FORBID;
         const s = body.subs[me];
@@ -659,7 +690,9 @@ const server = http.createServer(async (req, res) => {
       const sess = await getSession(req);
       if (method === 'GET') {
         const docs = [];
-        (await listCol(cp)).forEach((row) => {
+        let rows = await listCol(cp);
+        if (cp === 'tugas') rows = await dropExpired(rows);
+        rows.forEach((row) => {
           const v = view(row.key, row.data, sess);
           if (v !== null) docs.push({ id: row.key.slice(cp.length + 1), data: v });
         });
@@ -679,6 +712,7 @@ const server = http.createServer(async (req, res) => {
       if (!dp) return fail(res, 400, 'invalid_argument', 'Path dokumen tidak valid.');
       const sess = await getSession(req);
       const docData = await getDoc(dp);
+      if (method === 'GET' && dp.startsWith('tugas/') && taskExpired(docData)) { await purgeTask(dp, docData); return json(res, 200, { exists: false }); }
       if (method === 'GET') {
         const v = docData !== null ? view(dp, docData, sess) : null;
         return json(res, 200, v === null ? { exists: false } : { exists: true, data: v });

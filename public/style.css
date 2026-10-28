@@ -317,7 +317,7 @@ h2 .flag,.gname .flag{width:.85em;height:.85em;vertical-align:-.1em}
 .pit-it .s{display:block;font-size:.88rem;color:var(--muted)}
 .pit-it.f-r{border-left-color:var(--fl-r)}.pit-it.f-y{border-left-color:var(--fl-y)}.pit-it.f-g{border-left-color:var(--fl-g)}
 .pit-it.done{opacity:.75;border-left-color:var(--line)}
-.pit-it:not(.f-r):not(.f-y):not(.f-g):not(.done){grid-template-columns:minmax(0,1fr) auto}
+.pit-it:not(.f-r):not(.f-y):not(.f-g):not(.done):not(.dnf){grid-template-columns:minmax(0,1fr) auto}
 .pck{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:var(--ok);color:#06140c;font-weight:800;font-size:.8rem}
 .sxc{display:inline-block;border-radius:4px;background:var(--surface-2)}
 .sxc.p{background:var(--sx-p);color:#fff}.sxc.g{background:var(--sx-g);color:#04130a}.sxc.y{background:var(--sx-y);color:#1a1400}
@@ -337,7 +337,7 @@ h2 .flag,.gname .flag{width:.85em;height:.85em;vertical-align:-.1em}
 .sx tr.sxme td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 .sx td{position:relative}
 .sx tbody tr:last-child td{border-bottom:0}
-@media (max-width:640px){.pit-it{grid-template-columns:auto minmax(0,1fr)}.pit-it .btn{grid-column:1/-1;justify-self:start}.pit-it:not(.f-r):not(.f-y):not(.f-g):not(.done){grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.pit-it{grid-template-columns:auto minmax(0,1fr)}.pit-it .btn{grid-column:1/-1;justify-self:start}.pit-it:not(.f-r):not(.f-y):not(.f-g):not(.done):not(.dnf){grid-template-columns:minmax(0,1fr)}}
 .sx{min-width:0}
 .sx th:nth-child(-n+2),.sx td:nth-child(-n+2){position:sticky;z-index:1;background:var(--surface)}
 .sx th:first-child,.sx td:first-child{left:0;min-width:2.6rem}
@@ -353,3 +353,14 @@ h2 .flag,.gname .flag{width:.85em;height:.85em;vertical-align:-.1em}
 .drv{margin:10px 0 0}
 .dh .drv .btn{background:rgba(0,0,0,.4);border-color:rgba(255,255,255,.4);color:#fff}
 .dh .drv .btn:hover{background:#fff;color:#000}
+
+/* DNF, rentang jadwal, kartu mahasiswa 2 kolom di HP */
+.dnfb{display:inline-block;font-family:var(--f-disp);font-weight:800;font-size:.68rem;letter-spacing:.06em;line-height:1;padding:5px 8px;border-radius:6px;background:#4a4a5e;color:#fff;vertical-align:middle;white-space:nowrap}
+.pleg .dnfb{margin-right:2px}
+.pit-it.dnf{border-left-color:var(--muted);opacity:.9}
+.pfl.pdnf{gap:6px;color:var(--muted)}
+@media (max-width:640px){
+  .sgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .scard .snm{padding:8px 10px}
+  .smeta{font-size:.78rem;gap:6px;flex-wrap:wrap}
+}
