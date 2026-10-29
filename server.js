@@ -421,8 +421,8 @@ function view(p, data, sess) {
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
   if (root === 'akun') {
     const out = { no: data.no, admin: data.admin === true };
-    if (admin) { out.nim = data.nim; out.resetReq = data.resetReq || null; out.hash = !!data.hash; }
-    else if (sess && sess.no === data.no) { out.nim = data.nim; out.hash = !!data.hash; }
+    if (admin) { out.nim = data.nim; out.resetReq = data.resetReq || null; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
+    else if (sess && sess.no === data.no) { out.nim = data.nim; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
     return out;
   }
   if (root === 'sessions') {
@@ -483,6 +483,7 @@ async function decide(method, p, body, sess, existing) {
       const v = body[k];
       if (k === 'nim' && isStr(v, 20)) base.nim = v;
       else if (k === 'admin' && typeof v === 'boolean') base.admin = v;
+      else if (k === 'archiveEdit' && typeof v === 'boolean') base.archiveEdit = v;
       else if (k === 'resetReq' && (v === null || typeof v === 'number')) base.resetReq = v;
       else if ((k === 'hash' || k === 'salt') && v === null) { base.hash = null; base.salt = null; reset = true; }
       else if (k === 'no') continue;
