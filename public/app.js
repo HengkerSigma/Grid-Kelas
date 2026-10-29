@@ -317,17 +317,50 @@ function podiumHtml(r){
   }).join('')+'</div>';
 }
 function towerHtml(r){
+  // Mahasiswa yang sudah mengumpulkan, mulai dari P4
+  // karena P1-P3 ditampilkan di podium.
   const rows=r.done.slice(3);
   if(!rows.length&&!r.rest.length)return '';
-  // Gunakan kode/inisial yang sudah tersimpan untuk mahasiswa; jangan mengambil 3 huruf nama depan (mis. semua "MUHammad" menjadi MUH).
-  const initialOf=no=>{const saved=codeOf(no);if(saved)return saved;const n=nameOf(no).trim().split(/\\s+/).filter(Boolean);return esc((n[0]||'').slice(0,3).toUpperCase());};
-  let h='<h3 class="ph3" style="margin:6px 0 0">Time tower</h3>'+
-    '<ul class="pleg"><li><b>Interval</b> · selisih waktu dari peringkat tepat di atas</li><li><b>Gap ke P1</b> · selisih waktu dari posisi pertama</li></ul>'+
-    '<div class="tblw"><table class="sx tower"><thead><tr><th class="num">Posisi</th><th class="num">No. absen</th><th>Inisial</th><th class="num">Interval</th><th class="num">Gap ke P1</th></tr></thead><tbody>';
-  rows.forEach(x=>{h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>'+x.pos+'</b></td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
-  r.rest.forEach(x=>{
-    h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><span class="dnfb">DNF</span></td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num"><span class="dnfb">NO TIME</span></td><td class="num"><span class="dnfb">NO TIME</span></td></tr>';
+
+  // Gunakan kode mahasiswa yang tersimpan; fallback ke 3 huruf nama depan.
+  const initialOf=no=>{
+    const saved=codeOf(no);
+    if(saved)return saved;
+    const n=nameOf(no).trim().split(/\s+/).filter(Boolean);
+    return esc((n[0]||'').slice(0,3).toUpperCase());
+  };
+
+  // Belum tenggat: NO TIME. Tenggat lewat: DNF.
+  const missingStatus=r.locked?'DNF':'NO TIME';
+
+  let h='<h3 class="ph3" style="margin:6px 0 0">Time Tower</h3>'+
+    '<ul class="pleg"><li><b>Interval</b> · selisih waktu dari posisi di atasnya</li><li><b>Gap ke P1</b> · selisih waktu dari posisi pertama</li></ul>'+
+    '<div class="tblw"><table class="sx tower"><thead><tr>'+
+    '<th class="num">POS</th><th class="num">ABSEN</th><th>INISIAL</th>'+
+    '<th class="num">INTERVAL</th><th class="num">GAP KE P1</th>'+
+    '</tr></thead><tbody>';
+
+  // Baris yang sudah mengumpulkan, peringkat P4 dan seterusnya.
+  rows.forEach(x=>{
+    h+='<tr'+(x.no===ME?' class="sxme"':'')+'>'+
+      '<td class="num"><b>P'+x.pos+'</b></td>'+
+      '<td class="num">'+x.no+'</td>'+
+      '<td class="tinitial">'+initialOf(x.no)+'</td>'+
+      '<td class="num">'+fmtGap(x.int)+'</td>'+
+      '<td class="num">'+fmtGap(x.gap)+'</td></tr>';
   });
+
+  // Mahasiswa yang belum mengumpulkan tetap mendapat posisi lanjutan.
+  r.rest.forEach((x,i)=>{
+    const pos=r.done.length+i+1;
+    h+='<tr'+(x.no===ME?' class="sxme"':'')+'>'+
+      '<td class="num"><b>P'+pos+'</b></td>'+
+      '<td class="num">'+x.no+'</td>'+
+      '<td class="tinitial">'+initialOf(x.no)+'</td>'+
+      '<td class="num"><span class="dnfb">'+missingStatus+'</span></td>'+
+      '<td class="num"><span class="dnfb">'+missingStatus+'</span></td></tr>';
+  });
+
   return h+'</tbody></table></div>';
 }
 function hasilDlg(){
