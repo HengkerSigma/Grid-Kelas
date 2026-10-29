@@ -319,14 +319,13 @@ function podiumHtml(r){
 function towerHtml(r){
   const rows=r.done.slice(3);
   if(!rows.length&&!r.rest.length)return '';
-  const nameCell=no=>'<td class="tnm"><b>'+no+'</b> '+(codeOf(no)?'<span class="tcode">'+codeOf(no)+'</span> ':'')+esc(nameOf(no))+'</td>';
+  const initialOf=no=>{const n=nameOf(no).trim().split(/\\s+/).filter(Boolean);return esc((n[0]||'').slice(0,3).toUpperCase());};
   let h='<h3 class="ph3" style="margin:6px 0 0">Time tower</h3>'+
-    '<ul class="pleg"><li><b>Waktu</b> · saat tugas dikumpulkan (terakhir)</li><li><b>Interval</b> · selisih dengan peringkat di depan</li><li><b>Gap</b> · selisih dengan leader (P1)</li>'+
-    '<li><span class="dnfb">DNF</span>/ OUT · tenggat lewat dan belum mengumpulkan</li></ul>'+
-    '<div class="tblw"><table class="sx tower"><thead><tr><th class="num">Pos</th><th>Mahasiswa</th><th>Waktu kumpul</th><th class="num">Interval</th><th class="num">Gap</th></tr></thead><tbody>';
-  rows.forEach(x=>{h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>'+x.pos+'</b></td>'+nameCell(x.no)+'<td>'+fmtDT(x.at)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
+    '<ul class="pleg"><li><b>Interval</b> · selisih waktu dari peringkat tepat di atas</li><li><b>Gap ke P1</b> · selisih waktu dari posisi pertama</li></ul>'+
+    '<div class="tblw"><table class="sx tower"><thead><tr><th class="num">Posisi</th><th class="num">No. absen</th><th>Inisial</th><th class="num">Interval</th><th class="num">Gap ke P1</th></tr></thead><tbody>';
+  rows.forEach(x=>{h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>'+x.pos+'</b></td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
   r.rest.forEach(x=>{
-    h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num">—</td>'+nameCell(x.no)+'<td colspan="3">'+(x.st==='DNF'?'<span class="dnfb">DNF</span> <span class="s">OUT · tidak mengumpulkan sampai tenggat</span>':'<span class="chip">BELUM</span> <span class="s">belum mengumpulkan</span>')+'</td></tr>';
+    h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num">—</td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td colspan="2">'+(x.st==='DNF'?'<span class="dnfb">DNF</span>':'<span class="chip">BELUM</span>')+'</td></tr>';
   });
   return h+'</tbody></table></div>';
 }
