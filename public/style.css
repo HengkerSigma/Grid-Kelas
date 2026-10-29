@@ -391,4 +391,22 @@ h2 .flag,.gname .flag{width:.85em;height:.85em;vertical-align:-.1em}
   .pav{width:52px;height:52px}.p1 .pav{width:68px;height:68px}
   .pod .pnm{font-size:.85rem}.pod .ptm{font-size:.74rem}
   .p1 .pb{height:92px}.p2 .pb{height:68px}.p3 .pb{height:50px}
+  /* Time tower: ringkas, tetap terbaca tanpa kolom waktu yang membebani layar HP. */
+  .tower{min-width:0;table-layout:auto;font-size:.84rem}
+  .tower th,.tower td{padding:8px 6px}
+  .tower th{font-size:.68rem;letter-spacing:0}
+  .tower th:nth-child(1),.tower td:nth-child(1){position:sticky;left:0;z-index:2;background:var(--surface)}
+  .tower th:nth-child(2),.tower td:nth-child(2){position:static;min-width:0}
+  .tower .tinitial{font-weight:800;letter-spacing:.04em}
+  .tower .num{font-variant-numeric:tabular-nums}
+  .tower .dnfb,.tower .chip{font-size:.65rem;padding:4px 6px}
+  .ctop{gap:10px;padding:18px 16px 8px}
+  .course h3{font-size:clamp(1rem,4.1vw,1.25rem);line-height:1.22;overflow-wrap:anywhere;word-break:normal}
+  .course .badge{width:42px;height:42px;font-size:.7rem;flex:0 0 42px}
+  .course .dosen{padding-inline:16px;gap:8px 12px}
+  .course .jadwal{padding-inline:16px;overflow-wrap:anywhere}
+  .dh h2{font-size:1.12rem;line-height:1.25;overflow-wrap:anywhere;word-break:normal;margin-right:38px}
+  .dh .dosen{padding-inline:0}
+  .tabs{padding-inline:8px;gap:0}
+  .tab{padding:12px 10px;font-size:.9rem}
 }
