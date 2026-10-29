@@ -323,12 +323,13 @@ function towerHtml(r){
   const initialOf=no=>{const saved=codeOf(no);if(saved)return saved;const n=nameOf(no).trim().split(/\\s+/).filter(Boolean);return esc((n[0]||'').slice(0,3).toUpperCase());};
   let h='<h3 class="ph3" style="margin:6px 0 0">Time tower</h3>'+
     '<ul class="pleg"><li><b>Interval</b> · selisih waktu dari peringkat tepat di atas</li><li><b>Gap ke P1</b> · selisih waktu dari posisi pertama</li></ul>'+
-    '<div class="tblw"><table class="sx tower"><thead><tr><th class="num">Posisi</th><th class="num">No. absen</th><th>Inisial</th><th class="num">Interval</th><th class="num">Gap ke P1</th></tr></thead><tbody>';
-  rows.forEach(x=>{h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>'+x.pos+'</b></td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
+    '<div class="tblw"><table class="sx tower"><thead><tr><th class="num">Pos</th><th class="num">Absen</th><th>Inisial</th><th class="num">Interval</th><th class="num">Gap ke P1</th></tr></thead><tbody>';
+  rows.forEach(x=>{h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>P'+x.pos+'</b></td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
   r.rest.forEach((x,i)=>{
     const pos=r.done.length+i+1;
-    const status=x.st==='DNF'?'<span class="dnfb">DNF</span>':'<span class="chip">BELUM</span>';
-    h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>P'+pos+'</b><br>'+status+'</td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num"><span class="dnfb">NO TIME</span></td><td class="num"><span class="dnfb">NO TIME</span></td></tr>';
+    const missingLabel=x.st==='DNF'?'DNF':'NO TIME';
+    const missingCell='<span class="'+(x.st==='DNF'?'dnfb':'chip')+'">'+missingLabel+'</span>';
+    h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>P'+pos+'</b></td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num">'+missingCell+'</td><td class="num">'+missingCell+'</td></tr>';
   });
   return h+'</tbody></table></div>';
 }
