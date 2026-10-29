@@ -325,9 +325,10 @@ function towerHtml(r){
     '<ul class="pleg"><li><b>Interval</b> · selisih waktu dari peringkat tepat di atas</li><li><b>Gap ke P1</b> · selisih waktu dari posisi pertama</li></ul>'+
     '<div class="tblw"><table class="sx tower"><thead><tr><th class="num">Posisi</th><th class="num">No. absen</th><th>Inisial</th><th class="num">Interval</th><th class="num">Gap ke P1</th></tr></thead><tbody>';
   rows.forEach(x=>{h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>'+x.pos+'</b></td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
-  r.rest.forEach(x=>{
+  r.rest.forEach((x,i)=>{
+    const pos=r.done.length+i+1;
     const status=x.st==='DNF'?'<span class="dnfb">DNF</span>':'<span class="chip">BELUM</span>';
-    h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num">'+status+'</td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num"><span class="dnfb">NO TIME</span></td><td class="num"><span class="dnfb">NO TIME</span></td></tr>';
+    h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>P'+pos+'</b><br>'+status+'</td><td class="num">'+x.no+'</td><td class="tinitial">'+initialOf(x.no)+'</td><td class="num"><span class="dnfb">NO TIME</span></td><td class="num"><span class="dnfb">NO TIME</span></td></tr>';
   });
   return h+'</tbody></table></div>';
 }
