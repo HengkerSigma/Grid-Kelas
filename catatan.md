@@ -114,3 +114,19 @@ Cakupan: inspeksi statis kode repository dan catatan konfigurasi. Ini bukan hasi
 Prioritas P1–P4 di atas adalah urutan pengerjaan yang disarankan, bukan skor risiko final. Khusus temuan data publik, fallback password, validasi unggahan, dan state serverless, verifikasi perilaku aktual serta konfigurasi deployment sebelum menyimpulkan dampak akhirnya.
 
 Jangan mengubah arsitektur atau desain besar sekaligus. Kerjakan satu kelompok perbaikan, buat perubahan kecil, jalankan tes terkait, lalu tinjau diff sebelum merge/deploy.
+
+
+## Super License dan Class Archive
+
+- **Super License** menggantikan kartu Sertifikat Saya. Sertifikat tetap tampil di daftar pribadi dan tersimpan privat di bucket `uploads`. Setelah diunggah, server mencoba menyalin sertifikat ke folder Google Drive khusus.
+- **Class Archive** adalah galeri foto kelas yang dapat dilihat tamu, mahasiswa, dan admin. Foto disimpan di bucket publik `media`; metadata berada di koleksi `classArchive`.
+- Admin dapat memberikan atau mencabut izin unggah Class Archive per mahasiswa dari bagian Akun Mahasiswa. Izin diperiksa lagi oleh server, bukan hanya tombol frontend.
+
+### Mengaktifkan arsip otomatis Google Drive
+
+Tambahkan environment variable berikut pada Vercel (server-side only):
+- `DRIVE_SERVICE_ACCOUNT_EMAIL`: email service account.
+- `DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY`: private key service account; newline dapat ditulis sebagai `\\n`.
+- `DRIVE_CERT_FOLDER_ID`: ID folder Drive khusus sertifikat.
+
+Aktifkan Google Drive API di Google Cloud, lalu bagikan folder tujuan kepada service account dengan izin Editor. Jangan simpan private key di repository atau kirim melalui chat. Jika variabel belum dikonfigurasi, sertifikat tetap tersimpan di website dengan status `Menunggu konfigurasi Drive`; konfigurasi Drive belum otomatis dilakukan oleh pull request ini.

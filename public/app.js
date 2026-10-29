@@ -53,8 +53,8 @@ const VIEWS=['beranda','mahasiswa','mata-kuliah','pengelola'];
 let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='loading';
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
-const PEND={ser:null,dok:null};
-const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},dr:{},pl:{}};
+const PEND={ser:null,dok:null,archive:null};
+const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{}};
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -412,7 +412,7 @@ function renderHome(force){
     left.push(schedPanel(sched,dayN));
     right.push(annPanel(anns));
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
-    h+='<div class="cols" style="margin-top:14px"><div class="col">'+berPanel('ser')+'</div><div class="col">'+berPanel('dok')+'</div></div>';
+    h+='<div class="cols" style="margin-top:14px"><div class="col">'+superLicensePanel()+'</div><div class="col">'+classArchivePanel()+'</div></div>';
   }else if(adm()){
     $('homeLede').textContent='Anda sedang dalam mode pengelola.';
     h+='<div class="panel welcome"><p>Mode pengelola aktif. Buka tab Pengelola untuk membuat pengumuman, mengelola akun, dan melihat rekap. Masuk sebagai mahasiswa untuk mencoba tampilan pribadi.</p><div class="row2"><button type="button" class="btn pri" data-view="pengelola">Buka Pengelola</button><button type="button" class="btn" data-act="open-login">Masuk</button></div></div>';
@@ -420,36 +420,62 @@ function renderHome(force){
     let li='';
     act.slice(0,6).forEach(t=>{li+='<li class="it"><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</span></div></li>';});
     h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+annPanel(anns)+'</div></div>';
+    h+='<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }else{
     $('homeLede').textContent='Anda masuk sebagai tamu. Tamu hanya bisa melihat pengumuman.';
-    h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+annPanel(anns);
+    h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+annPanel(anns)+'<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }
   $('home').innerHTML=h;
 }
-function berPanel(j){
-  const ser=j==='ser';
-  const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id])).filter(x=>x.no===ME&&x.jenis===j).sort((a,b)=>(b.at||0)-(a.at||0));
-  let h='<div class="panel"><h3 class="ph3">'+(ser?'Sertifikat saya':'Dokumentasi saya')+'</h3>';
-  if(canWrite&&AS){
-    const pf=PEND[j];
-    h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="'+j+'-judul">'+(ser?'Nama sertifikat':'Keterangan')+'</label><input id="'+j+'-judul" data-dr="'+j+'-judul" type="text" maxlength="100" value="'+esc(dv(j+'-judul',''))+'" placeholder="'+(ser?'Contoh: Sertifikat Workshop Web':'Contoh: Kerja kelompok RPL')+'"></div>'+
-      '<div class="row2"><label class="btn sm pickfile">'+(pf?'Ganti berkas':'Pilih berkas')+'<input type="file" accept="image/*,application/pdf" data-file="'+j+'"></label><span class="s">'+(pf?esc(pf.name):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
-      '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="'+j+'">Simpan</button></div></div>';
-  }else h+='<p class="empty" style="margin-bottom:12px">'+(AS?'Akun ini hanya bisa melihat.':'Unggah berkas belum tersedia untuk akun ini.')+'</p>';
-  const delBtn=x=>berDel===x.id
-    ?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="ber-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ber-del-no">Batal</button></span>'
-    :'<button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus</button>';
-  if(!mine.length)return h+'<p class="empty">Belum ada '+(ser?'sertifikat':'dokumentasi')+'.</p></div>';
-  if(ser){
-    h+='<ul>';
-    mine.forEach(x=>{h+='<li class="it"><div><b>'+esc(x.judul||'Sertifikat')+'</b>'+fileHtml(x.file,true)+'<span class="s">'+fmtTime(x.at)+'</span></div>'+delBtn(x)+'</li>';});
-    return h+'</ul></div>';
-  }
-  h+='<ul class="gal">';
+function superLicensePanel(){
+  const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
+    .filter(x=>x.no===ME&&x.jenis==='ser').sort((a,b)=>(b.at||0)-(a.at||0));
+  let h='<div class="panel"><h3 class="ph3">Super License</h3>'+
+    '<p class="s" style="margin-bottom:12px">Sertifikat pribadi Anda. Berkas tetap tersimpan privat dan otomatis diarsipkan ke Google Drive khusus jika koneksi Drive sudah dikonfigurasi.</p>';
+  if(ME&&AS){
+    h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama sertifikat</label>'+
+      '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="Contoh: Sertifikat Workshop Web"></div>'+
+      '<div class="row2"><label class="btn sm pickfile">'+(PEND.ser?'Ganti berkas':'Pilih sertifikat')+
+      '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+(PEND.ser?esc(PEND.ser.name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
+      '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button></div></div>';
+  }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan sertifikat pribadi.</p>';
+  if(!mine.length)return h+'<p class="empty">Belum ada sertifikat.</p></div>';
+  h+='<ul>';
   mine.forEach(x=>{
-    const f=x.file,img=f&&/^image\//.test(f.type||'')&&okId(f.id);
-    h+='<li class="gi">'+(img?'<a href="/_blob/'+f.id+'" target="_blank" rel="noopener noreferrer"><img src="/_blob/'+f.id+'" alt="'+esc(x.judul||'Dokumentasi')+'" loading="lazy"></a>':'<div class="gf">'+fileHtml(f,true)+'</div>')+
-      '<div class="gc"><span>'+esc(x.judul||'Tanpa keterangan')+'</span><span class="s">'+fmtTime(x.at)+'</span>'+delBtn(x)+'</div></li>';
+    const status=x.driveStatus==='archived'?'Tersimpan di Drive khusus':x.driveStatus==='failed'?'Arsip Drive gagal':x.driveStatus==='not_configured'?'Menunggu konfigurasi Drive':'Status arsip Drive belum diketahui';
+    const del=berDel===x.id
+      ?'<span class="row2"><button type="button" class="btn sm pri" data-act="ber-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ber-del-no">Batal</button></span>'
+      :'<button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus dari daftar</button>';
+    h+='<li class="it"><div><b>'+esc(x.judul||'Sertifikat')+'</b>'+fileHtml(x.file,true)+
+      '<span class="s">'+fmtTime(x.at)+' · '+esc(status)+'</span>'+
+      (x.driveUrl?'<a class="s" href="'+esc(x.driveUrl)+'" target="_blank" rel="noopener noreferrer">Buka arsip Drive</a>':'')+
+      '</div>'+del+'</li>';
+  });
+  return h+'</ul></div>';
+}
+function classArchivePanel(){
+  const canEdit=adm()||(ME!=null&&S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true);
+  const rows=Object.keys(S.ca).map(id=>Object.assign({id:id},S.ca[id])).sort((a,b)=>(b.at||0)-(a.at||0));
+  let h='<div class="panel"><div class="row2" style="justify-content:space-between;align-items:center"><div><h3 class="ph3">Class Archive</h3>'+
+    '<p class="s">Galeri dokumentasi kelas yang dapat dilihat semua pengunjung.</p></div><span class="chip">'+rows.length+' foto</span></div>';
+  if(canEdit&&ME&&AS){
+    h+='<div class="stack" style="margin:12px 0 16px"><div class="field"><label for="archive-judul">Judul dokumentasi</label>'+
+      '<input id="archive-judul" data-dr="archive-judul" type="text" maxlength="100" value="'+esc(dv('archive-judul',''))+'" placeholder="Contoh: Praktikum instalasi listrik"></div>'+
+      '<div class="field"><label for="archive-caption">Keterangan (opsional)</label><textarea id="archive-caption" data-dr="archive-caption" maxlength="300" placeholder="Ceritakan momen kegiatan kelas">'+esc(dv('archive-caption',''))+'</textarea></div>'+
+      '<div class="row2"><label class="btn sm pickfile">'+(PEND.archive?'Ganti foto':'Pilih foto')+
+      '<input type="file" accept="image/jpeg,image/png,image/webp" data-file="archive"></label><span class="s">'+(PEND.archive?'Foto siap diunggah':'Foto JPG, PNG, atau WebP')+'</span></div>'+
+      '<div class="row2"><button type="button" class="btn pri" data-act="archive-save">Tambahkan ke Class Archive</button></div></div>';
+  }else h+='<p class="s" style="margin:12px 0">Penambahan foto hanya untuk admin atau mahasiswa yang diberi izin oleh admin.</p>';
+  if(!rows.length)return h+'<p class="empty">Belum ada dokumentasi kelas.</p></div>';
+  h+='<ul class="gal">';
+  rows.forEach(x=>{
+    const m=x.photoKey&&S.md[x.photoKey],url=m&&okImg(m.data)?m.data:'';
+    h+='<li class="gi">'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(url)+'" alt="'+esc(x.judul||'Dokumentasi kelas')+'" loading="lazy"></a>':'<div class="gf"><span class="s">Foto tidak tersedia</span></div>')+
+      '<div class="gc"><b>'+esc(x.judul||'Dokumentasi kelas')+'</b>'+
+      (x.caption?'<span>'+esc(x.caption)+'</span>':'')+
+      '<span class="s">'+fmtTime(x.at)+(x.no?' · '+esc(nameOf(x.no)):'')+'</span>'+
+      (adm()?'<button type="button" class="btn sm" data-act="archive-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+
+      '</div></li>';
   });
   return h+'</ul></div>';
 }
@@ -511,10 +537,10 @@ function renderAdmin(){
     const k=S.ak[PAD(n)]||{};
     ar+='<tr><td class="num">'+n+'</td><td>'+esc(nameOf(n))+(isAd(n)?' '+FLAG:'')+'</td>'+
       '<td><input class="nim" type="text" inputmode="numeric" maxlength="20" data-nim="'+n+'" value="'+esc(k.nim||'')+'" aria-label="NIM nomor absen '+n+'"></td>'+
-      '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button></td>'+
+      '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button><button type="button" class="btn sm" data-act="archive-perm" data-no="'+n+'" aria-pressed="'+(k.archiveEdit===true)+'">'+(k.archiveEdit===true?'Izin arsip · Cabut':'Izin arsip')+'</button></td>'+
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
-  h+='<div><h3 class="ph3">Akun mahasiswa</h3><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
+  h+='<div><h3 class="ph3">Akun mahasiswa</h3><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
   h+='<div><h3 class="ph3">Rekap mata kuliah</h3><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   const cs={},cd={};Object.values(S.be).forEach(x=>{if(x.jenis==='ser')cs[x.no]=(cs[x.no]||0)+1;else if(x.jenis==='dok')cd[x.no]=(cd[x.no]||0)+1;});
@@ -1086,6 +1112,12 @@ document.addEventListener('click',async e=>{
       refreshAll();if(D)renderDialog(true);
       toast(ownerMode?'Mode pengelola aktif':'Kembali sebagai tamu');
       break;
+    case 'archive-perm':{
+      if(!adm())break;
+      const no=+d.no,k=S.ak[PAD(no)]||{};
+      await run(()=>upsertAkun(no,{archiveEdit:k.archiveEdit!==true}),k.archiveEdit===true?'Izin Class Archive dicabut':'Izin Class Archive diberikan');
+      break;
+    }
     case 'adm-toggle':{
       if(!adm())break;
       const no=+d.no;
@@ -1098,6 +1130,28 @@ document.addEventListener('click',async e=>{
       const no=+d.no;
       await run(()=>upsertAkun(no,{hash:null,salt:null,resetReq:null}),'Password No. '+no+' kembali ke password bawaan');
       break;
+    }
+    case 'archive-save':{
+      if(!ME||!PEND.archive){toast('Masuk dan pilih foto terlebih dahulu.');break;}
+      if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');break;}
+      const judul=($('archive-judul').value||'').trim(),caption=($('archive-caption').value||'').trim();
+      if(!judul){toast('Isi judul dokumentasi terlebih dahulu.');break;}
+      const key='archive_'+Array.from({length:12},()=>Math.floor(Math.random()*36).toString(36)).join('');
+      const ok=await run(async()=>{
+        await db.doc('media/'+key).set({data:PEND.archive.data});
+        try{await db.collection('classArchive').add({judul:judul.slice(0,100),caption:caption.slice(0,300),photoKey:key,no:ME,at:Date.now()});}
+        catch(err){try{await db.doc('media/'+key).delete();}catch(ignore){}throw err;}
+      },'Foto ditambahkan ke Class Archive');
+      if(ok){PEND.archive=null;delete DR['archive-judul'];delete DR['archive-caption'];renderHome(true);}
+      break;
+    }
+    case 'archive-del':{
+      if(!adm())break;
+      if(!confirm('Hapus dokumentasi ini dari Class Archive?'))break;
+      const x=S.ca[d.id];if(!x)break;
+      const ok=await run(()=>db.doc('classArchive/'+d.id).delete(),'Dokumentasi dihapus');
+      if(ok&&x.photoKey){try{await db.doc('media/'+x.photoKey).delete();}catch(err){}}
+      renderHome(true);break;
     }
     case 'ber-save':{
       if(!ME)break;
@@ -1112,7 +1166,7 @@ document.addEventListener('click',async e=>{
     case 'ber-del-no':berDel=null;renderHome(true);break;
     case 'ber-del-yes':{
       const x=S.be[d.id];
-      if(!x||x.no!==ME)break;
+      if(!x||(!adm()&&x.no!==ME))break;
       const ok=await run(()=>db.doc('berkas/'+d.id).delete(),'Berkas dihapus');
       if(ok&&AS&&x.file&&x.file.id){try{await AS.delete(x.file.id);}catch(err){}}
       berDel=null;renderHome(true);
@@ -1162,6 +1216,12 @@ document.addEventListener('change',async e=>{
     const f=t.files&&t.files[0],kind=t.dataset.file,tid=t.dataset.id;
     t.value='';
     if(!f||!ME)return;
+    if(kind==='archive'){
+      if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');return;}
+      if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih foto JPG, PNG, atau WebP.');return;}
+      await run(async()=>{PEND.archive={data:await logoImg(f),name:f.name};renderHome(true);},'Foto siap ditambahkan ke Class Archive.');
+      return;
+    }
     if((kind==='bukti'||kind==='tugas')&&!D)return;
     toast('Mengirim berkas…');
     if(kind==='bukti'){
@@ -1240,7 +1300,7 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();if(key==='tu'&&D&&D.kind==='hasil')loadHasil();refreshAll();
   },onErr);
-  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('drives','dr');sub('platform','pl');
+  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');
   if(AUTH){
     AUTH.me().then(m=>{ME=m&&m.no||null;if(ME)loadSektor();refreshAll();});
   }else if(uid){

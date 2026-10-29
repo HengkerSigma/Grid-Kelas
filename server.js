@@ -263,6 +263,60 @@ async function recordFail(req, no) {
   await Promise.all([rlFail(k.pair, ...LIMITS.pair), rlFail(k.acc, ...LIMITS.acc), rlFail(k.ip, ...LIMITS.ip)]);
 }
 
+/* ---------- arsip Super License ke Google Drive ---------- */
+/* Konfigurasi melalui environment server; jangan commit kredensial. */
+const DRIVE_EMAIL = process.env.DRIVE_SERVICE_ACCOUNT_EMAIL || '';
+const DRIVE_PRIVATE_KEY = String(process.env.DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+const DRIVE_CERT_FOLDER_ID = process.env.DRIVE_CERT_FOLDER_ID || '';
+const b64url = (v) => Buffer.from(v).toString('base64url');
+async function driveToken() {
+  if (!DRIVE_EMAIL || !DRIVE_PRIVATE_KEY || !DRIVE_CERT_FOLDER_ID) return null;
+  const now = Math.floor(Date.now() / 1000);
+  const head = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claims = b64url(JSON.stringify({ iss: DRIVE_EMAIL, scope: 'https://www.googleapis.com/auth/drive', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
+  const unsigned = head + '.' + claims;
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(unsigned);
+  sign.end();
+  const assertion = unsigned + '.' + sign.sign(DRIVE_PRIVATE_KEY, 'base64url');
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: assertion })
+  });
+  const payload = await response.json();
+  if (!response.ok || !payload.access_token) throw new Error('Google Drive gagal memberikan token akses.');
+  return payload.access_token;
+}
+async function archiveCertificateToDrive(file, title, no) {
+  if (!DRIVE_EMAIL || !DRIVE_PRIVATE_KEY || !DRIVE_CERT_FOLDER_ID) return { driveStatus: 'not_configured' };
+  if (!storage) throw new Error('Penyimpanan privat belum tersedia.');
+  const token = await driveToken();
+  const downloaded = await storage.download(file.id);
+  if (downloaded.error || !downloaded.data) throw new Error('Berkas sertifikat tidak bisa dibaca dari penyimpanan.');
+  const bytes = Buffer.from(await downloaded.data.arrayBuffer());
+  const boundary = 'gk_' + crypto.randomBytes(12).toString('hex');
+  const metadata = {
+    name: (String(title || file.name || 'Sertifikat').trim().slice(0, 80) || 'Sertifikat') + ' - Absen ' + pad(no),
+    mimeType: file.type || 'application/octet-stream',
+    parents: [DRIVE_CERT_FOLDER_ID],
+    description: 'Arsip Super License Grid Kelas · nomor absen ' + no
+  };
+  const body = Buffer.concat([
+    Buffer.from('--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) + '\r\n--' + boundary + '\r\nContent-Type: ' + (file.type || 'application/octet-stream') + '\r\n\r\n'),
+    bytes,
+    Buffer.from('\r\n--' + boundary + '--')
+  ]);
+  const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
+    body: body
+  });
+  const result = await response.json();
+  if (!response.ok || !result.id) throw new Error('Google Drive menolak arsip sertifikat.');
+  return { driveStatus: 'archived', driveFileId: result.id, driveUrl: result.webViewLink || ('https://drive.google.com/open?id=' + result.id) };
+}
+
 /* ---------- utilitas ---------- */
 const SEG = /^[A-Za-z0-9_\-.~:@+]{1,200}$/;
 function parsePath(raw, kind) {
@@ -362,13 +416,13 @@ function view(p, data, sess) {
   const parts = p.split('/'), root = parts[0];
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
-  if (root === 'students' || root === 'courses' || root === 'media' || root === 'pengumuman') return data;
+  if (root === 'students' || root === 'courses' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
   if (root === 'drives') return sess ? data : null; // folder Drive: hanya untuk yang sudah masuk
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
   if (root === 'akun') {
     const out = { no: data.no, admin: data.admin === true };
-    if (admin) { out.nim = data.nim; out.resetReq = data.resetReq || null; out.hash = !!data.hash; }
-    else if (sess && sess.no === data.no) { out.nim = data.nim; out.hash = !!data.hash; }
+    if (admin) { out.nim = data.nim; out.resetReq = data.resetReq || null; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
+    else if (sess && sess.no === data.no) { out.nim = data.nim; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
     return out;
   }
   if (root === 'sessions') {
@@ -429,6 +483,7 @@ async function decide(method, p, body, sess, existing) {
       const v = body[k];
       if (k === 'nim' && isStr(v, 20)) base.nim = v;
       else if (k === 'admin' && typeof v === 'boolean') base.admin = v;
+      else if (k === 'archiveEdit' && typeof v === 'boolean') base.archiveEdit = v;
       else if (k === 'resetReq' && (v === null || typeof v === 'number')) base.resetReq = v;
       else if ((k === 'hash' || k === 'salt') && v === null) { base.hash = null; base.salt = null; reset = true; }
       else if (k === 'no') continue;
@@ -475,8 +530,14 @@ async function decide(method, p, body, sess, existing) {
     if (parts.length !== 2 || !/^[A-Za-z0-9_]{1,40}$/.test(id)) return ERR_FORBID;
     const m = /^s(\d\d)$/.exec(id);
     const own = m && Number(m[1]) === sess.no;
-    if (!admin && !own) return ERR_FORBID;
-    if (method === 'DELETE') return { del: true };
+    const archiveKey = /^archive_[A-Za-z0-9]{6,24}$/.test(id);
+    const acc = archiveKey ? await getDoc('akun/' + pad(sess.no)) : null;
+    const canArchive = archiveKey && (admin || (acc && acc.archiveEdit === true));
+    if (!admin && !own && !canArchive) return ERR_FORBID;
+    if (method === 'DELETE') {
+      if (archiveKey && !admin) return ERR_FORBID;
+      return { del: true };
+    }
     if (method !== 'PUT') return ERR_FORBID;
     if (!isObj(body) || !onlyKeys(body, ['data']) || !isStr(body.data, 260000) || !/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(body.data)) return ERR_BAD('Gambar tidak valid.');
     return { upload: { id: id, dataUrl: body.data } };
@@ -569,6 +630,21 @@ async function decide(method, p, body, sess, existing) {
     return ERR_FORBID;
   }
 
+  if (root === 'classArchive') {
+    if (parts.length !== 2) return ERR_FORBID;
+    if (method === 'DELETE') return admin ? { del: true } : ERR_FORBID;
+    if (method !== 'POST') return ERR_FORBID;
+    const acc = await getDoc('akun/' + pad(sess.no));
+    if (!admin && !(acc && acc.archiveEdit === true)) return ERR_FORBID;
+    const judul = String(body.judul || '').trim();
+    const caption = String(body.caption || '').trim();
+    const photoKey = String(body.photoKey || '');
+    if (!judul || judul.length > 100 || caption.length > 300 || !/^archive_[A-Za-z0-9]{6,24}$/.test(photoKey)) return ERR_BAD('Judul, keterangan, atau foto tidak valid.');
+    const photo = await getDoc('media/' + photoKey);
+    if (!photo || typeof photo.data !== 'string' || !photo.data.startsWith('https://')) return ERR_BAD('Foto arsip belum tersedia.');
+    return { data: { judul: judul, caption: caption, photoKey: photoKey, no: sess.no, at: Date.now() } };
+  }
+
   if (root === 'berkas') {
     if (parts.length !== 2) return ERR_FORBID;
     if (method === 'DELETE') {
@@ -581,7 +657,12 @@ async function decide(method, p, body, sess, existing) {
     const judul = String(body.judul || '').trim().slice(0, 100);
     const file = await cleanFile(body.file, sess);
     if (!file) return ERR_BAD('Pilih berkas dulu.');
-    return { data: { no: sess.no, jenis: jenis, judul: judul, file: file, at: Date.now() } };
+    let drive = { driveStatus: 'not_configured' };
+    if (jenis === 'ser') {
+      try { drive = await archiveCertificateToDrive(file, judul, sess.no); }
+      catch (e) { console.error('Arsip Super License gagal:', e); drive = { driveStatus: 'failed' }; }
+    }
+    return { data: Object.assign({ no: sess.no, jenis: jenis, judul: judul, file: file, at: Date.now() }, drive) };
   }
 
   return ERR_FORBID;
