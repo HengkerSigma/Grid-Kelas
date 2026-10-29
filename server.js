@@ -273,7 +273,7 @@ async function driveToken() {
   if (!DRIVE_EMAIL || !DRIVE_PRIVATE_KEY || !DRIVE_CERT_FOLDER_ID) return null;
   const now = Math.floor(Date.now() / 1000);
   const head = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  const claims = b64url(JSON.stringify({ iss: DRIVE_EMAIL, scope: 'https://www.googleapis.com/auth/drive.file', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
+  const claims = b64url(JSON.stringify({ iss: DRIVE_EMAIL, scope: 'https://www.googleapis.com/auth/drive', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
   const unsigned = head + '.' + claims;
   const sign = crypto.createSign('RSA-SHA256');
   sign.update(unsigned);
