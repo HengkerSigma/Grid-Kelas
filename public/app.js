@@ -443,10 +443,13 @@ function superLicensePanel(){
   h+='<ul>';
   mine.forEach(x=>{
     const status=x.driveStatus==='archived'?'Tersimpan di Drive khusus':x.driveStatus==='failed'?'Arsip Drive gagal':x.driveStatus==='not_configured'?'Menunggu konfigurasi Drive':'Status arsip Drive belum diketahui';
+    const del=berDel===x.id
+      ?'<span class="row2"><button type="button" class="btn sm pri" data-act="ber-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ber-del-no">Batal</button></span>'
+      :'<button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus dari daftar</button>';
     h+='<li class="it"><div><b>'+esc(x.judul||'Sertifikat')+'</b>'+fileHtml(x.file,true)+
       '<span class="s">'+fmtTime(x.at)+' · '+esc(status)+'</span>'+
       (x.driveUrl?'<a class="s" href="'+esc(x.driveUrl)+'" target="_blank" rel="noopener noreferrer">Buka arsip Drive</a>':'')+
-      '</div><button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus dari daftar</button></li>';
+      '</div>'+del+'</li>';
   });
   return h+'</ul></div>';
 }
@@ -1215,7 +1218,7 @@ document.addEventListener('change',async e=>{
     if(!f||!ME)return;
     if(kind==='archive'){
       if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');return;}
-      if(!/^image\\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih foto JPG, PNG, atau WebP.');return;}
+      if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih foto JPG, PNG, atau WebP.');return;}
       await run(async()=>{PEND.archive={data:await logoImg(f),name:f.name};renderHome(true);},'Foto siap ditambahkan ke Class Archive.');
       return;
     }
