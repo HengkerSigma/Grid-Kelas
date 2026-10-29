@@ -263,6 +263,7 @@ function homeTiles(no){
 function dlgHead(kind,title,sub,col){
   return '<div class="dh" style="--tc:'+col+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">'+kind+'</div><h2 id="dtitle">'+title+'</h2>'+(sub?'<p class="jadwal">'+sub+'</p>':'')+'</div>';
 }
+const hasilBtn=t=>'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Lihat hasil</button>';
 function pitDlg(){
   if(!ME)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Pit Tugas.</p></div>';
   const p=pitData(ME);
@@ -271,11 +272,72 @@ function pitDlg(){
   if(!p.b)return h+'<p class="empty">Belum ada tugas dari dosen.</p></div>';
   if(p.open.length){
     h+='<ul class="plist">'+p.open.map(x=>{const f=flagOf(x.t);
-      return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Kumpulkan</button></li>';}).join('')+'</ul>';
+      return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Kumpulkan</button>'+hasilBtn(x.t)+'</span></li>';}).join('')+'</ul>';
   }else if(!p.dnf.length)h+='<p class="empty">Semua tugas sudah Anda kumpulkan.</p>';
-  if(p.dnf.length)h+='<h3 class="ph3" style="margin-top:6px">DNF · Tidak terselesaikan</h3><ul class="plist">'+p.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+' · pengumpulan ditutup, hilang dalam '+removeIn(x.t)+' hari</span></div></li>').join('')+'</ul>';
-  if(p.done.length)h+='<h3 class="ph3" style="margin-top:6px">Sudah dikumpulkan</h3><ul class="plist">'+p.done.map(x=>'<li class="pit-it done"><span class="pck" aria-hidden="true">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button></li>').join('')+'</ul>';
+  if(p.dnf.length)h+='<h3 class="ph3" style="margin-top:6px">DNF · Tidak terselesaikan</h3><ul class="plist">'+p.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+' · pengumpulan ditutup, hilang dalam '+removeIn(x.t)+' hari</span></div><span class="pact">'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
+  if(p.done.length)h+='<h3 class="ph3" style="margin-top:6px">Sudah dikumpulkan</h3><ul class="plist">'+p.done.map(x=>'<li class="pit-it done"><span class="pck" aria-hidden="true">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
   return h+'</div>';
+}
+/* ---------- Hasil tugas: podium + time tower ---------- */
+/* Waktu kumpul semua mahasiswa dari server (/api/hasil: hanya waktu, tanpa tautan/berkas). Tanpa server, dari data yang terlihat. */
+let HS=null,hsTimer=null;
+function loadHasil(now){
+  if(!(ME||adm())||!AUTH||!AUTH.hasil)return;
+  clearTimeout(hsTimer);
+  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;if(D&&D.kind==='hasil')renderDialog(true);}catch(e){/* tetap pakai data lokal */}},now?0:400);
+}
+function fmtDT(ms){try{return new Intl.DateTimeFormat('id-ID',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(e){return '';}}
+function fmtGap(ms){
+  const s=Math.max(0,Math.round(ms/1000)),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+  return '+'+(d?d+' hr ':'')+PAD(h)+':'+PAD(m)+':'+PAD(s%60);
+}
+/* Peringkat tugas: urut menurut waktu pengumpulan terakhir (terawal = P1). Interval = selisih dengan peringkat di depan, gap = selisih dengan leader.
+ * Yang belum mengumpulkan: DNF/OUT bila tenggat sudah lewat, selain itu BELUM. */
+function hasilData(id){
+  const t=S.tu[id];if(!t)return null;
+  const src=(HS&&HS[id])||Object.keys(t.subs||{}).reduce((o,no)=>{o[no]=t.subs[no]&&t.subs[no].at;return o;},{});
+  const lk=isLocked(t),done=[],rest=[];
+  for(let no=1;no<=N;no++){const at=+src[no];if(at>0)done.push({no:no,at:at});else rest.push({no:no,st:lk?'DNF':'BELUM'});}
+  done.sort((a,b)=>a.at-b.at||a.no-b.no);
+  const lead=done.length?done[0].at:0;
+  done.forEach((r,i)=>{r.pos=i+1;r.gap=r.at-lead;r.int=i?r.at-done[i-1].at:0;});
+  return{t:t,done:done,rest:rest,locked:lk};
+}
+const codeOf=no=>{const s=stu(no);return s&&s.kode?esc(String(s.kode).slice(0,3)):'';};
+function podiumHtml(r){
+  const top=r.done.slice(0,3);
+  if(!top.length)return '<p class="empty">Belum ada yang mengumpulkan. Jadilah P1!</p>';
+  return '<div class="podium" role="list" aria-label="Podium tiga tercepat">'+[1,0,2].map(i=>{
+    const x=top[i];
+    if(!x)return '<div class="pod p'+(i+1)+' none" role="listitem"><div class="pb"><span class="pn">P'+(i+1)+'</span></div></div>';
+    return '<div class="pod p'+(i+1)+(x.no===ME?' me':'')+'" role="listitem"><span class="pav">'+photo('s'+PAD(x.no))+'</span>'+
+      '<b class="pnm">'+esc(nameOf(x.no))+'</b><span class="pcd">No. '+x.no+(codeOf(x.no)?' · '+codeOf(x.no):'')+'</span>'+
+      '<span class="ptm">'+fmtDT(x.at)+'</span><span class="pgp">'+(i?fmtGap(x.gap):'LEADER')+'</span>'+
+      '<div class="pb"><span class="pn">P'+(i+1)+'</span></div></div>';
+  }).join('')+'</div>';
+}
+function towerHtml(r){
+  const rows=r.done.slice(3);
+  if(!rows.length&&!r.rest.length)return '';
+  const nameCell=no=>'<td class="tnm"><b>'+no+'</b> '+(codeOf(no)?'<span class="tcode">'+codeOf(no)+'</span> ':'')+esc(nameOf(no))+'</td>';
+  let h='<h3 class="ph3" style="margin:6px 0 0">Time tower</h3>'+
+    '<ul class="pleg"><li><b>Waktu</b> · saat tugas dikumpulkan (terakhir)</li><li><b>Interval</b> · selisih dengan peringkat di depan</li><li><b>Gap</b> · selisih dengan leader (P1)</li>'+
+    '<li><span class="dnfb">DNF</span>/ OUT · tenggat lewat dan belum mengumpulkan</li></ul>'+
+    '<div class="tblw"><table class="sx tower"><thead><tr><th class="num">Pos</th><th>Mahasiswa</th><th>Waktu kumpul</th><th class="num">Interval</th><th class="num">Gap</th></tr></thead><tbody>';
+  rows.forEach(x=>{h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num"><b>'+x.pos+'</b></td>'+nameCell(x.no)+'<td>'+fmtDT(x.at)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
+  r.rest.forEach(x=>{
+    h+='<tr'+(x.no===ME?' class="sxme"':'')+'><td class="num">—</td>'+nameCell(x.no)+'<td colspan="3">'+(x.st==='DNF'?'<span class="dnfb">DNF</span> <span class="s">OUT · tidak mengumpulkan sampai tenggat</span>':'<span class="chip">BELUM</span> <span class="s">belum mengumpulkan</span>')+'</td></tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+function hasilDlg(){
+  if(!ME&&!adm())return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat hasil tugas.</p></div>';
+  const r=hasilData(D.key);
+  if(!r)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Tugas tidak ditemukan atau sudah dihapus.</p></div>';
+  const t=r.t;
+  let h=dlgHead('HASIL TUGAS',esc(t.judul),esc(cname(t.k))+' · '+dueText(t)+' · '+r.done.length+' dari '+N+' sudah mengumpulkan','#e10600');
+  h+='<div class="db">'+(ME?'<div class="row2"><button type="button" class="btn sm" data-act="open-pit">&lsaquo; Pit Tugas</button></div>':'')+podiumHtml(r)+towerHtml(r)+'</div>';
+  return h;
 }
 function sektorDlg(){
   if(!ME)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Sektor Absensi.</p></div>';
@@ -444,7 +506,7 @@ function defaultPert(k){
   return m||1;
 }
 function openD(kind,key,tab,pert){
-  D={kind:kind,key:key,tab:tab||(kind==='course'?'absen':'main'),pert:kind==='course'?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{}};
+  D={kind:kind,key:key,tab:tab||(kind==='course'?'absen':'main'),pert:kind==='course'?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
   renderDialog(true);
   if(!dlg.open)dlg.showModal();
 }
@@ -456,6 +518,7 @@ function renderDialog(force){
   else if(D.kind==='student')box.innerHTML=studentDlg();
   else if(D.kind==='pit')box.innerHTML=pitDlg();
   else if(D.kind==='sektor')box.innerHTML=sektorDlg();
+  else if(D.kind==='hasil')box.innerHTML=hasilDlg();
   else box.innerHTML=loginDlg();
   box.scrollTop=sc;
 }
@@ -554,16 +617,33 @@ function driveBtn(k){
   const u=driveOf(k);
   return u&&(ME||adm())?'<p class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Folder Drive mata kuliah <span aria-hidden="true">&#8599;</span></a></p>':'';
 }
-/* Tombol tugas: "Kerjakan" membuka soal (LMS kampus / PDF / dll.), "Kumpulkan" meminta tautan Google Drive hasil tugas. */
+/* Cara mengumpulkan tugas: "file" (unggah langsung) atau "link" (Google Drive dll.). Bawaan: link, kecuali pengumpulan lama berupa file. */
+function smodeOf(id,mine){
+  const m=D&&D.smode&&D.smode[id];
+  if(m==='file'&&!AS)return 'link';
+  if(m)return m;
+  return mine&&mine.berkas&&mine.berkas.id&&!mine.tautan&&AS?'file':'link';
+}
+/* Tombol tugas: "Kerjakan" membuka soal (LMS kampus / PDF / dll.), "Kumpulkan" mengirim file atau tautan hasil tugas. */
 function taskActions(t,mine){
   const id=t.id,open=D.subOpen===id,locked=isLocked(t),can=ME&&canWrite&&!locked;
   let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">DNF</span><span class="s">Tenggat sudah lewat. Pengumpulan ditutup'+(removeIn(t)?' · hilang dalam '+removeIn(t)+' hari':'')+'.</span>':'');
   if((ME||adm())&&!locked)h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Soal belum ditautkan oleh dosen.</span>');
   if(can)h+='<button type="button" class="btn sm pri" data-act="tsub-open" data-id="'+esc(id)+'" aria-expanded="'+open+'">'+(mine?'Ubah pengumpulan':'Kumpulkan')+'</button>';
   h+='</div>';
-  if(mine&&!open)h+='<div class="tdone"><span class="s">Terkumpul '+fmtTime(mine.at)+':</span> '+(okUrl(mine.tautan)?'<a class="lnk2" href="'+esc(mine.tautan)+'" target="_blank" rel="noopener noreferrer">Buka file di Google Drive</a>':esc(mine.tautan||''))+(mine.berkas&&mine.berkas.id?' '+fileHtml(mine.berkas,true):'')+(mine.catatan?'<br><span class="s">'+esc(mine.catatan)+'</span>':'')+'</div>';
+  if(mine&&!open)h+='<div class="tdone"><span class="s">Terkumpul '+fmtTime(mine.at)+':</span> '+(okUrl(mine.tautan)?'<a class="lnk2" href="'+esc(mine.tautan)+'" target="_blank" rel="noopener noreferrer">'+(okDrive(mine.tautan)?'Buka file di Google Drive':'Buka tautan tugas')+'</a>':esc(mine.tautan||''))+(mine.berkas&&mine.berkas.id?' '+fileHtml(mine.berkas,true):'')+(mine.catatan?'<br><span class="s">'+esc(mine.catatan)+'</span>':'')+'</div>';
   if(open&&can){
-    h+='<div class="tform">'+(driveOf(t.k)?'<div class="row2"><a class="btn sm" href="'+esc(driveOf(t.k))+'" target="_blank" rel="noopener noreferrer">Buka folder Drive '+esc(t.k)+' <span aria-hidden="true">&#8599;</span></a><span class="s">Unggah file tugas ke folder ini, lalu tempel tautannya di bawah.</span></div>':'')+'<div class="field"><label for="sl-'+esc(id)+'">Tautan Google Drive</label><input id="sl-'+esc(id)+'" data-dr="sl-'+esc(id)+'" type="url" inputmode="url" placeholder="https://drive.google.com/…" value="'+esc(dv('sl-'+id,mine&&mine.tautan||''))+'"><span class="s">Unggah file tugas ke Google Drive, buka Bagikan, atur &quot;Siapa saja yang memiliki link&quot; (Pelihara/Viewer), lalu tempel tautannya di sini.</span></div>'+
+    const mode=smodeOf(id,mine),pf=(D.pending&&D.pending[id])||(mine&&mine.berkas&&mine.berkas.id?mine.berkas:null);
+    h+='<div class="tform"><div><div class="lbl" style="margin-bottom:8px">Cara mengumpulkan</div><div class="row2" role="group" aria-label="Cara mengumpulkan">'+
+      '<button type="button" class="btn sm" data-act="smode" data-id="'+esc(id)+'" data-m="file" aria-pressed="'+(mode==='file')+'"'+(AS?'':' disabled')+'>Unggah file</button>'+
+      '<button type="button" class="btn sm" data-act="smode" data-id="'+esc(id)+'" data-m="link" aria-pressed="'+(mode==='link')+'">Tautan (Drive dll.)</button></div></div>';
+    if(mode==='file'){
+      h+='<div class="field"><span class="lbl">Berkas tugas</span><div class="row2"><label class="btn sm pickfile">'+(pf?'Ganti berkas':'Pilih berkas')+'<input type="file" accept="image/*,application/pdf" data-file="tugas" data-id="'+esc(id)+'"></label><span class="s">'+(pf?esc(pf.name):'Belum ada berkas dipilih')+'</span></div><span class="s">Foto (JPG, PNG, WebP) atau PDF, maksimal 20 MB. Tekan Kirim setelah berkas siap.</span></div>';
+    }else{
+      h+=(driveOf(t.k)?'<div class="row2"><a class="btn sm" href="'+esc(driveOf(t.k))+'" target="_blank" rel="noopener noreferrer">Buka folder Drive '+esc(t.k)+' <span aria-hidden="true">&#8599;</span></a><span class="s">Unggah file tugas ke folder ini, lalu tempel tautannya di bawah.</span></div>':'')+
+        '<div class="field"><label for="sl-'+esc(id)+'">Tautan tugas</label><input id="sl-'+esc(id)+'" data-dr="sl-'+esc(id)+'" type="url" inputmode="url" placeholder="https://drive.google.com/…" value="'+esc(dv('sl-'+id,mine&&mine.tautan||''))+'"><span class="s">Boleh Google Drive, Dropbox, GitHub, dan sebagainya, asalkan diawali https://. Untuk Google Drive: Bagikan, atur &quot;Siapa saja yang memiliki link&quot; (Viewer), lalu tempel tautannya di sini.</span></div>';
+    }
+    h+=
       '<div class="field"><label for="sc-'+esc(id)+'">Catatan (opsional)</label><textarea id="sc-'+esc(id)+'" data-dr="sc-'+esc(id)+'" maxlength="500">'+esc(dv('sc-'+id,mine&&mine.catatan||''))+'</textarea></div>'+
       '<div class="row2"><button type="button" class="btn pri" data-act="tsub" data-id="'+esc(id)+'">'+(mine?'Perbarui':'Kirim')+'</button><button type="button" class="btn" data-act="tsub-open" data-id="'+esc(id)+'">Batal</button></div></div>';
   }
@@ -900,14 +980,29 @@ document.addEventListener('click',async e=>{
     }
     case 'tsub':{
       if(!ME)break;
-      const id=d.id,link=$('sl-'+id).value.trim(),cat=$('sc-'+id).value.trim();
+      const id=d.id,cat=$('sc-'+id).value.trim();
       const t=S.tu[id],mine=t&&t.subs?t.subs[ME]:null;
       if(t&&isLocked(t)){toast('Tenggat sudah lewat. Pengumpulan ditutup.');break;}
-      if(!okDrive(link)){toast('Tempel tautan Google Drive (drive.google.com atau docs.google.com).');break;}
-      const ok=await run(()=>db.doc('tugas/'+id).update({subs:{[ME]:{tautan:link,catatan:cat.slice(0,500),berkas:mine&&mine.berkas||null,at:Date.now()}}}),'Tugas dikumpulkan');
-      if(ok){D.subOpen=null;delete DR['sl-'+id];delete DR['sc-'+id];renderDialog(true);}
+      let link='',berkas=null;
+      if(smodeOf(id,mine)==='file'){
+        berkas=(D.pending&&D.pending[id])||(mine&&mine.berkas&&mine.berkas.id?mine.berkas:null);
+        if(!berkas){toast('Pilih berkas dulu, lalu tekan Kirim.');break;}
+      }else{
+        link=$('sl-'+id).value.trim();
+        if(!okHttps(link)){toast('Tempel tautan tugas yang diawali https:// (Google Drive, Dropbox, dll.).');break;}
+      }
+      const ok=await run(()=>db.doc('tugas/'+id).update({subs:{[ME]:{tautan:link,catatan:cat.slice(0,500),berkas:berkas,at:Date.now()}}}),'Tugas dikumpulkan');
+      if(ok){D.subOpen=null;delete DR['sl-'+id];delete DR['sc-'+id];if(D.pending)delete D.pending[id];if(D.smode)delete D.smode[id];renderDialog(true);}
       break;
     }
+    case 'smode':{
+      if(!D)break;
+      if(!D.smode)D.smode={};
+      D.smode[d.id]=d.m==='file'?'file':'link';
+      renderDialog(true);
+      break;
+    }
+    case 'open-hasil':openD('hasil',d.id);loadHasil(true);break;
     case 'me-clear':{const ok=await run(clearMe,'Anda sudah keluar');if(ok){if(dlg.open)dlg.close();setView('beranda',true);}break;}
     case 'save-course':{
       if(!adm())break;
@@ -1042,7 +1137,7 @@ document.addEventListener('change',async e=>{
     }else if(kind==='ser'||kind==='dok'){
       await run(async()=>{PEND[kind]=await sendFile(f);renderHome(true);},'Berkas siap. Tekan Simpan.');
     }else if(kind==='tugas'){
-      await run(async()=>{const fo=await sendFile(f);D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kumpulkan untuk menyimpan.');
+      await run(async()=>{const fo=await sendFile(f);D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
     }
     return;
   }
@@ -1087,6 +1182,7 @@ setView(view);
 refreshAll();
 
 /* Tombol Isi absen bergantung pada jam: periksa tiap 30 detik, tampilkan ulang hanya bila ada kuliah yang mulai/selesai. */
+setInterval(()=>{if(D&&D.kind==='hasil')loadHasil(true);},20000); // time tower tetap segar selama dibuka
 let liveSig='';
 setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join();if(s!==liveSig){liveSig=s;refreshAll();}},30000);
 
@@ -1109,7 +1205,7 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
   const onErr=err=>{console.error(err);dbState='err';refreshAll();};
   const sub=(path,key)=>db.collection(path).onSnapshot(snap=>{
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
-    S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();refreshAll();
+    S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();if(key==='tu'&&D&&D.kind==='hasil')loadHasil();refreshAll();
   },onErr);
   sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('drives','dr');sub('platform','pl');
   if(AUTH){

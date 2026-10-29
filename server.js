@@ -549,7 +549,10 @@ async function decide(method, p, body, sess, existing) {
         const tautan = String(s.tautan || '').trim().slice(0, 500);
         const berkas = await cleanFile(s.berkas, sess);
         const catatan = String(s.catatan || '').slice(0, 500);
-        if (!isDriveUrl(tautan)) return ERR_BAD('Tautan harus dari Google Drive (drive.google.com atau docs.google.com).');
+        // Dua cara mengumpulkan: unggah berkas langsung, atau tautan https (Google Drive, Dropbox, GitHub, dll.).
+        if (berkas === undefined) return ERR_BAD('Berkas tidak valid. Unggah ulang berkasnya.');
+        if (tautan && !(/^https:\/\//i.test(tautan) && isHttpUrl(tautan))) return ERR_BAD('Tautan harus diawali https://');
+        if (!tautan && !berkas) return ERR_BAD('Unggah berkas atau isi tautan tugas.');
         const out = clone(existing);
         if (!isObj(out.subs)) out.subs = {};
         out.subs[me] = { tautan: tautan, catatan: catatan, berkas: berkas, at: Date.now() };
@@ -737,6 +740,24 @@ const server = http.createServer(async (req, res) => {
         Object.keys(d.present).forEach((no) => { if (d.present[no] === 'H') c.h[no] = (c.h[no] || 0) + 1; });
       });
       return json(res, 200, { courses: out });
+    }
+
+    if (pathname === '/api/hasil' && method === 'GET') {
+      // Hanya waktu pengumpulan per mahasiswa per tugas (bukan tautan, berkas, atau catatan), untuk podium dan time tower.
+      const s = await getSession(req);
+      if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
+      const out = {};
+      (await listCol('tugas')).forEach((row) => {
+        const d = row.data;
+        if (!isObj(d) || taskExpired(d)) return;
+        const m = {};
+        Object.keys(isObj(d.subs) ? d.subs : {}).forEach((no) => {
+          const at = d.subs[no] && d.subs[no].at;
+          if (/^\d{1,2}$/.test(no) && typeof at === 'number') m[no] = at;
+        });
+        out[row.key.slice('tugas/'.length)] = m;
+      });
+      return json(res, 200, { tugas: out });
     }
 
     if (pathname.startsWith('/api/c/')) {

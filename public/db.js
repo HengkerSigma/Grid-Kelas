@@ -147,6 +147,7 @@
     login: async (no, nim, password) => { const r = await req('POST', '/api/login', { no: no, nim: nim, password: password }); refreshAll(); return r; },
     logout: async () => { try { await req('POST', '/api/logout', {}); } finally { refreshAll(); } },
     sektor: () => req('GET', '/api/sektor'),
+    hasil: () => req('GET', '/api/hasil'),
     changePassword: async (oldPw, newPw) => { await req('POST', '/api/password', { old: oldPw, new: newPw }); }
   };
   window.addEventListener('gk-expired', () => { refreshAll(); });
