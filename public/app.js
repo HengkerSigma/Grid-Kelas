@@ -10,6 +10,9 @@ const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
 const driveOf=k=>{const d=S.dr[k];return d&&okDrive(d.url)?d.url:'';};
 const okDrive=u=>{try{const x=new URL(String(u||'').trim());return x.protocol==='https:'&&DRIVE_HOSTS.indexOf(x.hostname)>=0;}catch(e){return false;}};
+/* Mata kuliah bertipe platform: doc platform/<k> berisi link khusus tempat absen diisi (hanya terlihat setelah masuk). */
+const okHttps=u=>{try{return new URL(String(u||'').trim()).protocol==='https:';}catch(e){return false;}};
+const platOf=k=>{const d=S.pl[k];return d&&okHttps(d.url)?String(d.url).trim():'';};
 const okId=i=>/^[0-9a-f]{32}$/.test(i||'');
 const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';
 const SIL='<svg class="sil" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="34" r="18"/><path d="M12 100c2-27 18-42 38-42s36 15 38 42z"/></svg>';
@@ -30,13 +33,28 @@ function onDay(c,dayN){
   if(r.j<0)return r.a===dayN;
   return r.i<=r.j?(k>=r.i&&k<=r.j):(k>=r.i||k<=r.j);
 }
+/* Jam kuliah ditulis bebas ("08:00-10:30", "08.00 - 10.30 WIB"). Bila tidak terbaca, dianggap berlangsung sepanjang hari jadwal. */
+function jamRange(c){
+  const m=/(\d{1,2})\s*[.:]\s*(\d{2})\s*(?:-|–|—|s\/d|sd|sampai)\s*(\d{1,2})\s*[.:]\s*(\d{2})/i.exec(String(c.jam||''));
+  if(!m||+m[1]>23||+m[3]>23||+m[2]>59||+m[4]>59)return null;
+  const s=+m[1]*60+ +m[2],e=+m[3]*60+ +m[4];
+  return e>s?{s:s,e:e}:null;
+}
+function inSession(c,now){
+  now=now||new Date();
+  if(!onDay(c,HARI_ALL[now.getDay()]))return false;
+  const r=jamRange(c);
+  if(!r)return true;
+  const t=now.getHours()*60+now.getMinutes();
+  return t>=r.s&&t<r.e;
+}
 const VIEWS=['beranda','mahasiswa','mata-kuliah','pengelola'];
 
 let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='loading';
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null};
-const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},dr:{}};
+const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},dr:{},pl:{}};
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -342,7 +360,7 @@ function berPanel(j){
 }
 function schedPanel(sched,dayN){
   let li='';
-  sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div>'+(ME?'<button type="button" class="btn sm" data-act="open-course" data-k="'+esc(c.k)+'" data-tab="absen">Isi absen</button>':'')+'</li>';});
+  sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div>'+absenBtn(c)+'</li>';});
   return '<div class="panel"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Tidak ada kuliah hari ini.</p>')+'</div>';
 }
 function annPanel(anns){
@@ -447,7 +465,7 @@ function courseDlg(){
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
   const head='<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button>'+
     '<div class="dk">'+esc(c.k)+' · '+esc(c.sks)+' SKS</div><h2 id="dtitle">'+esc(c.nama)+'</h2>'+
-    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+driveBtn(c.k)+'</div>';
+    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+platBtn(c)+driveBtn(c.k)+'</div>';
   const tabs=[['absen','Absen'],['tugas','Tugas']];
   if(adm())tabs.push(['set','Pengaturan']);
   if(D.tab==='set'&&!adm())D.tab='absen';
@@ -518,6 +536,19 @@ function absenAdmin(c){
   return h+'</ol>';
 }
 
+/* Tombol "Isi absen" di jadwal: hanya muncul saat mata kuliah sedang berlangsung.
+   Tipe platform dengan link → membuka web lain (tab baru); selain itu → absen di dalam situs. */
+function absenBtn(c){
+  if(!(ME||adm())||!inSession(c))return '';
+  const u=platOf(c.k);
+  if(u)return '<a class="btn sm pri" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" aria-label="Isi absen '+esc(c.nama)+' di '+esc(c.ruang||'platform')+' (buka di tab baru)">Isi absen <span aria-hidden="true">&#8599;</span></a>';
+  return ME?'<button type="button" class="btn sm pri" data-act="open-course" data-k="'+esc(c.k)+'" data-tab="absen">Isi absen</button>':'';
+}
+/* Di kepala dialog mata kuliah: tombol ke platform saat jadwal berlangsung. */
+function platBtn(c){
+  const u=platOf(c.k);
+  return u&&(ME||adm())&&inSession(c)?'<p class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Isi absen di '+esc(c.ruang||'platform')+' <span aria-hidden="true">&#8599;</span></a></p>':'';
+}
 /* Folder Google Drive tiap mata kuliah (hanya terlihat setelah masuk). */
 function driveBtn(k){
   const u=driveOf(k);
@@ -585,6 +616,7 @@ function tugasAdmin(c){
 }
 
 function settingsHtml(c){
+  const plat=!!S.pl[c.k];
   return '<div class="fgrid">'+
     '<div class="field" style="grid-column:1/-1"><label for="f-nama">Nama mata kuliah</label><input id="f-nama" type="text" maxlength="80" value="'+esc(c.nama)+'"></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="f-dosen">Dosen pengampu</label><input id="f-dosen" type="text" maxlength="60" value="'+esc(dn(c))+'"></div>'+
@@ -592,7 +624,9 @@ function settingsHtml(c){
     '<div class="field"><label for="f-hari">Hari mulai</label><select id="f-hari">'+HARI.map(x=>'<option'+(x===hariRange(c).a?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
     '<div class="field"><label for="f-hari2">Sampai hari (opsional)</label><select id="f-hari2"><option value="">Hanya satu hari</option>'+HARI.map(x=>'<option'+(x===hariRange(c).b?' selected':'')+'>'+x+'</option>').join('')+'</select><span class="s">Untuk mata kuliah yang berlangsung beberapa hari, misalnya Senin sampai Jumat.</span></div>'+
     '<div class="field"><label for="f-jam">Jam</label><input id="f-jam" type="text" maxlength="20" value="'+esc(c.jam)+'"></div>'+
-    '<div class="field"><label for="f-ruang">Ruang</label><input id="f-ruang" type="text" maxlength="20" value="'+esc(c.ruang)+'"></div>'+
+    '<div class="field"><label for="f-tipe">Tipe ruang</label><select id="f-tipe"><option value="ruangan"'+(plat?'':' selected')+'>Ruangan</option><option value="platform"'+(plat?' selected':'')+'>Platform</option></select></div>'+
+    '<div class="field"><label for="f-ruang" id="f-ruang-l">'+(plat?'Nama platform':'Nama ruangan')+'</label><input id="f-ruang" type="text" maxlength="20" value="'+esc(c.ruang)+'" placeholder="'+(plat?'Contoh: Zoom':'Contoh: R.301')+'"></div>'+
+    '<div class="field" id="f-link-w" style="grid-column:1/-1;'+(plat?'':'display:none')+'"><label for="f-link">Link absen platform</label><input id="f-link" type="url" inputmode="url" maxlength="500" placeholder="https://…" value="'+esc(platOf(c.k))+'"><span class="s">Tombol Isi absen membuka link ini di tab baru saat jadwal kuliah berlangsung. Hanya terlihat oleh yang sudah masuk.</span></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="f-drive">Folder Google Drive mata kuliah</label><input id="f-drive" type="url" inputmode="url" maxlength="500" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(driveOf(c.k))+'"><span class="s">Hanya terlihat oleh yang sudah masuk. Atur akses folder agar mahasiswa bisa menambah file (Editor) atau melihat (Viewer).</span></div>'+
     '<div class="field"><label for="f-warna">Warna kartu</label><input id="f-warna" type="color" value="'+colr(c.warna)+'"></div></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="save-course">Simpan perubahan</button></div>'+
@@ -881,9 +915,12 @@ document.addEventListener('click',async e=>{
       const sks=Math.max(1,Math.min(6,parseInt($('f-sks').value,10)||c.sks||2));
       const drv=$('f-drive').value.trim(),h1=$('f-hari').value,h2=$('f-hari2').value;
       if(drv&&!okDrive(drv)){toast('Tautan folder harus dari Google Drive (drive.google.com atau docs.google.com).');break;}
+      const platform=$('f-tipe').value==='platform',lnk=$('f-link').value.trim();
+      if(platform&&!okHttps(lnk)){toast('Isi link absen platform yang diawali https://');break;}
       await run(async()=>{
         await db.doc('courses/'+c.k).update({nama:$('f-nama').value.trim()||c.nama,sks:sks,hari:h1,hariSampai:(h2&&h2!==h1?h2:''),jam:$('f-jam').value.trim(),ruang:$('f-ruang').value.trim(),warna:$('f-warna').value,dosen:$('f-dosen').value.trim()});
         if(drv)await db.doc('drives/'+c.k).set({url:drv});else await db.doc('drives/'+c.k).delete();
+        if(platform)await db.doc('platform/'+c.k).set({url:lnk});else if(S.pl[c.k])await db.doc('platform/'+c.k).delete();
       },'Perubahan disimpan');
       break;
     }
@@ -975,6 +1012,13 @@ document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.d
 document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;
+  if(t.id==='f-tipe'){
+    const p=t.value==='platform';
+    $('f-link-w').style.display=p?'':'none';
+    $('f-ruang-l').textContent=p?'Nama platform':'Nama ruangan';
+    $('f-ruang').placeholder=p?'Contoh: Zoom':'Contoh: R.301';
+    return;
+  }
   if(t.dataset&&t.dataset.nim&&adm()){await run(()=>upsertAkun(+t.dataset.nim,{nim:t.value.trim()}),'NIM disimpan');return;}
   if(t.matches&&t.matches('input[type=file][data-up]')){
     const f=t.files&&t.files[0],key=t.dataset.up,kind=t.dataset.kind;
@@ -1042,6 +1086,10 @@ try{ownerMode=localStorage.getItem('gk_owner')==='1';}catch(e){}
 setView(view);
 refreshAll();
 
+/* Tombol Isi absen bergantung pada jam: periksa tiap 30 detik, tampilkan ulang hanya bila ada kuliah yang mulai/selesai. */
+let liveSig='';
+setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join();if(s!==liveSig){liveSig=s;refreshAll();}},30000);
+
 (async function init(){
   const use=n=>(window.claude&&window.claude.use)?window.claude.use(n).catch(()=>null):Promise.resolve(null);
   const got=await Promise.all([use('db'),use('user'),use('assets')]);
@@ -1063,7 +1111,7 @@ refreshAll();
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();refreshAll();
   },onErr);
-  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('drives','dr');
+  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('drives','dr');sub('platform','pl');
   if(AUTH){
     AUTH.me().then(m=>{ME=m&&m.no||null;if(ME)loadSektor();refreshAll();});
   }else if(uid){
