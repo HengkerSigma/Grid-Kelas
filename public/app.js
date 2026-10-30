@@ -1182,13 +1182,16 @@ document.addEventListener('click',async e=>{
       break;
     }
     case 'img-del':await run(()=>db.doc('media/'+d.key).delete(),'Gambar dihapus');break;
-    case 'team-radio-prev':TEAM_RADIO_INDEX=Math.max(0,TEAM_RADIO_INDEX-1);renderHome(true);break;
+    case 'team-radio-prev':{
+      const total=Math.min(8,Object.keys(S.an).length);
+      TEAM_RADIO_INDEX=total?(TEAM_RADIO_INDEX-1+total)%total:0;renderHome(true);break;
+    }
     case 'team-radio-next':{
-      const total=Object.keys(S.an).length;
+      const total=Math.min(8,Object.keys(S.an).length);
       TEAM_RADIO_INDEX=total?(TEAM_RADIO_INDEX+1)%total:0;renderHome(true);break;
     }
     case 'team-radio-go':{
-      const total=Object.keys(S.an).length;
+      const total=Math.min(8,Object.keys(S.an).length);
       if(Number.isInteger(+d.index)&&+d.index>=0&&+d.index<total){TEAM_RADIO_INDEX=+d.index;renderHome(true);}
       break;
     }
