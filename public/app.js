@@ -1160,6 +1160,8 @@ document.addEventListener('click',async e=>{
       const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),attendance_url:$('cu-attendance').value.trim(),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null};
       if(!body.course_code||!Number.isInteger(body.meeting_number)||body.meeting_number<1||body.meeting_number>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
       if([body.attendance_url,body.task_url,body.submission_url].some(u=>u&&!/^https:\/\//i.test(u))){toast('Semua tautan harus diawali https://');break;}
+      const duplicate=Object.keys(S.cu).find(id=>id!==CU_EDIT&&S.cu[id].course_code===body.course_code&&Number(S.cu[id].meeting_number)===body.meeting_number);
+      if(duplicate){toast('Pembaruan untuk mata kuliah dan pertemuan ini sudah ada. Gunakan tombol Edit pada tabel.');break;}
       const ok=await run(async()=>{
         if(CU_EDIT)await db.doc('course_updates/'+CU_EDIT).update(body);
         else {
