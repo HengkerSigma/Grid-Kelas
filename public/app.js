@@ -155,7 +155,7 @@ function renderStudents(){
   for(let n=1;n<=N;n++){
     const s=stu(n),showMeta=adm()||ME===n;
     let meta='';
-    if(showMeta){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);meta='<span class="smeta"><span>Hadir '+(p==null?'—':p+'%')+'</span><span>Tugas '+t.a+'/'+t.b+'</span></span>';}
+    if(showMeta){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n),nim=(S.ak[PAD(n)]&&S.ak[PAD(n)].nim)||'';meta=(nim?'<span class="s-nim">NIM · '+esc(nim)+'</span>':'')+'<span class="smeta"><span>Kehadiran '+(p==null?'—':p+'%')+'</span><span>Tugas '+t.a+'/'+t.b+'</span></span>';}
     h+='<li><button type="button" class="scard'+(s?'':' skel')+'" data-act="open-student" data-no="'+n+'"><span class="sph">'+photo('s'+PAD(n))+'<span class="sno">'+n+'</span>'+fb(n)+'</span>'+
       '<span class="snm"><span class="f">'+(s?esc(s.depan):'&nbsp;')+'</span><b>'+(s?esc(s.belakang):'&nbsp;')+'</b></span>'+meta+'</button></li>';
   }
@@ -334,7 +334,7 @@ let HS=null,hsTimer=null;
 function loadHasil(now){
   if(!(ME||adm())||!AUTH||!AUTH.hasil)return;
   clearTimeout(hsTimer);
-  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;if(D&&D.kind==='hasil')renderDialog(true);}catch(e){/* tetap pakai data lokal */}},now?0:400);
+  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;if(D&&(D.kind==='hasil'||D.kind==='student'))renderDialog(true);}catch(e){/* tetap pakai data lokal */}},now?0:400);
 }
 function fmtDT(ms){try{return new Intl.DateTimeFormat('id-ID',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(e){return '';}}
 function fmtGap(ms){
@@ -641,7 +641,7 @@ function defaultPert(k){
   return m||1;
 }
 function openD(kind,key,tab,pert){
-  D={kind:kind,key:key,tab:tab||(kind==='course'?'absen':'main'),pert:kind==='course'?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
+  D={kind:kind,key:key,tab:tab||(kind==='course'?'absen':kind==='student'?'kehadiran':'main'),pert:kind==='course'?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
   renderDialog(true);
   if(!dlg.open)dlg.showModal();
 }
@@ -862,34 +862,78 @@ function settingsHtml(c){
     '</div></div>';
 }
 
+function studentAttendanceTab(no){
+  const st=stats(no),sx=sektorData(),row=sx.byNo[no];
+  let h='<div class="student-statline"><span><b>'+st.tot.h+'/'+st.tot.t+'</b><small>Total hadir</small></span><span><b>'+((pct(st.tot.h,st.tot.t)==null)?'—':pct(st.tot.h,st.tot.t)+'%')+'</b><small>Kehadiran</small></span></div>'+
+    '<div><div class="lbl" style="margin-bottom:10px">Kehadiran per mata kuliah</div><ul class="rk student-attendance">';
+  const cl=courseList();
+  if(!cl.length)h+='<li class="empty">Belum ada mata kuliah.</li>';
+  cl.forEach(course=>{
+    const b=st.by[course.k]||{h:0,t:0},p=pct(b.h,b.t),cell=row&&row.cells[course.k],tone=cell&&cell.c?cell.c:'n';
+    h+='<li><span class="c">'+esc(course.k)+'</span><span class="n">'+esc(course.nama)+'</span><span class="b track sector-track sector-'+tone+'" aria-label="'+(p==null?'Belum ada data':p+' persen')+'"><i style="width:'+(p||0)+'%"></i></span><span class="v">'+(p==null?'—':p+'%')+'</span></li>';
+  });
+  return h+'</ul><ul class="pleg student-sector-legend"><li><i class="sxc p"></i>Ungu · 5 teratas</li><li><i class="sxc g"></i>Hijau · 10 berikutnya</li><li><i class="sxc y"></i>Kuning · lainnya</li></ul></div>';
+}
+function studentResultsTab(no){
+  const rows=[];
+  Object.keys(S.tu).forEach(id=>{
+    const t=S.tu[id],sub=t.subs&&t.subs[no];
+    if(!sub||!sub.at)return;
+    const r=hasilData(id),entry=r&&r.done.find(x=>x.no===no);
+    rows.push({id:id,t:t,sub:sub,pos:entry?entry.pos:null});
+  });
+  rows.sort((x,y)=>(y.sub.at||0)-(x.sub.at||0));
+  if(!rows.length)return '<p class="empty">Belum ada riwayat pengumpulan tugas.</p>';
+  return '<ul class="student-history">'+rows.map(x=>'<li><span class="student-history-mark">P'+(x.pos||'—')+'</span><span class="student-history-copy"><b>'+esc(x.t.k)+' · '+esc(x.t.judul||'Tugas')+'</b><small>'+fmtTime(x.sub.at)+'</small></span><span class="chip '+(x.pos===1?'done':'')+'">'+(x.pos?'P'+x.pos:'Terkumpul')+'</span></li>').join('')+'</ul>';
+}
+function studentAchievementsTab(no){
+  const sx=sektorData(),row=sx.byNo[no],first=[];
+  Object.keys(S.tu).forEach(id=>{
+    const t=S.tu[id],r=hasilData(id),leader=r&&r.done[0];
+    if(leader&&leader.no===no)first.push({t:t,at:leader.at});
+  });
+  first.sort((x,y)=>(y.at||0)-(x.at||0));
+  const pole=courseList().filter(course=>row&&row.cells[course.k]&&row.cells[course.k].c==='p');
+  let h='<div class="achievement-summary"><div><b>'+first.length+'</b><small>First to Finish</small></div><div><b>'+pole.length+'</b><small>Pole Position</small></div></div>';
+  h+='<h3 class="ph3">First to Finish</h3>';
+  h+=first.length?'<ul class="achievement-list">'+first.map(x=>'<li><span class="achievement-icon gold">★</span><span><b>'+esc(cname(x.t.k))+' · '+esc(x.t.judul)+'</b><small>P1 · '+fmtTime(x.at)+'</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih First to Finish.</p>';
+  h+='<h3 class="ph3" style="margin-top:22px">Pole Position</h3>';
+  h+=pole.length?'<ul class="achievement-list">'+pole.map(course=>'<li><span class="achievement-icon purple">◆</span><span><b>'+esc(course.nama)+'</b><small>Sektor ungu · 5 besar absensi</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih Pole Position. Raih sektor ungu di mata kuliah untuk mendapatkannya.</p>';
+  return h;
+}
 function studentDlg(){
-  const no=D.key,s=stu(no);
-  const own=ME===no,seeStats=adm()||own;
-  const canPhoto=canWrite&&(adm()||own);
+  const no=D.key,s=stu(no),own=ME===no,seeStats=adm()||own;
+  const canPhoto=canWrite&&(adm()||own),ac=S.ak[PAD(no)]||{},nim=ac.nim||'';
   let h='<div class="db"><div class="row2" style="justify-content:flex-end"><button type="button" class="btn sm" data-act="close">Tutup</button></div>'+
     '<div class="shead"><div class="sbig">'+photo('s'+PAD(no))+fb(no)+'</div><div><div class="k">NO. '+no+(s&&s.kode?' · '+esc(s.kode):'')+(isAd(no)?' · ADMIN':'')+'</div><h2 id="dtitle">'+esc(nameOf(no))+(isAd(no)?' '+FLAG:'')+'</h2>'+
+    (seeStats&&nim?'<div class="student-nim">NIM · '+esc(nim)+'</div>':'')+
     '<div class="row2" style="margin-top:12px">'+
     (canPhoto?'<label class="btn sm pickfile">Ganti foto<input type="file" accept="image/*" data-up="s'+PAD(no)+'" data-kind="photo"></label>':'')+
     (canPhoto&&S.md['s'+PAD(no)]?'<button type="button" class="btn sm" data-act="img-del" data-key="s'+PAD(no)+'">Hapus foto</button>':'')+
     (own?'<button type="button" class="btn sm" data-act="me-clear">Keluar</button>':(ME?'':'<button type="button" class="btn sm pri" data-act="login-no" data-no="'+no+'">Masuk sebagai nomor ini</button>'))+
     '</div></div></div>';
   if(seeStats){
-    const st=stats(no),ts=tugasStat(no);
-    h+='<div><div class="lbl" style="margin-bottom:10px">Kehadiran per mata kuliah</div><ul class="rk">';
-    const cl=courseList();
-    if(!cl.length)h+='<li class="empty">Belum ada mata kuliah.</li>';
-    cl.forEach(c=>{const b=st.by[c.k]||{h:0,t:0},p=pct(b.h,b.t);h+='<li><span class="c">'+esc(c.k)+'</span><span class="n">'+esc(c.nama)+'</span><span class="b track" aria-hidden="true"><i style="width:'+(p||0)+'%"></i></span><span class="v">'+b.h+'/'+b.t+'</span></li>';});
-    h+='</ul></div><p class="empty">Tugas dikumpulkan: <b>'+ts.a+'</b> dari '+ts.b+'. Total hadir: <b>'+st.tot.h+'</b> dari '+st.tot.t+' pertemuan yang sudah diabsen.</p>';
+    const st=stats(no),ts=tugasStat(no),tabs=[['kehadiran','Kehadiran'],['hasil','Hasil'],['achievement','Achievement']];
+    h+='<div class="student-overview"><div><b>'+(pct(st.tot.h,st.tot.t)==null?'—':pct(st.tot.h,st.tot.t)+'%')+'</b><small>Kehadiran</small></div><div><b>'+ts.a+'/'+ts.b+'</b><small>Tugas terkumpul</small></div><div><b>'+studentAchievementCounts(no).first+'</b><small>First to Finish</small></div></div>';
+    h+=tabsHtml(tabs);
+    h+='<section class="student-tab-panel">'+(D.tab==='hasil'?studentResultsTab(no):D.tab==='achievement'?studentAchievementsTab(no):studentAttendanceTab(no))+'</section>';
+  }else{
+    h+='<p class="empty">Masuk untuk melihat statistik, NIM, riwayat tugas, dan achievement mahasiswa.</p>';
   }
   if(adm()&&canWrite){
-    h+='<div class="fgrid"><div class="field"><label for="s-depan">Nama depan</label><input id="s-depan" type="text" maxlength="40" value="'+esc(s&&s.depan||'')+'"></div>'+
+    h+='<div class="student-admin-edit"><div class="fgrid"><div class="field"><label for="s-depan">Nama depan</label><input id="s-depan" type="text" maxlength="40" value="'+esc(s&&s.depan||'')+'"></div>'+
       '<div class="field"><label for="s-belakang">Nama belakang</label><input id="s-belakang" type="text" maxlength="40" value="'+esc(s&&s.belakang||'')+'"></div>'+
       '<div class="field"><label for="s-kode">Kode 3 huruf</label><input id="s-kode" type="text" maxlength="3" value="'+esc(s&&s.kode||'')+'"></div></div>'+
-      '<div class="row2"><button type="button" class="btn pri" data-act="save-student" data-no="'+no+'">Simpan nama</button></div>';
+      '<div class="row2"><button type="button" class="btn pri" data-act="save-student" data-no="'+no+'">Simpan nama</button></div></div>';
   }
   return h+'</div>';
 }
-
+function studentAchievementCounts(no){
+  const first=Object.keys(S.tu).filter(id=>{const r=hasilData(id);return r&&r.done[0]&&r.done[0].no===no;}).length;
+  const row=sektorData().byNo[no];
+  const pole=courseList().filter(course=>row&&row.cells[course.k]&&row.cells[course.k].c==='p').length;
+  return{first:first,pole:pole};
+}
 function loginDlg(){
   let h='<div class="db"><div class="row2" style="justify-content:space-between"><h2 id="dtitle" style="margin:0;font-family:var(--f-disp);font-size:1.3rem;text-transform:uppercase">'+(ME?'Akun':'Masuk')+'</h2><button type="button" class="btn sm" data-act="close">Tutup</button></div>';
   if(isAdmin)h+='<div class="mine"><div><b>Pemilik halaman</b><span class="s">'+(ownerMode?'Mode pengelola aktif.':'Anda sedang melihat sebagai tamu.')+'</span></div><button type="button" class="btn" data-act="owner-toggle">'+(ownerMode?'Keluar dari mode pengelola':'Masuk sebagai pengelola')+'</button></div>';
@@ -1108,7 +1152,7 @@ document.addEventListener('click',async e=>{
       renderCourses();break;
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
-    case 'open-student':openD('student',+d.no);break;
+    case 'open-student':openD('student',+d.no);loadHasil(true);break;
     case 'open-pit':openD('pit');break;
     case 'open-sektor':openD('sektor');break;
     case 'close':dlg.close();break;
