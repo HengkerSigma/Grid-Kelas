@@ -664,9 +664,16 @@ function absenBtn(c){
   if(!(ME||adm())||!inSession(c))return '';
   if(ME&&!adm()){
     const n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
-    if(status)return '<div class="tcard" role="status" style="margin:0;padding:10px 12px"><b>Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
+    if(status)return '<div class="tcard attendance-done" role="status" aria-live="polite" style="margin:0;padding:10px 12px"><b><span aria-hidden="true">&#10003; </span>Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   }
   return isPlatformCourse(c)?'<button type="button" class="btn sm pri" data-act="forum-options" data-k="'+esc(c.k)+'">Buka Forum Diskusi Mentari</button>':ME?'<button type="button" class="btn sm pri" data-act="auto-attend" data-k="'+esc(c.k)+'">Isi absen</button>':'';
+}
+async function saveScheduleAttendance(k){
+  const n=defaultPert(k),id=k+'_'+PAD(n);
+  await writeSession(k,n,{present:{[ME]:'H'}});
+  const current=S.se[id]||{k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}};
+  S.se[id]=Object.assign({},current,{present:Object.assign({},current.present||{},{[ME]:'H'})});
+  refreshAll();
 }
 function platBtn(c){
   if(!isPlatformCourse(c)||!(ME||adm())||!inSession(c))return '';
@@ -997,12 +1004,12 @@ document.addEventListener('click',async e=>{
     }
     case 'auto-attend':{
       if(!ME||adm()||!canWrite)break;
-      const k=d.k,n=defaultPert(k);await run(()=>writeSession(k,n,{present:{[ME]:'H'}}),'Absensi berhasil terisi.');break;
+      const k=d.k;await run(()=>saveScheduleAttendance(k),'Absensi berhasil terisi.');break;
     }
     case 'forum-done':{
       if(!ME||adm())break;
       if(!canWrite){toast('Absensi belum dapat disimpan. Periksa koneksi atau izin akun.');break;}
-      const k=d.k,n=defaultPert(k);await run(()=>writeSession(k,n,{present:{[ME]:'H'}}),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
+      const k=d.k;await run(()=>saveScheduleAttendance(k),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
     case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
