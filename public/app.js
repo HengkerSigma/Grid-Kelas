@@ -153,9 +153,9 @@ function renderStudents(){
   else note.hidden=true;
   let h='';
   for(let n=1;n<=N;n++){
-    const s=stu(n),showMeta=adm()||ME===n;
+    const s=stu(n),showMeta=true;
     let meta='';
-    if(showMeta){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n),nim=(S.ak[PAD(n)]&&S.ak[PAD(n)].nim)||'';meta=(nim?'<span class="s-nim">NIM · '+esc(nim)+'</span>':'')+'<span class="smeta"><span>Kehadiran '+(p==null?'—':p+'%')+'</span><span>Tugas '+t.a+'/'+t.b+'</span></span>';}
+    if(showMeta){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);meta='<span class="smeta"><span>Kehadiran '+(p==null?'—':p+'%')+'</span><span>Tugas '+t.a+'/'+t.b+'</span></span>';}
     h+='<li><button type="button" class="scard'+(s?'':' skel')+'" data-act="open-student" data-no="'+n+'"><span class="sph">'+photo('s'+PAD(n))+'<span class="sno">'+n+'</span>'+fb(n)+'</span>'+
       '<span class="snm"><span class="f">'+(s?esc(s.depan):'&nbsp;')+'</span><b>'+(s?esc(s.belakang):'&nbsp;')+'</b></span>'+meta+'</button></li>';
   }
@@ -902,11 +902,11 @@ function studentAchievementsTab(no){
   return h;
 }
 function studentDlg(){
-  const no=D.key,s=stu(no),own=ME===no,seeStats=adm()||own;
+  const no=D.key,s=stu(no),own=ME===no,seeStats=true;
   const canPhoto=canWrite&&(adm()||own),ac=S.ak[PAD(no)]||{},nim=ac.nim||'';
   let h='<div class="db"><div class="row2" style="justify-content:flex-end"><button type="button" class="btn sm" data-act="close">Tutup</button></div>'+
     '<div class="shead"><div class="sbig">'+photo('s'+PAD(no))+fb(no)+'</div><div><div class="k">NO. '+no+(s&&s.kode?' · '+esc(s.kode):'')+(isAd(no)?' · ADMIN':'')+'</div><h2 id="dtitle">'+esc(nameOf(no))+(isAd(no)?' '+FLAG:'')+'</h2>'+
-    (seeStats&&nim?'<div class="student-nim">NIM · '+esc(nim)+'</div>':'')+
+    ((adm()||own)&&nim?'<div class="student-nim">NIM · '+esc(nim)+'</div>':'')+
     '<div class="row2" style="margin-top:12px">'+
     (canPhoto?'<label class="btn sm pickfile">Ganti foto<input type="file" accept="image/*" data-up="s'+PAD(no)+'" data-kind="photo"></label>':'')+
     (canPhoto&&S.md['s'+PAD(no)]?'<button type="button" class="btn sm" data-act="img-del" data-key="s'+PAD(no)+'">Hapus foto</button>':'')+
@@ -918,7 +918,7 @@ function studentDlg(){
     h+=tabsHtml(tabs);
     h+='<section class="student-tab-panel">'+(D.tab==='hasil'?studentResultsTab(no):D.tab==='achievement'?studentAchievementsTab(no):studentAttendanceTab(no))+'</section>';
   }else{
-    h+='<p class="empty">Masuk untuk melihat statistik, NIM, riwayat tugas, dan achievement mahasiswa.</p>';
+    h+='<p class="empty">NIM hanya dapat dilihat oleh mahasiswa terkait dan pengelola.</p>';
   }
   if(adm()&&canWrite){
     h+='<div class="student-admin-edit"><div class="fgrid"><div class="field"><label for="s-depan">Nama depan</label><input id="s-depan" type="text" maxlength="40" value="'+esc(s&&s.depan||'')+'"></div>'+
