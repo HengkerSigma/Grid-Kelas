@@ -8,6 +8,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>ESC[c]);
 const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/[A-Za-z0-9_]{1,40}\?v=\d+$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
+let superLicenseDriveUrl='';
 const driveOf=k=>{const d=S.dr[k];return d&&okDrive(d.url)?d.url:'';};
 const okDrive=u=>{try{const x=new URL(String(u||'').trim());return x.protocol==='https:'&&DRIVE_HOSTS.indexOf(x.hostname)>=0;}catch(e){return false;}};
 /* Mata kuliah bertipe platform: doc platform/<k> berisi link khusus tempat absen diisi (hanya terlihat setelah masuk). */
@@ -404,7 +405,7 @@ function renderHome(force){
     Object.values(S.se).forEach(se=>{if(se.tanggal&&se.tanggal<=td&&!(se.present&&se.present[ME]))missing.push(se);});
     missing.sort((a2,b2)=>(a2.tanggal||'').localeCompare(b2.tanggal||''));
     const s0=stu(ME),ak=S.ak[PAD(ME)];
-    $('homeLede').textContent='Ringkasan tugas, absensi, dan pengumuman kelas untuk Anda.';
+    $('homeLede').textContent='Cek kabar kelas, tugas, dan absensi kamu di sini.';
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname">Halo, '+esc(s0&&s0.depan?s0.depan:'Mahasiswa')+(isAd(ME)?' '+FLAG:'')+'</div></div></div>';
     if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password Anda masih password bawaan. Ganti sekarang agar akun lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
     h+=homeTiles(ME);
@@ -414,7 +415,7 @@ function renderHome(force){
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
     h+='<div class="cols" style="margin-top:14px"><div class="col">'+superLicensePanel()+'</div><div class="col">'+classArchivePanel()+'</div></div>';
   }else if(adm()){
-    $('homeLede').textContent='Anda sedang dalam mode pengelola.';
+    $('homeLede').textContent='Mode pengelola aktif.';
     h+='<div class="panel welcome"><p>Mode pengelola aktif. Buka tab Pengelola untuk membuat pengumuman, mengelola akun, dan melihat rekap. Masuk sebagai mahasiswa untuk mencoba tampilan pribadi.</p><div class="row2"><button type="button" class="btn pri" data-view="pengelola">Buka Pengelola</button><button type="button" class="btn" data-act="open-login">Masuk</button></div></div>';
     const act=tasks.filter(t=>!t.tenggat||t.tenggat>=td);
     let li='';
@@ -422,7 +423,7 @@ function renderHome(force){
     h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+annPanel(anns)+'</div></div>';
     h+='<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }else{
-    $('homeLede').textContent='Anda masuk sebagai tamu. Tamu hanya bisa melihat pengumuman.';
+    $('homeLede').textContent='Lihat info kelas dan pengumuman terbaru.';
     h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+annPanel(anns)+'<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }
   $('home').innerHTML=h;
@@ -431,24 +432,25 @@ function superLicensePanel(){
   const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
     .filter(x=>x.no===ME&&x.jenis==='ser').sort((a,b)=>(b.at||0)-(a.at||0));
   let h='<div class="panel"><h3 class="ph3">Super License</h3>'+
-    '<p class="s" style="margin-bottom:12px">Sertifikat pribadi Anda. Berkas tetap tersimpan privat dan otomatis diarsipkan ke Google Drive khusus jika koneksi Drive sudah dikonfigurasi.</p>';
+    '<p class="s" style="margin-bottom:12px">Simpan sertifikat pribadi di sini, atau unggah sendiri ke folder Google Drive kelas.</p>';
   if(ME&&AS){
     h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama sertifikat</label>'+
       '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="Contoh: Sertifikat Workshop Web"></div>'+
       '<div class="row2"><label class="btn sm pickfile">'+(PEND.ser?'Ganti berkas':'Pilih sertifikat')+
       '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+(PEND.ser?esc(PEND.ser.name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
-      '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button></div></div>';
+      '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button>'+
+      (superLicenseDriveUrl?'<a class="btn" href="'+esc(superLicenseDriveUrl)+'" target="_blank" rel="noopener noreferrer">Simpan ke Google Drive <span aria-hidden="true">&#8599;</span></a>':'')+'</div>'+
+      (superLicenseDriveUrl?'<span class="s">Buka folder Google Drive, lalu unggah sertifikat Anda di sana.</span>':'<span class="s">Folder Google Drive belum disiapkan oleh pengelola.</span>')+'</div>';
   }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan sertifikat pribadi.</p>';
   if(!mine.length)return h+'<p class="empty">Belum ada sertifikat.</p></div>';
   h+='<ul>';
   mine.forEach(x=>{
-    const status=x.driveStatus==='archived'?'Tersimpan di Drive khusus':x.driveStatus==='failed'?'Arsip Drive gagal':x.driveStatus==='not_configured'?'Menunggu konfigurasi Drive':'Status arsip Drive belum diketahui';
+    const status='Tersimpan privat di Super License';
     const del=berDel===x.id
       ?'<span class="row2"><button type="button" class="btn sm pri" data-act="ber-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ber-del-no">Batal</button></span>'
       :'<button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus dari daftar</button>';
     h+='<li class="it"><div><b>'+esc(x.judul||'Sertifikat')+'</b>'+fileHtml(x.file,true)+
       '<span class="s">'+fmtTime(x.at)+' · '+esc(status)+'</span>'+
-      (x.driveUrl?'<a class="s" href="'+esc(x.driveUrl)+'" target="_blank" rel="noopener noreferrer">Buka arsip Drive</a>':'')+
       '</div>'+del+'</li>';
   });
   return h+'</ul></div>';
@@ -662,7 +664,7 @@ function absenAdmin(c){
 const isPlatformCourse=c=>!!S.pl[c.k];
 function absenBtn(c){
   if(!(ME||adm())||!inSession(c))return '';
-  if(ME&&!adm()){
+  if(ME){
     const n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
     if(status)return '<div class="tcard attendance-done" role="status" aria-live="polite" style="margin:0;padding:10px 12px"><b><span aria-hidden="true">&#10003; </span>Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   }
@@ -678,7 +680,7 @@ async function saveScheduleAttendance(k){
 function platBtn(c){
   if(!isPlatformCourse(c)||!(ME||adm())||!inSession(c))return '';
   const u=platOf(c.k);if(!u)return '<p class="s">Link forum belum diatur oleh admin.</p>';
-  return '<div class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Buka Forum Diskusi Mentari <span aria-hidden="true">&#8599;</span></a>'+(ME&&!adm()?'<p class="s">Sudah Mengerjakan Forum Diskusi?</p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div>':'')+'</div>';
+  return '<div class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Buka Forum Diskusi Mentari <span aria-hidden="true">&#8599;</span></a>'+(ME?'<p class="s">Sudah Mengerjakan Forum Diskusi?</p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div>':'')+'</div>';
 }
 /* Folder Google Drive tiap mata kuliah (hanya terlihat setelah masuk). */
 function driveBtn(k){
@@ -998,16 +1000,15 @@ document.addEventListener('click',async e=>{
   switch(a){
     case 'forum-options':{
       if(!ME){toast('Masuk sebagai mahasiswa untuk membuka forum.');break;}
-      if(adm()){toast('Aksi forum ini tersedia pada akun mahasiswa.');break;}
-      if(!S.co[d.k]){toast('Data mata kuliah tidak ditemukan. Muat ulang halaman.');break;}
+            if(!S.co[d.k]){toast('Data mata kuliah tidak ditemukan. Muat ulang halaman.');break;}
       openD('course',d.k,'absen');break;
     }
     case 'auto-attend':{
-      if(!ME||adm()||!canWrite)break;
+      if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dan pastikan akun punya izin mengisi absen.');break;}
       const k=d.k;await run(()=>saveScheduleAttendance(k),'Absensi berhasil terisi.');break;
     }
     case 'forum-done':{
-      if(!ME||adm())break;
+      if(!ME)break;
       if(!canWrite){toast('Absensi belum dapat disimpan. Periksa koneksi atau izin akun.');break;}
       const k=d.k;await run(()=>saveScheduleAttendance(k),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
@@ -1306,6 +1307,7 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
 
 (async function init(){
   const use=n=>(window.claude&&window.claude.use)?window.claude.use(n).catch(()=>null):Promise.resolve(null);
+  try{const cfg=await fetch('/api/public-config').then(r=>r.ok?r.json():null);if(cfg&&cfg.superLicenseDriveUrl&&okDrive(cfg.superLicenseDriveUrl))superLicenseDriveUrl=cfg.superLicenseDriveUrl;}catch(e){}
   const got=await Promise.all([use('db'),use('user'),use('assets')]);
   db=got[0];user=got[1];AS=got[2];
   AUTH=window.claude&&window.claude.auth||null;

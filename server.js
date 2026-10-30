@@ -269,61 +269,10 @@ async function recordFail(req, no) {
   await Promise.all([rlFail(k.pair, ...LIMITS.pair), rlFail(k.acc, ...LIMITS.acc), rlFail(k.ip, ...LIMITS.ip)]);
 }
 
-/* ---------- arsip Super License ke Google Drive ---------- */
-/* Konfigurasi melalui environment server; jangan commit kredensial. */
-const DRIVE_EMAIL = process.env.DRIVE_SERVICE_ACCOUNT_EMAIL || '';
-const DRIVE_PRIVATE_KEY = String(process.env.DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-const DRIVE_CERT_FOLDER_ID = process.env.DRIVE_CERT_FOLDER_ID || '';
-const b64url = (v) => Buffer.from(v).toString('base64url');
-async function driveToken() {
-  if (!DRIVE_EMAIL || !DRIVE_PRIVATE_KEY || !DRIVE_CERT_FOLDER_ID) return null;
-  const now = Math.floor(Date.now() / 1000);
-  const head = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  const claims = b64url(JSON.stringify({ iss: DRIVE_EMAIL, scope: 'https://www.googleapis.com/auth/drive', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
-  const unsigned = head + '.' + claims;
-  const sign = crypto.createSign('RSA-SHA256');
-  sign.update(unsigned);
-  sign.end();
-  const assertion = unsigned + '.' + sign.sign(DRIVE_PRIVATE_KEY, 'base64url');
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: assertion })
-  });
-  const payload = await response.json();
-  if (!response.ok || !payload.access_token) throw new Error('Google Drive gagal memberikan token akses.');
-  return payload.access_token;
-}
-async function archiveCertificateToDrive(file, title, no) {
-  if (!DRIVE_EMAIL || !DRIVE_PRIVATE_KEY || !DRIVE_CERT_FOLDER_ID) return { driveStatus: 'not_configured' };
-  if (!storage) throw new Error('Penyimpanan privat belum tersedia.');
-  const token = await driveToken();
-  const downloaded = await certificateStore.download(file.id);
-  if (downloaded.error || !downloaded.data) throw new Error('Berkas sertifikat tidak bisa dibaca dari penyimpanan.');
-  const bytes = Buffer.from(await downloaded.data.arrayBuffer());
-  const boundary = 'gk_' + crypto.randomBytes(12).toString('hex');
-  const metadata = {
-    name: (String(title || file.name || 'Sertifikat').trim().slice(0, 80) || 'Sertifikat') + ' - Absen ' + pad(no),
-    mimeType: file.type || 'application/octet-stream',
-    parents: [DRIVE_CERT_FOLDER_ID],
-    description: 'Arsip Super License Grid Kelas · nomor absen ' + no
-  };
-  const body = Buffer.concat([
-    Buffer.from('--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) + '\r\n--' + boundary + '\r\nContent-Type: ' + (file.type || 'application/octet-stream') + '\r\n\r\n'),
-    bytes,
-    Buffer.from('\r\n--' + boundary + '--')
-  ]);
-  const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
-    body: body
-  });
- const result = await response.json();
-if (!response.ok || !result.id) {
-  console.error('DETAIL ERROR GOOGLE DRIVE:', JSON.stringify(result));
-  throw new Error('Google Drive menolak arsip sertifikat.');
-}
-  return { driveStatus: 'archived', driveFileId: result.id, driveUrl: result.webViewLink || ('https://drive.google.com/open?id=' + result.id) };
+/* ---------- tautan folder Google Drive Super License ---------- */
+const SUPER_LICENSE_DRIVE_URL = process.env.SUPER_LICENSE_DRIVE_URL || '';
+function publicConfig() {
+  return { superLicenseDriveUrl: isDriveUrl(SUPER_LICENSE_DRIVE_URL) ? SUPER_LICENSE_DRIVE_URL : '' };
 }
 
 /* ---------- utilitas ---------- */
@@ -667,12 +616,7 @@ async function decide(method, p, body, sess, existing) {
     const judul = String(body.judul || '').trim().slice(0, 100);
     const file = await cleanFile(body.file, sess, jenis === 'ser' ? CERTIFICATE_BUCKET : UPLOAD_BUCKET);
     if (!file) return ERR_BAD('Pilih berkas dulu.');
-    let drive = { driveStatus: 'not_configured' };
-    if (jenis === 'ser') {
-      try { drive = await archiveCertificateToDrive(file, judul, sess.no); }
-      catch (e) { console.error('Arsip Super License gagal:', e); drive = { driveStatus: 'failed' }; }
-    }
-    return { data: Object.assign({ no: sess.no, jenis: jenis, judul: judul, file: file, at: Date.now() }, drive) };
+    return { data: { no: sess.no, jenis: jenis, judul: judul, file: file, at: Date.now() } };
   }
 
   return ERR_FORBID;
@@ -719,6 +663,7 @@ const server = http.createServer(async (req, res) => {
       return fail(res, 403, 'forbidden', 'Permintaan tidak diizinkan.');
     }
     if (pathname === '/api/ping') return json(res, 200, { ok: true });
+    if (pathname === '/api/public-config' && method === 'GET') return json(res, 200, publicConfig());
 
     if (pathname === '/api/events') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
