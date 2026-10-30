@@ -97,9 +97,9 @@
   /* ---- unggah berkas ---- */
   const ASSETS = {
     // 1) minta izin ke server, 2) unggah langsung ke penyimpanan (tidak lewat server, jadi tak ada batas 4,5 MB Vercel)
-    upload: async (blob) => {
+    upload: async (blob, bucket) => {
       const type = blob.type || 'application/octet-stream';
-      const init = await req('POST', '/api/upload', { type: type, size: blob.size });
+      const init = await req('POST', '/api/upload', { type: type, size: blob.size, bucket: bucket || 'uploads' });
       const fd = new FormData();
       fd.append('cacheControl', '3600');
       fd.append('', blob);
