@@ -80,9 +80,38 @@ const cname=k=>S.co[k]?S.co[k].nama:k;
 
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},4200);}
 const ERRMAP={unauthenticated:'Sesi berakhir. Silakan masuk lagi.',too_large:'Berkas terlalu besar. Maksimal 20 MB.',unsupported_type:'Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.',quota_or_state:'Penyimpanan berkas penuh. Hubungi pengelola.',rate_limited:'Terlalu sering. Coba lagi sebentar lagi.',not_granted:'Akun ini belum boleh mengunggah berkas.',invalid_argument:'Tidak bisa menyimpan. Akun ini belum punya akses mengubah data kelas.'};
+let pendingRuns=0,busyButtons=[];
+function loadingLabel(msg){
+  const s=String(msg||'').toLowerCase();
+  if(s.includes('absen')||s.includes('forum'))return 'Sedang menyimpan absensi…';
+  if(s.includes('tugas'))return 'Sedang mengumpulkan tugas…';
+  if(s.includes('sertifikat'))return 'Sedang menyimpan sertifikat…';
+  if(s.includes('berkas')||s.includes('foto')||s.includes('gambar')||s.includes('bukti'))return 'Sedang mengunggah berkas…';
+  if(s.includes('password'))return 'Sedang memperbarui password…';
+  return 'Sedang menyimpan perubahan…';
+}
+function showLoading(msg){
+  const el=$('globalLoading');if(!el)return;
+  $('loadingText').textContent=loadingLabel(msg);
+  el.hidden=false;el.setAttribute('aria-busy','true');
+}
+function hideLoading(){
+  const el=$('globalLoading');if(!el)return;
+  el.hidden=true;el.setAttribute('aria-busy','false');
+}
 async function run(fn,okMsg){
+  pendingRuns++;
+  if(pendingRuns===1){
+    busyButtons=Array.from(document.querySelectorAll('button[data-act]')).map(b=>({el:b,disabled:b.disabled}));
+    busyButtons.forEach(x=>{x.el.disabled=true;x.el.classList.add('is-busy');});
+  }
+  showLoading(okMsg);
   try{await fn();if(okMsg)toast(okMsg);return true;}
   catch(e){console.error(e);toast((e&&ERRMAP[e.code])||(e&&e.message&&!e.code?e.message:'Gagal menyimpan. Coba lagi.'));return false;}
+  finally{
+    pendingRuns=Math.max(0,pendingRuns-1);
+    if(!pendingRuns){busyButtons.forEach(x=>{x.el.disabled=x.disabled;x.el.classList.remove('is-busy');});busyButtons=[];hideLoading();}
+  }
 }
 
 /* ---------- statistics ---------- */
