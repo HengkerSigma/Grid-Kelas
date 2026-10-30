@@ -1179,7 +1179,7 @@ document.addEventListener('click',async e=>{
     case 'cu-edit':CU_EDIT=d.id;renderAdmin();$('course-update-panel').scrollIntoView({behavior:'smooth',block:'start'});break;
     case 'cu-cancel':CU_EDIT=null;renderAdmin();break;
     case 'cu-del':if(!adm())break;await run(()=>db.doc('course_updates/'+d.id).delete(),'Pembaruan dihapus');CU_EDIT=null;break;
-    case 'admin-open':{ADMIN_SECTION=ADMIN_SECTION===d.section?'':d.section;renderAdmin();const target=ADMIN_SECTION&&$('admin').querySelector('#'+({ 'course-update':'course-update-panel',announcements:'announcement-panel',tasks:'task-panel',accounts:'account-panel',recap:'recap-panel'}[ADMIN_SECTION]));if(target)target.scrollIntoView({behavior:'smooth',block:'start'});break;}
+    case 'admin-open':{if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();ADMIN_SECTION=ADMIN_SECTION===d.section?'':d.section;renderAdmin();const target=ADMIN_SECTION&&$('admin').querySelector('#'+({ 'course-update':'course-update-panel',announcements:'announcement-panel',tasks:'task-panel',accounts:'account-panel',recap:'recap-panel'}[ADMIN_SECTION]));if(target)target.scrollIntoView({behavior:'smooth',block:'start'});break;}
     case 'open-login':openLogin();break;
     case 'login-no':openLogin(+d.no);break;
     case 'login-back':D.step='pick';D.err='';D.forgot=false;renderDialog(true);break;
