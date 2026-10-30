@@ -533,10 +533,10 @@ function teamRadioPanel(anns){
   const dots=anns.map((item,i)=>'<button type="button" class="tr-dot'+(i===TEAM_RADIO_INDEX?' active':'')+'" data-act="team-radio-go" data-index="'+i+'" aria-label="Buka pengumuman '+(i+1)+'" aria-current="'+(i===TEAM_RADIO_INDEX?'true':'false')+'"></button>').join('');
   return '<section class="team-radio radio-tone-'+tone+'" aria-label="Team Radio">'+
     '<div class="tr-noise" aria-hidden="true"></div>'+
-    '<div class="tr-top"><span class="tr-kicker"><span class="tr-mark">F1</span> TEAM RADIO</span><span class="tr-signal"><i></i> TRANSMISSION RECEIVED</span></div>'+
-    '<div class="tr-main" aria-live="polite"><div class="tr-meta"><span class="tr-channel">'+esc(x.k?cname(x.k):'ALL CLASS CHANNEL')+'</span><span class="tr-time">'+fmtTime(x.at)+'</span></div>'+
+    '<div class="tr-top"><span class="tr-kicker"><svg class="tr-mark" viewBox="0 0 64 30" aria-hidden="true"><path d="M14 0H64L59 9H9Z"/><path d="M8 11H52L47 20H3Z"/><path d="M0 22H28L24 30H0Z"/></svg> TEAM RADIO</span></div>'+
+    '<div class="tr-main" aria-live="polite"><div class="tr-meta"><span class="tr-channel">'+esc(!x.k||x.k==='general'?'FITUR BARU':cname(x.k))+'</span><span class="tr-time">'+fmtTime(x.at)+'</span></div>'+
     '<h3 class="tr-title">'+esc(x.judul)+'</h3>'+(x.isi?'<p class="tr-message">'+esc(x.isi)+'</p>':'')+
-    '<div class="tr-wave-row"><span class="tr-wave-label">AUDIO FEED</span><span class="tr-wave" aria-hidden="true">'+wave+'</span><span class="tr-db">RX&nbsp; 100%</span></div></div>'+
+    '<div class="tr-wave-row"><span class="tr-wave" aria-hidden="true">'+wave+'</span></div></div>'+
     '<div class="tr-bottom"><span class="tr-counter">MESSAGE&nbsp; '+String(TEAM_RADIO_INDEX+1).padStart(2,'0')+' <span>/</span> '+String(total).padStart(2,'0')+'</span>'+
     '<div class="tr-dots" aria-label="Pilih pengumuman">'+dots+'</div>'+
     '<div class="tr-controls"><button type="button" class="tr-nav" data-act="team-radio-prev" aria-label="Pengumuman sebelumnya"'+(total<2?' disabled':'')+'>&#8592;</button><button type="button" class="tr-nav" data-act="team-radio-next" aria-label="Pengumuman berikutnya"'+(total<2?' disabled':'')+'>&#8594;</button></div></div></section>';
@@ -577,7 +577,7 @@ function renderAdmin(){
   h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="stack">'+
     '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
     '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(dv('an-isi',''))+'</textarea></div>'+
-    '<div class="field"><label for="an-k">Untuk</label><select id="an-k" data-dr="an-k"><option value="">Semua mata kuliah</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(dv('an-k','')===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label for="an-k">Perihal</label><select id="an-k" data-dr="an-k"><option value="general"'+(dv('an-k','general')==='general'?' selected':'')+'>General</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(dv('an-k','general')===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">Kirim pengumuman</button></div></div>'+
     (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
   let tk='';
@@ -1199,7 +1199,7 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const judul=$('an-judul').value.trim();
       if(!judul){toast('Isi judul pengumuman dulu.');break;}
-      const ok=await run(()=>db.collection('pengumuman').add({judul:judul.slice(0,120),isi:$('an-isi').value.trim().slice(0,1000),k:$('an-k').value,at:Date.now()}),'Pengumuman terkirim');
+      const ok=await run(()=>db.collection('pengumuman').add({judul:judul.slice(0,120),isi:$('an-isi').value.trim().slice(0,1000),k:($('an-k').value||'general'),at:Date.now()}),'Pengumuman terkirim');
       if(ok){['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});$('an-judul').value='';$('an-isi').value='';$('an-k').value='';}
       break;
     }
