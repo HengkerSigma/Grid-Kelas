@@ -117,6 +117,15 @@ async function run(fn,okMsg){
 /* ---------- statistics ---------- */
 function stats(no){
   const by={},tot={h:0,t:0};
+  // Mahasiswa memakai rekap agregat dari /api/sektor karena detail status
+  // kehadiran mahasiswa lain memang tidak dikirim lewat koleksi sessions.
+  if(SK&&SK.courses){
+    Object.keys(SK.courses).forEach(k=>{
+      const r=SK.courses[k]||{},t=Number(r.t)||0,h=Number((r.h||{})[no])||0;
+      by[k]={h:h,t:t};tot.h+=h;tot.t+=t;
+    });
+    return{by:by,tot:tot};
+  }
   Object.values(S.se).forEach(se=>{
     const p=se.present||{};
     if(!(se.rec===true||Object.values(p).some(Boolean)))return;
@@ -877,14 +886,15 @@ function studentAttendanceTab(no){
 function studentResultsTab(no){
   const rows=[];
   Object.keys(S.tu).forEach(id=>{
-    const t=S.tu[id],sub=t.subs&&t.subs[no];
-    if(!sub||!sub.at)return;
-    const r=hasilData(id),entry=r&&r.done.find(x=>x.no===no);
-    rows.push({id:id,t:t,sub:sub,pos:entry?entry.pos:null});
+    const t=S.tu[id],r=hasilData(id),entry=r&&r.done.find(x=>x.no===no);
+    // Gunakan timestamp agregat dari /api/hasil; subs milik mahasiswa lain
+    // sengaja tidak disertakan dalam data tugas reguler.
+    if(!entry)return;
+    rows.push({id:id,t:t,at:entry.at,pos:entry.pos});
   });
-  rows.sort((x,y)=>(y.sub.at||0)-(x.sub.at||0));
+  rows.sort((x,y)=>(y.at||0)-(x.at||0));
   if(!rows.length)return '<p class="empty">Belum ada riwayat pengumpulan tugas.</p>';
-  return '<ul class="student-history">'+rows.map(x=>'<li><span class="student-history-mark">P'+(x.pos||'—')+'</span><span class="student-history-copy"><b>'+esc(x.t.k)+' · '+esc(x.t.judul||'Tugas')+'</b><small>'+fmtTime(x.sub.at)+'</small></span><span class="chip '+(x.pos===1?'done':'')+'">'+(x.pos?'P'+x.pos:'Terkumpul')+'</span></li>').join('')+'</ul>';
+  return '<ul class="student-history">'+rows.map(x=>'<li><span class="student-history-mark">P'+(x.pos||'—')+'</span><span class="student-history-copy"><b>'+esc(x.t.k)+' · '+esc(x.t.judul||'Tugas')+'</b><small>'+fmtTime(x.at)+'</small></span><span class="chip '+(x.pos===1?'done':'')+'">'+(x.pos?'P'+x.pos:'Terkumpul')+'</span></li>').join('')+'</ul>';
 }
 function studentAchievementsTab(no){
   const sx=sektorData(),row=sx.byNo[no],first=[];
