@@ -814,7 +814,7 @@ const server = http.createServer(async (req, res) => {
       const id = pathname.slice(7), s = await getSession(req), meta = await readMeta(id), target = storeFor(bucketFor(meta));
       if (!meta || !s || !target || !(s.admin || meta.owner === s.no)) { res.writeHead(404); return res.end(); }
       if (bucketFor(meta) === MEDIA_BUCKET) {
-        const url = SUPABASE_URL.replace(/\\/$/, '') + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + id;
+        const url = SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + id;
         res.writeHead(302, { Location: url, 'Cache-Control': 'public, max-age=300' }); return res.end();
       }
       const { data, error } = await target.createSignedUrl(id, 300);
