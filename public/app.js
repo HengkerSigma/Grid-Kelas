@@ -55,7 +55,8 @@ let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='load
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
-const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{}};
+const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{}};
+let CU_EDIT=null;
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -549,19 +550,24 @@ function renderAdmin(){
       (annDel===x.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="ann-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ann-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="ann-del" data-id="'+esc(x.id)+'">Hapus</button>')+'</div>'+
       (x.isi?'<p>'+esc(x.isi)+'</p>':'')+'<span class="s">'+fmtTime(x.at)+(x.k?' · '+esc(cname(x.k)):' · Semua mata kuliah')+'</span></div>';
   });
-  h+='<div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><div class="stack">'+
+  const updates=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).sort((a,b)=>a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
+  const edit=CU_EDIT&&S.cu[CU_EDIT]?Object.assign({id:CU_EDIT},S.cu[CU_EDIT]):null;
+  const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+(u.attendance_url?'<a href="'+esc(u.attendance_url)+'" target="_blank" rel="noopener">Absensi</a>':'—')+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Tugas</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');
+  h+='<div class="admin-cards"><button type="button" class="admin-card" data-act="admin-scroll" data-target="course-update-panel"><b>Pembaruan mata kuliah</b><span>'+updates.length+' pertemuan tersimpan</span><small>Absensi, tugas, dan pengumpulan</small></button><button type="button" class="admin-card" data-act="admin-scroll" data-target="announcement-panel"><b>Pengumuman</b><span>'+anns.length+' pengumuman</span><small>Buat dan kelola pengumuman</small></button><button type="button" class="admin-card" data-act="admin-scroll" data-target="task-panel"><b>Kelola tugas</b><span>'+tasks.length+' tugas</span><small>Daftar tugas dan tenggat</small></button><button type="button" class="admin-card" data-act="admin-scroll" data-target="account-panel"><b>Akun mahasiswa</b><span>'+Object.keys(S.st).length+' akun</span><small>NIM, peran, reset password</small></button><button type="button" class="admin-card" data-act="admin-scroll" data-target="recap-panel"><b>Rekap kelas</b><span>'+cl.length+' mata kuliah</span><small>Ringkasan absensi dan tugas</small></button></div>';
+  h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><p class="s">Satu baris untuk setiap pertemuan. Data disimpan pada tabel Supabase <code>course_updates</code>.</p><div class="cu-form"><div class="field"><label>Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(edit&&edit.course_code===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div><div class="field"><label>Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" value="'+(edit?edit.meeting_number:1)+'"></div><div class="field"><label>Link absensi</label><input id="cu-attendance" type="url" placeholder="https://..." value="'+esc(edit&&edit.attendance_url||'')+'"></div><div class="field"><label>Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" value="'+esc(edit&&edit.task_title||'')+'"></div><div class="field"><label>Link tugas / materi</label><input id="cu-task" type="url" placeholder="https://..." value="'+esc(edit&&edit.task_url||'')+'"></div><div class="field"><label>Link pengumpulan</label><input id="cu-submit" type="url" placeholder="https://..." value="'+esc(edit&&edit.submission_url||'')+'"></div><div class="field"><label>Tenggat pengumpulan (opsional)</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div><div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Absensi</th><th>Tugas</th><th>Link tugas</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="7" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div></div>';
+  h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><div class="stack">'+
     '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
     '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(dv('an-isi',''))+'</textarea></div>'+
     '<div class="field"><label for="an-k">Untuk</label><select id="an-k" data-dr="an-k"><option value="">Semua mata kuliah</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(dv('an-k','')===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">Kirim pengumuman</button></div></div>'+
-    (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div>';
+    (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
   let tk='';
   tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
     const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
     tk+='<li class="it"><div><b>'+esc(t.judul)+(lk?' <span class="dnfb">DNF</span>':'')+'</b><span class="s">'+esc(cname(t.k))+' · '+dueText(t)+' · '+cnt+'/'+N+' terkumpul'+(lk?' · hilang otomatis dalam '+removeIn(t)+' hari':'')+'</span></div>'+
       (tkDel===t.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="tk-del-yes" data-id="'+esc(t.id)+'">Hapus</button><button type="button" class="btn sm" data-act="tk-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="tk-del" data-id="'+esc(t.id)+'">Hapus</button>')+'</li>';
   });
-  h+='<div class="stack"><div class="panel"><h3 class="ph3">Kelola tugas</h3><p class="s" style="margin-bottom:10px">Tugas yang lewat tenggat tampil sebagai DNF selama '+DNF_DAYS+' hari, lalu terhapus otomatis. Hapus manual kapan saja dari sini.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
+  h+='<div class="stack"><div class="panel" id="task-panel"><h3 class="ph3">Kelola tugas</h3><p class="s" style="margin-bottom:10px">Tugas yang lewat tenggat tampil sebagai DNF selama '+DNF_DAYS+' hari, lalu terhapus otomatis. Hapus manual kapan saja dari sini.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
   // akun
   let ar='';
   for(let n=1;n<=N;n++){
@@ -571,8 +577,8 @@ function renderAdmin(){
       '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button><button type="button" class="btn sm" data-act="archive-perm" data-no="'+n+'" aria-pressed="'+(k.archiveEdit===true)+'">'+(k.archiveEdit===true?'Izin arsip · Cabut':'Izin arsip')+'</button></td>'+
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
-  h+='<div><h3 class="ph3">Akun mahasiswa</h3><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
-  h+='<div><h3 class="ph3">Rekap mata kuliah</h3><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
+  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
+  h+='<div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   const cs={},cd={};Object.values(S.be).forEach(x=>{if(x.jenis==='ser')cs[x.no]=(cs[x.no]||0)+1;else if(x.jenis==='dok')cd[x.no]=(cd[x.no]||0)+1;});
   let rows='';
@@ -1149,6 +1155,27 @@ document.addEventListener('click',async e=>{
       if(ok){['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});$('an-judul').value='';$('an-isi').value='';$('an-k').value='';}
       break;
     }
+    case 'cu-save':{
+      if(!adm())break;
+      const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),attendance_url:$('cu-attendance').value.trim(),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null};
+      if(!body.course_code||!Number.isInteger(body.meeting_number)||body.meeting_number<1||body.meeting_number>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
+      if([body.attendance_url,body.task_url,body.submission_url].some(u=>u&&!/^https:\/\//i.test(u))){toast('Semua tautan harus diawali https://');break;}
+      const duplicate=Object.keys(S.cu).find(id=>id!==CU_EDIT&&S.cu[id].course_code===body.course_code&&Number(S.cu[id].meeting_number)===body.meeting_number);
+      if(duplicate){toast('Pembaruan untuk mata kuliah dan pertemuan ini sudah ada. Gunakan tombol Edit pada tabel.');break;}
+      const ok=await run(async()=>{
+        if(CU_EDIT)await db.doc('course_updates/'+CU_EDIT).update(body);
+        else {
+          await db.collection('course_updates').add(body);
+          if(body.task_title)await db.collection('tugas').add({k:body.course_code,judul:body.task_title,tenggat:body.deadline||'',deskripsi:body.submission_url?'Link pengumpulan: '+body.submission_url:'',link:body.task_url,subs:{},dibuat:Date.now()});
+        }
+      },'Pembaruan mata kuliah disimpan');
+      if(ok)CU_EDIT=null;
+      refreshAll();break;
+    }
+    case 'cu-edit':CU_EDIT=d.id;renderAdmin();$('course-update-panel').scrollIntoView({behavior:'smooth',block:'start'});break;
+    case 'cu-cancel':CU_EDIT=null;renderAdmin();break;
+    case 'cu-del':if(!adm())break;await run(()=>db.doc('course_updates/'+d.id).delete(),'Pembaruan dihapus');CU_EDIT=null;break;
+    case 'admin-scroll':{const el=$(d.target);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});break;}
     case 'open-login':openLogin();break;
     case 'login-no':openLogin(+d.no);break;
     case 'login-back':D.step='pick';D.err='';D.forgot=false;renderDialog(true);break;
@@ -1356,7 +1383,7 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();if(key==='tu'&&D&&D.kind==='hasil')loadHasil();refreshAll();
   },onErr);
-  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');
+  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
   if(AUTH){
     AUTH.me().then(m=>{ME=m&&m.no||null;if(ME)loadSektor();refreshAll();});
   }else if(uid){

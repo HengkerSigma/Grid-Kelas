@@ -109,6 +109,9 @@ async function getDoc(p) {
   if (root === 'courses') {
     const r = must(await supabase.from('courses').select('*').eq('k', id).maybeSingle());
     return courseFromRow(r.data);
+  } else if (root === 'course_updates') {
+    const r = must(await supabase.from('course_updates').select('*').eq('id', id).maybeSingle());
+    return r.data || null;
   } else {
     const r = must(await supabase.from('app_data').select('content').eq('key', p).maybeSingle());
     return r.data ? r.data.content : null;
@@ -121,6 +124,8 @@ async function setDoc(p, val) {
 
   if (root === 'courses') {
     must(await supabase.from('courses').upsert(await courseToRow(val)));
+  } else if (root === 'course_updates') {
+    must(await supabase.from('course_updates').upsert(Object.assign({}, val, { id: p.slice('course_updates/'.length) })));
   } else {
     must(await supabase.from('app_data').upsert({ key: p, content: val }));
   }
@@ -133,6 +138,8 @@ async function deleteDoc(p) {
 
   if (root === 'courses') {
     must(await supabase.from('courses').delete().eq('k', id));
+  } else if (root === 'course_updates') {
+    must(await supabase.from('course_updates').delete().eq('id', id));
   } else {
     must(await supabase.from('app_data').delete().eq('key', p));
   }
@@ -144,6 +151,11 @@ async function listCol(cp) {
   if (cp === 'courses') {
     const r = must(await supabase.from('courses').select('*'));
     (r.data || []).forEach((c) => out.push({ key: 'courses/' + c.k, data: courseFromRow(c) }));
+    return out;
+  }
+  if (cp === 'course_updates') {
+    const r = must(await supabase.from('course_updates').select('*').order('meeting_number', { ascending: true }));
+    (r.data || []).forEach((u) => out.push({ key: 'course_updates/' + u.id, data: u }));
     return out;
   }
   const r2 = must(await supabase.from('app_data').select('key,content').like('key', cp + '/%'));
@@ -376,6 +388,7 @@ function view(p, data, sess) {
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
   if (root === 'students' || root === 'courses' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
+  if (root === 'course_updates') return sess ? data : null;
   if (root === 'drives') return sess ? data : null; // folder Drive: hanya untuk yang sudah masuk
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
   if (root === 'akun') {
@@ -452,6 +465,22 @@ async function decide(method, p, body, sess, existing) {
   }
 
   if (!sess) return ERR_NEED;
+
+  if (root === 'course_updates') {
+    if (!admin || parts.length !== 2) return ERR_FORBID;
+    if (method === 'DELETE') return { del: true };
+    if (method !== 'POST' && method !== 'PUT' && method !== 'PATCH') return ERR_FORBID;
+    const k = String(body.course_code || '').trim(), meeting = Number(body.meeting_number);
+    const attendance = String(body.attendance_url || '').trim(), taskTitle = String(body.task_title || '').trim();
+    const taskUrl = String(body.task_url || '').trim(), submission = String(body.submission_url || '').trim(), deadline = String(body.deadline || '').trim();
+    if (!/^[A-Za-z0-9]{2,8}$/.test(k) || !Number.isInteger(meeting) || meeting < 1 || meeting > PERT) return ERR_BAD('Pilih mata kuliah dan pertemuan 1 sampai ' + PERT + '.');
+    if ([attendance, taskUrl, submission].some(u => u && (!/^https:\/\//i.test(u) || !isHttpUrl(u)))) return ERR_BAD('Semua tautan harus menggunakan HTTPS.');
+    if (taskTitle.length > 120 || (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline))) return ERR_BAD('Judul tugas atau tenggat tidak valid.');
+    const course = await getDoc('courses/' + k);
+    if (!course) return ERR_BAD('Mata kuliah tidak ditemukan.');
+    const now = Date.now();
+    return { data: { course_code:k, meeting_number:meeting, attendance_url:attendance, task_title:taskTitle, task_url:taskUrl, submission_url:submission, deadline:deadline || null, created_at:existing && existing.created_at || new Date(now).toISOString(), updated_at:new Date(now).toISOString() } };
+  }
 
   if (root === 'students' || root === 'courses' || root === 'pengumuman') {
     if (!admin || parts.length !== 2) return ERR_FORBID;
