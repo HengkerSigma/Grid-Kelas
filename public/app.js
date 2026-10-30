@@ -187,7 +187,7 @@ function renderCourses(){
       const status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
       return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+
         (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
-        '<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">Lihat tugas</button></div></article></li>';
+        '<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span></div></article></li>';
     }).join('');
     host.setAttribute('aria-busy',String(!loaded.co));
     return;
