@@ -6,13 +6,19 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uboroxjkcvjbywcshdbq.s
  * jadi tabel bisa dikunci total dari kunci publik (anon). Kunci ini hanya boleh ada di environment
  * variable server — jangan di kode, repo, atau folder public/. */
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
-const BUCKET = process.env.UPLOAD_BUCKET || 'uploads';
-const MEDIA_BUCKET = process.env.MEDIA_BUCKET || 'media'; // bucket PUBLIK: foto mahasiswa/dosen, logo
+const UPLOAD_BUCKET = process.env.UPLOAD_BUCKET || 'uploads';
+const CERTIFICATE_BUCKET = process.env.CERTIFICATE_BUCKET || 'certificates';
+const ATTENDANCE_BUCKET = process.env.ATTENDANCE_BUCKET || 'attendance';
+const MEDIA_BUCKET = process.env.MEDIA_BUCKET || 'media';
 if (!SERVICE_KEY) console.error('PERINGATAN: SUPABASE_SERVICE_KEY belum di-set. Database dan unggah berkas tidak akan berfungsi.');
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY || 'missing-key', { auth: { persistSession: false, autoRefreshToken: false } });
-const storage = SERVICE_KEY ? supabase.storage.from(BUCKET) : null;
+const storage = SERVICE_KEY ? supabase.storage.from(UPLOAD_BUCKET) : null;
+const certificateStore = SERVICE_KEY ? supabase.storage.from(CERTIFICATE_BUCKET) : null;
+const attendanceStore = SERVICE_KEY ? supabase.storage.from(ATTENDANCE_BUCKET) : null;
 const mediaStore = SERVICE_KEY ? supabase.storage.from(MEDIA_BUCKET) : null;
+function storeFor(bucket) { if (!SERVICE_KEY) return null; return bucket === MEDIA_BUCKET ? mediaStore : bucket === CERTIFICATE_BUCKET ? certificateStore : bucket === ATTENDANCE_BUCKET ? attendanceStore : bucket === UPLOAD_BUCKET ? storage : null; }
+function bucketFor(meta) { return meta && [MEDIA_BUCKET,CERTIFICATE_BUCKET,ATTENDANCE_BUCKET,UPLOAD_BUCKET].includes(meta.bucket) ? meta.bucket : UPLOAD_BUCKET; }
 const SUPA_ORIGIN = (() => { try { return new URL(SUPABASE_URL).origin; } catch (e) { return ''; } })();
 
 const http = require('http');
@@ -103,6 +109,9 @@ async function getDoc(p) {
   if (root === 'courses') {
     const r = must(await supabase.from('courses').select('*').eq('k', id).maybeSingle());
     return courseFromRow(r.data);
+  } else if (root === 'course_updates') {
+    const r = must(await supabase.from('course_updates').select('*').eq('id', id).maybeSingle());
+    return r.data || null;
   } else {
     const r = must(await supabase.from('app_data').select('content').eq('key', p).maybeSingle());
     return r.data ? r.data.content : null;
@@ -115,6 +124,8 @@ async function setDoc(p, val) {
 
   if (root === 'courses') {
     must(await supabase.from('courses').upsert(await courseToRow(val)));
+  } else if (root === 'course_updates') {
+    must(await supabase.from('course_updates').upsert(Object.assign({}, val, { id: p.slice('course_updates/'.length) })));
   } else {
     must(await supabase.from('app_data').upsert({ key: p, content: val }));
   }
@@ -127,6 +138,8 @@ async function deleteDoc(p) {
 
   if (root === 'courses') {
     must(await supabase.from('courses').delete().eq('k', id));
+  } else if (root === 'course_updates') {
+    must(await supabase.from('course_updates').delete().eq('id', id));
   } else {
     must(await supabase.from('app_data').delete().eq('key', p));
   }
@@ -138,6 +151,11 @@ async function listCol(cp) {
   if (cp === 'courses') {
     const r = must(await supabase.from('courses').select('*'));
     (r.data || []).forEach((c) => out.push({ key: 'courses/' + c.k, data: courseFromRow(c) }));
+    return out;
+  }
+  if (cp === 'course_updates') {
+    const r = must(await supabase.from('course_updates').select('*').order('meeting_number', { ascending: true }));
+    (r.data || []).forEach((u) => out.push({ key: 'course_updates/' + u.id, data: u }));
     return out;
   }
   const r2 = must(await supabase.from('app_data').select('key,content').like('key', cp + '/%'));
@@ -263,61 +281,10 @@ async function recordFail(req, no) {
   await Promise.all([rlFail(k.pair, ...LIMITS.pair), rlFail(k.acc, ...LIMITS.acc), rlFail(k.ip, ...LIMITS.ip)]);
 }
 
-/* ---------- arsip Super License ke Google Drive ---------- */
-/* Konfigurasi melalui environment server; jangan commit kredensial. */
-const DRIVE_EMAIL = process.env.DRIVE_SERVICE_ACCOUNT_EMAIL || '';
-const DRIVE_PRIVATE_KEY = String(process.env.DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-const DRIVE_CERT_FOLDER_ID = process.env.DRIVE_CERT_FOLDER_ID || '';
-const b64url = (v) => Buffer.from(v).toString('base64url');
-async function driveToken() {
-  if (!DRIVE_EMAIL || !DRIVE_PRIVATE_KEY || !DRIVE_CERT_FOLDER_ID) return null;
-  const now = Math.floor(Date.now() / 1000);
-  const head = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  const claims = b64url(JSON.stringify({ iss: DRIVE_EMAIL, scope: 'https://www.googleapis.com/auth/drive', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
-  const unsigned = head + '.' + claims;
-  const sign = crypto.createSign('RSA-SHA256');
-  sign.update(unsigned);
-  sign.end();
-  const assertion = unsigned + '.' + sign.sign(DRIVE_PRIVATE_KEY, 'base64url');
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: assertion })
-  });
-  const payload = await response.json();
-  if (!response.ok || !payload.access_token) throw new Error('Google Drive gagal memberikan token akses.');
-  return payload.access_token;
-}
-async function archiveCertificateToDrive(file, title, no) {
-  if (!DRIVE_EMAIL || !DRIVE_PRIVATE_KEY || !DRIVE_CERT_FOLDER_ID) return { driveStatus: 'not_configured' };
-  if (!storage) throw new Error('Penyimpanan privat belum tersedia.');
-  const token = await driveToken();
-  const downloaded = await storage.download(file.id);
-  if (downloaded.error || !downloaded.data) throw new Error('Berkas sertifikat tidak bisa dibaca dari penyimpanan.');
-  const bytes = Buffer.from(await downloaded.data.arrayBuffer());
-  const boundary = 'gk_' + crypto.randomBytes(12).toString('hex');
-  const metadata = {
-    name: (String(title || file.name || 'Sertifikat').trim().slice(0, 80) || 'Sertifikat') + ' - Absen ' + pad(no),
-    mimeType: file.type || 'application/octet-stream',
-    parents: [DRIVE_CERT_FOLDER_ID],
-    description: 'Arsip Super License Grid Kelas · nomor absen ' + no
-  };
-  const body = Buffer.concat([
-    Buffer.from('--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) + '\r\n--' + boundary + '\r\nContent-Type: ' + (file.type || 'application/octet-stream') + '\r\n\r\n'),
-    bytes,
-    Buffer.from('\r\n--' + boundary + '--')
-  ]);
-  const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
-    body: body
-  });
- const result = await response.json();
-if (!response.ok || !result.id) {
-  console.error('DETAIL ERROR GOOGLE DRIVE:', JSON.stringify(result));
-  throw new Error('Google Drive menolak arsip sertifikat.');
-}
-  return { driveStatus: 'archived', driveFileId: result.id, driveUrl: result.webViewLink || ('https://drive.google.com/open?id=' + result.id) };
+/* ---------- tautan folder Google Drive Super License ---------- */
+const SUPER_LICENSE_DRIVE_URL = process.env.SUPER_LICENSE_DRIVE_URL || '';
+function publicConfig() {
+  return { superLicenseDriveUrl: isDriveUrl(SUPER_LICENSE_DRIVE_URL) ? SUPER_LICENSE_DRIVE_URL : '' };
 }
 
 /* ---------- utilitas ---------- */
@@ -399,13 +366,14 @@ async function readMeta(id) {
   if (!/^[0-9a-f]{32}$/.test(String(id || ''))) return null;
   return await getDoc(UPL(id));
 }
-async function cleanFile(f, sess) {
+async function cleanFile(f, sess, expectedBucket) {
   if (f === null || f === undefined) return null;
   if (!isObj(f) || !/^[0-9a-f]{32}$/.test(f.id || '')) return undefined;
   const meta = await readMeta(f.id);
   if (!meta) return undefined;
   if (!sess.admin && meta.owner !== sess.no) return undefined;
-  return { id: f.id, name: String(f.name || 'berkas').slice(0, 80), type: meta.type };
+  if (expectedBucket && bucketFor(meta) !== expectedBucket) return undefined;
+  return { id: f.id, name: String(f.name || 'berkas').slice(0, 80), type: meta.type, bucket: bucketFor(meta) };
 }
 
 /* ---------- siapa melihat apa ---------- */
@@ -420,6 +388,7 @@ function view(p, data, sess) {
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
   if (root === 'students' || root === 'courses' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
+  if (root === 'course_updates') return sess ? data : null;
   if (root === 'drives') return sess ? data : null; // folder Drive: hanya untuk yang sudah masuk
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
   if (root === 'akun') {
@@ -496,6 +465,22 @@ async function decide(method, p, body, sess, existing) {
   }
 
   if (!sess) return ERR_NEED;
+
+  if (root === 'course_updates') {
+    if (!admin || parts.length !== 2) return ERR_FORBID;
+    if (method === 'DELETE') return { del: true };
+    if (method !== 'POST' && method !== 'PUT' && method !== 'PATCH') return ERR_FORBID;
+    const k = String(body.course_code || '').trim(), meeting = Number(body.meeting_number);
+    const attendance = String(body.attendance_url || '').trim(), taskTitle = String(body.task_title || '').trim();
+    const taskUrl = String(body.task_url || '').trim(), submission = String(body.submission_url || '').trim(), deadline = String(body.deadline || '').trim();
+    if (!/^[A-Za-z0-9]{2,8}$/.test(k) || !Number.isInteger(meeting) || meeting < 1 || meeting > PERT) return ERR_BAD('Pilih mata kuliah dan pertemuan 1 sampai ' + PERT + '.');
+    if ([attendance, taskUrl, submission].some(u => u && (!/^https:\/\//i.test(u) || !isHttpUrl(u)))) return ERR_BAD('Semua tautan harus menggunakan HTTPS.');
+    if (taskTitle.length > 120 || (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline))) return ERR_BAD('Judul tugas atau tenggat tidak valid.');
+    const course = await getDoc('courses/' + k);
+    if (!course) return ERR_BAD('Mata kuliah tidak ditemukan.');
+    const now = Date.now();
+    return { data: { course_code:k, meeting_number:meeting, attendance_url:attendance, task_title:taskTitle, task_url:taskUrl, submission_url:submission, deadline:deadline || null, created_at:existing && existing.created_at || new Date(now).toISOString(), updated_at:new Date(now).toISOString() } };
+  }
 
   if (root === 'students' || root === 'courses' || root === 'pengumuman') {
     if (!admin || parts.length !== 2) return ERR_FORBID;
@@ -580,7 +565,7 @@ async function decide(method, p, body, sess, existing) {
     if (body.bukti !== undefined) {
       if (!isObj(body.bukti) || !onlyKeys(body.bukti, [me])) return ERR_FORBID;
       if (body.bukti[me] !== undefined) {
-        const f = await cleanFile(body.bukti[me], sess);
+        const f = await cleanFile(body.bukti[me], sess, ATTENDANCE_BUCKET);
         if (f === undefined) return ERR_BAD('Berkas bukti tidak valid.');
         out.bukti[me] = f;
       }
@@ -611,7 +596,7 @@ async function decide(method, p, body, sess, existing) {
         if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me])) return ERR_FORBID;
         const s = body.subs[me];
         const tautan = String(s.tautan || '').trim().slice(0, 500);
-        const berkas = await cleanFile(s.berkas, sess);
+        const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET);
         const catatan = String(s.catatan || '').slice(0, 500);
         // Dua cara mengumpulkan: unggah berkas langsung, atau tautan https (Google Drive, Dropbox, GitHub, dll.).
         if (berkas === undefined) return ERR_BAD('Berkas tidak valid. Unggah ulang berkasnya.');
@@ -658,14 +643,9 @@ async function decide(method, p, body, sess, existing) {
     const jenis = body.jenis;
     if (jenis !== 'ser' && jenis !== 'dok') return ERR_BAD('Jenis berkas tidak valid.');
     const judul = String(body.judul || '').trim().slice(0, 100);
-    const file = await cleanFile(body.file, sess);
+    const file = await cleanFile(body.file, sess, jenis === 'ser' ? CERTIFICATE_BUCKET : UPLOAD_BUCKET);
     if (!file) return ERR_BAD('Pilih berkas dulu.');
-    let drive = { driveStatus: 'not_configured' };
-    if (jenis === 'ser') {
-      try { drive = await archiveCertificateToDrive(file, judul, sess.no); }
-      catch (e) { console.error('Arsip Super License gagal:', e); drive = { driveStatus: 'failed' }; }
-    }
-    return { data: Object.assign({ no: sess.no, jenis: jenis, judul: judul, file: file, at: Date.now() }, drive) };
+    return { data: { no: sess.no, jenis: jenis, judul: judul, file: file, at: Date.now() } };
   }
 
   return ERR_FORBID;
@@ -712,6 +692,7 @@ const server = http.createServer(async (req, res) => {
       return fail(res, 403, 'forbidden', 'Permintaan tidak diizinkan.');
     }
     if (pathname === '/api/ping') return json(res, 200, { ok: true });
+    if (pathname === '/api/public-config' && method === 'GET') return json(res, 200, publicConfig());
 
     if (pathname === '/api/events') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
@@ -775,37 +756,42 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/upload' && method === 'POST') {
       const s = await getSession(req);
       if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
-      if (!storage) return fail(res, 500, 'unavailable', 'Penyimpanan berkas belum dikonfigurasi.');
+      if (!SERVICE_KEY) return fail(res, 500, 'unavailable', 'Penyimpanan berkas belum dikonfigurasi.');
       if (!take('up:' + s.no, 60, 600000)) return fail(res, 429, 'rate_limited', 'Terlalu banyak unggahan. Coba lagi nanti.');
       const body = await readJson(req, res); if (!body) return;
       const type = String(body.type || '').split(';')[0].trim().toLowerCase();
-      const size = Number(body.size);
-      if (FILE_TYPES.indexOf(type) < 0) return fail(res, 415, 'unsupported_type', 'Format belum didukung.');
+      const size = Number(body.size), bucket = String(body.bucket || UPLOAD_BUCKET), target = storeFor(bucket);
+      if (!target) return fail(res, 400, 'invalid_bucket', 'Tujuan penyimpanan tidak valid.');
+      const allowed = bucket === MEDIA_BUCKET ? /^image\/(jpeg|png|webp|gif)$/.test(type) : FILE_TYPES.indexOf(type) >= 0;
+      if (!allowed) return fail(res, 415, 'unsupported_type', 'Format belum didukung untuk bucket ini.');
       if (!Number.isFinite(size) || size <= 0) return fail(res, 400, 'invalid_request', 'Berkas kosong.');
-      if (size > MAX_FILE) return fail(res, 413, 'too_large', 'Berkas lebih dari 20 MB.');
+      const maxSize = bucket === CERTIFICATE_BUCKET ? 10 * 1024 * 1024 : bucket === MEDIA_BUCKET ? 5 * 1024 * 1024 : MAX_FILE;
+      if (size > maxSize) return fail(res, 413, 'too_large', 'Berkas melebihi batas ukuran bucket.');
       const id = crypto.randomBytes(16).toString('hex');
-      const { data, error } = await storage.createSignedUploadUrl(id);
+      const { data, error } = await target.createSignedUploadUrl(id);
       if (error || !data) { console.error(error); return fail(res, 500, 'unavailable', 'Tidak bisa menyiapkan unggahan.'); }
-      await setDoc(UPL(id), { type: type, size: size, owner: s.no, at: Date.now() });
-      return json(res, 200, { id: id, uploadUrl: data.signedUrl, contentType: type });
+      await setDoc(UPL(id), { type: type, size: size, owner: s.no, bucket: bucket, at: Date.now() });
+      const publicUrl = bucket === MEDIA_BUCKET ? SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + id : null;
+      return json(res, 200, { id: id, uploadUrl: data.signedUrl, contentType: type, publicUrl: publicUrl });
     }
     if (pathname.startsWith('/api/upload/') && method === 'DELETE') {
       const s = await getSession(req);
       if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
-      const id = pathname.slice(12);
-      const meta = await readMeta(id);
+      const id = pathname.slice(12), meta = await readMeta(id), target = storeFor(bucketFor(meta));
       if (meta && (s.admin || meta.owner === s.no)) {
-        if (storage) { try { await storage.remove([id]); } catch (e) { /* sudah tidak ada */ } }
+        if (target) { try { await target.remove([id]); } catch (e) { /* sudah tidak ada */ } }
         await deleteDoc(UPL(id));
       }
       return json(res, 200, { deleted: !!meta });
     }
     if (pathname.startsWith('/_blob/') && method === 'GET') {
-      const id = pathname.slice(7);
-      const s = await getSession(req);
-      const meta = await readMeta(id);
-      if (!meta || !s || !storage || !(s.admin || meta.owner === s.no)) { res.writeHead(404); return res.end(); }
-      const { data, error } = await storage.createSignedUrl(id, 300);
+      const id = pathname.slice(7), s = await getSession(req), meta = await readMeta(id), target = storeFor(bucketFor(meta));
+      if (!meta || !s || !target || !(s.admin || meta.owner === s.no)) { res.writeHead(404); return res.end(); }
+      if (bucketFor(meta) === MEDIA_BUCKET) {
+        const url = SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + id;
+        res.writeHead(302, { Location: url, 'Cache-Control': 'public, max-age=300' }); return res.end();
+      }
+      const { data, error } = await target.createSignedUrl(id, 300);
       if (error || !data) { res.writeHead(404); return res.end(); }
       res.writeHead(302, { Location: data.signedUrl, 'Cache-Control': 'private, max-age=120' });
       return res.end();

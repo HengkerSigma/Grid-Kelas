@@ -8,6 +8,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>ESC[c]);
 const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/[A-Za-z0-9_]{1,40}\?v=\d+$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
+let superLicenseDriveUrl='';
 const driveOf=k=>{const d=S.dr[k];return d&&okDrive(d.url)?d.url:'';};
 const okDrive=u=>{try{const x=new URL(String(u||'').trim());return x.protocol==='https:'&&DRIVE_HOSTS.indexOf(x.hostname)>=0;}catch(e){return false;}};
 /* Mata kuliah bertipe platform: doc platform/<k> berisi link khusus tempat absen diisi (hanya terlihat setelah masuk). */
@@ -54,7 +55,8 @@ let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='load
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
-const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{}};
+const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{}};
+let CU_EDIT=null,ADMIN_SECTION='';
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -67,7 +69,7 @@ const dv=(k,def)=>DR[k]!==undefined?DR[k]:def;
 function today(){const d=new Date();return d.getFullYear()+'-'+PAD(d.getMonth()+1)+'-'+PAD(d.getDate());}
 function fmtDate(s){if(!s)return '';const p=String(s).split('-');if(p.length!==3)return esc(s);try{return new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'short'}).format(new Date(+p[0],+p[1]-1,+p[2]));}catch(e){return esc(s);}}
 function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(e){return '';}}
-const photo=key=>{const m=S.md[key];return m&&okImg(m.data)?'<img src="'+m.data+'" alt="">':SIL;};
+const photo=key=>{const m=S.md[key],src=m&&(m.url||m.data);return src&&((m.url&&/^https:\/\//.test(src))||okImg(src))?'<img src="'+esc(src)+'" alt="">':SIL;};
 const stu=n=>S.st[PAD(n)]||null;
 const nameOf=n=>{const s=stu(n);return s?((s.depan||'')+' '+(s.belakang||'')).trim():'Mahasiswa '+n;};
 const courseList=()=>Object.values(S.co).sort((a,b)=>(a.urut||0)-(b.urut||0));
@@ -79,9 +81,38 @@ const cname=k=>S.co[k]?S.co[k].nama:k;
 
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},4200);}
 const ERRMAP={unauthenticated:'Sesi berakhir. Silakan masuk lagi.',too_large:'Berkas terlalu besar. Maksimal 20 MB.',unsupported_type:'Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.',quota_or_state:'Penyimpanan berkas penuh. Hubungi pengelola.',rate_limited:'Terlalu sering. Coba lagi sebentar lagi.',not_granted:'Akun ini belum boleh mengunggah berkas.',invalid_argument:'Tidak bisa menyimpan. Akun ini belum punya akses mengubah data kelas.'};
+let pendingRuns=0,busyButtons=[];
+function loadingLabel(msg){
+  const s=String(msg||'').toLowerCase();
+  if(s.includes('absen')||s.includes('forum'))return 'Sedang menyimpan absensi…';
+  if(s.includes('tugas'))return 'Sedang mengumpulkan tugas…';
+  if(s.includes('sertifikat'))return 'Sedang menyimpan sertifikat…';
+  if(s.includes('berkas')||s.includes('foto')||s.includes('gambar')||s.includes('bukti'))return 'Sedang mengunggah berkas…';
+  if(s.includes('password'))return 'Sedang memperbarui password…';
+  return 'Sedang menyimpan perubahan…';
+}
+function showLoading(msg){
+  const el=$('globalLoading');if(!el)return;
+  $('loadingText').textContent=loadingLabel(msg);
+  el.hidden=false;el.setAttribute('aria-busy','true');
+}
+function hideLoading(){
+  const el=$('globalLoading');if(!el)return;
+  el.hidden=true;el.setAttribute('aria-busy','false');
+}
 async function run(fn,okMsg){
+  pendingRuns++;
+  if(pendingRuns===1){
+    busyButtons=Array.from(document.querySelectorAll('button[data-act]')).map(b=>({el:b,disabled:b.disabled}));
+    busyButtons.forEach(x=>{x.el.disabled=true;x.el.classList.add('is-busy');});
+  }
+  showLoading(okMsg);
   try{await fn();if(okMsg)toast(okMsg);return true;}
   catch(e){console.error(e);toast((e&&ERRMAP[e.code])||(e&&e.message&&!e.code?e.message:'Gagal menyimpan. Coba lagi.'));return false;}
+  finally{
+    pendingRuns=Math.max(0,pendingRuns-1);
+    if(!pendingRuns){busyButtons.forEach(x=>{x.el.disabled=x.disabled;x.el.classList.remove('is-busy');});busyButtons=[];hideLoading();}
+  }
 }
 
 /* ---------- statistics ---------- */
@@ -404,7 +435,7 @@ function renderHome(force){
     Object.values(S.se).forEach(se=>{if(se.tanggal&&se.tanggal<=td&&!(se.present&&se.present[ME]))missing.push(se);});
     missing.sort((a2,b2)=>(a2.tanggal||'').localeCompare(b2.tanggal||''));
     const s0=stu(ME),ak=S.ak[PAD(ME)];
-    $('homeLede').textContent='Ringkasan tugas, absensi, dan pengumuman kelas untuk Anda.';
+    $('homeLede').textContent='Cek kabar kelas, tugas, dan absensi kamu di sini.';
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname">Halo, '+esc(s0&&s0.depan?s0.depan:'Mahasiswa')+(isAd(ME)?' '+FLAG:'')+'</div></div></div>';
     if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password Anda masih password bawaan. Ganti sekarang agar akun lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
     h+=homeTiles(ME);
@@ -414,7 +445,7 @@ function renderHome(force){
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
     h+='<div class="cols" style="margin-top:14px"><div class="col">'+superLicensePanel()+'</div><div class="col">'+classArchivePanel()+'</div></div>';
   }else if(adm()){
-    $('homeLede').textContent='Anda sedang dalam mode pengelola.';
+    $('homeLede').textContent='Mode pengelola aktif.';
     h+='<div class="panel welcome"><p>Mode pengelola aktif. Buka tab Pengelola untuk membuat pengumuman, mengelola akun, dan melihat rekap. Masuk sebagai mahasiswa untuk mencoba tampilan pribadi.</p><div class="row2"><button type="button" class="btn pri" data-view="pengelola">Buka Pengelola</button><button type="button" class="btn" data-act="open-login">Masuk</button></div></div>';
     const act=tasks.filter(t=>!t.tenggat||t.tenggat>=td);
     let li='';
@@ -422,7 +453,7 @@ function renderHome(force){
     h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+annPanel(anns)+'</div></div>';
     h+='<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }else{
-    $('homeLede').textContent='Anda masuk sebagai tamu. Tamu hanya bisa melihat pengumuman.';
+    $('homeLede').textContent='Lihat info kelas dan pengumuman terbaru.';
     h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+annPanel(anns)+'<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }
   $('home').innerHTML=h;
@@ -431,24 +462,25 @@ function superLicensePanel(){
   const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
     .filter(x=>x.no===ME&&x.jenis==='ser').sort((a,b)=>(b.at||0)-(a.at||0));
   let h='<div class="panel"><h3 class="ph3">Super License</h3>'+
-    '<p class="s" style="margin-bottom:12px">Sertifikat pribadi Anda. Berkas tetap tersimpan privat dan otomatis diarsipkan ke Google Drive khusus jika koneksi Drive sudah dikonfigurasi.</p>';
+    '<p class="s" style="margin-bottom:12px">Simpan sertifikat pribadi di sini, atau unggah sendiri ke folder Google Drive kelas.</p>';
   if(ME&&AS){
     h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama sertifikat</label>'+
       '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="Contoh: Sertifikat Workshop Web"></div>'+
       '<div class="row2"><label class="btn sm pickfile">'+(PEND.ser?'Ganti berkas':'Pilih sertifikat')+
       '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+(PEND.ser?esc(PEND.ser.name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
-      '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button></div></div>';
+      '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button>'+
+      (superLicenseDriveUrl?'<a class="btn" href="'+esc(superLicenseDriveUrl)+'" target="_blank" rel="noopener noreferrer">Simpan ke Google Drive <span aria-hidden="true">&#8599;</span></a>':'')+'</div>'+
+      (superLicenseDriveUrl?'<span class="s">Buka folder Google Drive, lalu unggah sertifikat Anda di sana.</span>':'<span class="s">Folder Google Drive belum disiapkan oleh pengelola.</span>')+'</div>';
   }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan sertifikat pribadi.</p>';
   if(!mine.length)return h+'<p class="empty">Belum ada sertifikat.</p></div>';
   h+='<ul>';
   mine.forEach(x=>{
-    const status=x.driveStatus==='archived'?'Tersimpan di Drive khusus':x.driveStatus==='failed'?'Arsip Drive gagal':x.driveStatus==='not_configured'?'Menunggu konfigurasi Drive':'Status arsip Drive belum diketahui';
+    const status='Tersimpan privat di Super License';
     const del=berDel===x.id
       ?'<span class="row2"><button type="button" class="btn sm pri" data-act="ber-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ber-del-no">Batal</button></span>'
       :'<button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus dari daftar</button>';
     h+='<li class="it"><div><b>'+esc(x.judul||'Sertifikat')+'</b>'+fileHtml(x.file,true)+
       '<span class="s">'+fmtTime(x.at)+' · '+esc(status)+'</span>'+
-      (x.driveUrl?'<a class="s" href="'+esc(x.driveUrl)+'" target="_blank" rel="noopener noreferrer">Buka arsip Drive</a>':'')+
       '</div>'+del+'</li>';
   });
   return h+'</ul></div>';
@@ -469,7 +501,7 @@ function classArchivePanel(){
   if(!rows.length)return h+'<p class="empty">Belum ada dokumentasi kelas.</p></div>';
   h+='<ul class="gal">';
   rows.forEach(x=>{
-    const m=x.photoKey&&S.md[x.photoKey],url=m&&okImg(m.data)?m.data:'';
+    const m=x.photoKey&&S.md[x.photoKey],url=m&&(m.url||m.data)&&((m.url&&/^https:\/\//.test(m.url))||okImg(m.data))?(m.url||m.data):'';
     h+='<li class="gi">'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(url)+'" alt="'+esc(x.judul||'Dokumentasi kelas')+'" loading="lazy"></a>':'<div class="gf"><span class="s">Foto tidak tersedia</span></div>')+
       '<div class="gc"><b>'+esc(x.judul||'Dokumentasi kelas')+'</b>'+
       (x.caption?'<span>'+esc(x.caption)+'</span>':'')+
@@ -518,19 +550,23 @@ function renderAdmin(){
       (annDel===x.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="ann-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ann-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="ann-del" data-id="'+esc(x.id)+'">Hapus</button>')+'</div>'+
       (x.isi?'<p>'+esc(x.isi)+'</p>':'')+'<span class="s">'+fmtTime(x.at)+(x.k?' · '+esc(cname(x.k)):' · Semua mata kuliah')+'</span></div>';
   });
-  h+='<div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><div class="stack">'+
+  const updates=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).sort((a,b)=>a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
+  const edit=CU_EDIT&&S.cu[CU_EDIT]?Object.assign({id:CU_EDIT},S.cu[CU_EDIT]):null;
+  const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+(u.attendance_url?'<a href="'+esc(u.attendance_url)+'" target="_blank" rel="noopener">Absensi</a>':'—')+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Tugas</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');
+  h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Satu baris untuk setiap pertemuan. Data disimpan pada tabel Supabase <code>course_updates</code>.</p><div class="cu-form"><div class="field"><label>Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(edit&&edit.course_code===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div><div class="field"><label>Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" value="'+(edit?edit.meeting_number:1)+'"></div><div class="field"><label>Link absensi</label><input id="cu-attendance" type="url" placeholder="https://..." value="'+esc(edit&&edit.attendance_url||'')+'"></div><div class="field"><label>Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" value="'+esc(edit&&edit.task_title||'')+'"></div><div class="field"><label>Link tugas / materi</label><input id="cu-task" type="url" placeholder="https://..." value="'+esc(edit&&edit.task_url||'')+'"></div><div class="field"><label>Link pengumpulan</label><input id="cu-submit" type="url" placeholder="https://..." value="'+esc(edit&&edit.submission_url||'')+'"></div><div class="field"><label>Tenggat pengumpulan (opsional)</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div><div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Absensi</th><th>Tugas</th><th>Link tugas</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="7" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div></div>';
+  h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="stack">'+
     '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
     '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(dv('an-isi',''))+'</textarea></div>'+
     '<div class="field"><label for="an-k">Untuk</label><select id="an-k" data-dr="an-k"><option value="">Semua mata kuliah</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(dv('an-k','')===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">Kirim pengumuman</button></div></div>'+
-    (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div>';
+    (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
   let tk='';
   tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
     const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
     tk+='<li class="it"><div><b>'+esc(t.judul)+(lk?' <span class="dnfb">DNF</span>':'')+'</b><span class="s">'+esc(cname(t.k))+' · '+dueText(t)+' · '+cnt+'/'+N+' terkumpul'+(lk?' · hilang otomatis dalam '+removeIn(t)+' hari':'')+'</span></div>'+
       (tkDel===t.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="tk-del-yes" data-id="'+esc(t.id)+'">Hapus</button><button type="button" class="btn sm" data-act="tk-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="tk-del" data-id="'+esc(t.id)+'">Hapus</button>')+'</li>';
   });
-  h+='<div class="stack"><div class="panel"><h3 class="ph3">Kelola tugas</h3><p class="s" style="margin-bottom:10px">Tugas yang lewat tenggat tampil sebagai DNF selama '+DNF_DAYS+' hari, lalu terhapus otomatis. Hapus manual kapan saja dari sini.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
+  h+='<div class="stack"><div class="panel" id="task-panel"><h3 class="ph3">Kelola tugas</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin-bottom:10px">Tugas yang lewat tenggat tampil sebagai DNF selama '+DNF_DAYS+' hari, lalu terhapus otomatis. Hapus manual kapan saja dari sini.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
   // akun
   let ar='';
   for(let n=1;n<=N;n++){
@@ -540,14 +576,15 @@ function renderAdmin(){
       '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button><button type="button" class="btn sm" data-act="archive-perm" data-no="'+n+'" aria-pressed="'+(k.archiveEdit===true)+'">'+(k.archiveEdit===true?'Izin arsip · Cabut':'Izin arsip')+'</button></td>'+
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
-  h+='<div><h3 class="ph3">Akun mahasiswa</h3><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
-  h+='<div><h3 class="ph3">Rekap mata kuliah</h3><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
+  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
+  h+='<div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   const cs={},cd={};Object.values(S.be).forEach(x=>{if(x.jenis==='ser')cs[x.no]=(cs[x.no]||0)+1;else if(x.jenis==='dok')cd[x.no]=(cd[x.no]||0)+1;});
   let rows='';
   for(let n=1;n<=N;n++){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);rows+='<tr><td class="num">'+n+'</td><td><button type="button" class="lnk" data-act="open-student" data-no="'+n+'">'+esc(nameOf(n))+'</button></td><td class="num">'+(p==null?'—':p+'%')+'</td><td class="num">'+t.a+'/'+t.b+'</td><td class="num">'+(t.b-t.a)+'</td><td class="num">'+(cs[n]||0)+'</td><td class="num">'+(cd[n]||0)+'</td></tr>';}
-  h+='<div><h3 class="ph3">Rekap mahasiswa</h3><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th class="num">Belum</th><th class="num">Sertifikat</th><th class="num">Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+  h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th class="num">Belum</th><th class="num">Sertifikat</th><th class="num">Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
   $('admin').innerHTML=h;
+
 }
 
 function refreshAll(){
@@ -561,7 +598,7 @@ function tabsHtml(list){
 }
 function defaultPert(k){
   let m=0;
-  Object.values(S.se).forEach(se=>{if(se.k===k&&(se.rec===true||Object.values(se.present||{}).some(Boolean))&&se.n>m)m=se.n;});
+  Object.values(S.se).forEach(se=>{if(se.k===k&&(se.tanggal||se.topik||se.rec===true||Object.values(se.present||{}).some(Boolean))&&se.n>m)m=se.n;});
   return m||1;
 }
 function openD(kind,key,tab,pert){
@@ -658,18 +695,27 @@ function absenAdmin(c){
   return h+'</ol>';
 }
 
-/* Tombol "Isi absen" di jadwal: hanya muncul saat mata kuliah sedang berlangsung.
-   Tipe platform dengan link → membuka web lain (tab baru); selain itu → absen di dalam situs. */
+/* Absensi otomatis mengikuti tipe ruang: Ruangan = hadir langsung, Platform = konfirmasi forum. */
+const isPlatformCourse=c=>!!S.pl[c.k];
 function absenBtn(c){
   if(!(ME||adm())||!inSession(c))return '';
-  const u=platOf(c.k);
-  if(u)return '<a class="btn sm pri" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" aria-label="Isi absen '+esc(c.nama)+' di '+esc(c.ruang||'platform')+' (buka di tab baru)">Isi absen <span aria-hidden="true">&#8599;</span></a>';
-  return ME?'<button type="button" class="btn sm pri" data-act="open-course" data-k="'+esc(c.k)+'" data-tab="absen">Isi absen</button>':'';
+  if(ME){
+    const n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
+    if(status)return '<div class="tcard attendance-done" role="status" aria-live="polite" style="margin:0;padding:10px 12px"><b><span aria-hidden="true">&#10003; </span>Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
+  }
+  return isPlatformCourse(c)?'<button type="button" class="btn sm pri" data-act="forum-options" data-k="'+esc(c.k)+'">Buka Forum Diskusi Mentari</button>':ME?'<button type="button" class="btn sm pri" data-act="auto-attend" data-k="'+esc(c.k)+'">Isi absen</button>':'';
 }
-/* Di kepala dialog mata kuliah: tombol ke platform saat jadwal berlangsung. */
+async function saveScheduleAttendance(k){
+  const n=defaultPert(k),id=k+'_'+PAD(n);
+  await writeSession(k,n,{present:{[ME]:'H'}});
+  const current=S.se[id]||{k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}};
+  S.se[id]=Object.assign({},current,{present:Object.assign({},current.present||{},{[ME]:'H'})});
+  refreshAll();
+}
 function platBtn(c){
-  const u=platOf(c.k);
-  return u&&(ME||adm())&&inSession(c)?'<p class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Isi absen di '+esc(c.ruang||'platform')+' <span aria-hidden="true">&#8599;</span></a></p>':'';
+  if(!isPlatformCourse(c)||!(ME||adm())||!inSession(c))return '';
+  const u=platOf(c.k);if(!u)return '<p class="s">Link forum belum diatur oleh admin.</p>';
+  return '<div class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Buka Forum Diskusi Mentari <span aria-hidden="true">&#8599;</span></a>'+(ME?'<p class="s">Sudah Mengerjakan Forum Diskusi?</p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div>':'')+'</div>';
 }
 /* Folder Google Drive tiap mata kuliah (hanya terlihat setelah masuk). */
 function driveBtn(k){
@@ -884,7 +930,7 @@ async function logoImg(file){
   throw new Error('Gambar terlalu besar. Pilih gambar yang lebih kecil.');
 }
 function toBlob(c,type,q){return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Gambar tidak bisa diproses.')),type,q));}
-async function sendFile(file){
+async function sendFile(file,bucket){
   if(!AS)throw new Error('Kirim berkas belum tersedia untuk akun ini.');
   let blob=file;
   const t=file.type||'';
@@ -895,8 +941,8 @@ async function sendFile(file){
     blob=await toBlob(c,'image/jpeg',0.85);
   }else if(t!=='application/pdf'&&t!=='image/gif')throw new Error('Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.');
   if(blob.size>20*1024*1024)throw new Error('Berkas terlalu besar. Maksimal 20 MB.');
-  const r=await AS.upload(blob);
-  return{id:r.id,name:String(file.name||'berkas').slice(0,80),type:r.contentType||blob.type};
+  const r=await AS.upload(blob,bucket||'uploads');
+  return{id:r.id,name:String(file.name||'berkas').slice(0,80),type:r.contentType||blob.type,bucket:bucket||'uploads',url:r.publicUrl||null};
 }
 
 /* ---------- accounts ---------- */
@@ -987,6 +1033,21 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,d=b.dataset;
   switch(a){
+    case 'forum-options':{
+      if(!ME){toast('Masuk sebagai mahasiswa untuk membuka forum.');break;}
+            if(!S.co[d.k]){toast('Data mata kuliah tidak ditemukan. Muat ulang halaman.');break;}
+      openD('course',d.k,'absen');break;
+    }
+    case 'auto-attend':{
+      if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dan pastikan akun punya izin mengisi absen.');break;}
+      const k=d.k;await run(()=>saveScheduleAttendance(k),'Absensi berhasil terisi.');break;
+    }
+    case 'forum-done':{
+      if(!ME)break;
+      if(!canWrite){toast('Absensi belum dapat disimpan. Periksa koneksi atau izin akun.');break;}
+      const k=d.k;await run(()=>saveScheduleAttendance(k),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
+    }
+    case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
     case 'open-student':openD('student',+d.no);break;
     case 'open-pit':openD('pit');break;
@@ -1094,6 +1155,27 @@ document.addEventListener('click',async e=>{
       if(ok){['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});$('an-judul').value='';$('an-isi').value='';$('an-k').value='';}
       break;
     }
+    case 'cu-save':{
+      if(!adm())break;
+      const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),attendance_url:$('cu-attendance').value.trim(),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null};
+      if(!body.course_code||!Number.isInteger(body.meeting_number)||body.meeting_number<1||body.meeting_number>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
+      if([body.attendance_url,body.task_url,body.submission_url].some(u=>u&&!/^https:\/\//i.test(u))){toast('Semua tautan harus diawali https://');break;}
+      const duplicate=Object.keys(S.cu).find(id=>id!==CU_EDIT&&S.cu[id].course_code===body.course_code&&Number(S.cu[id].meeting_number)===body.meeting_number);
+      if(duplicate){toast('Pembaruan untuk mata kuliah dan pertemuan ini sudah ada. Gunakan tombol Edit pada tabel.');break;}
+      const ok=await run(async()=>{
+        if(CU_EDIT)await db.doc('course_updates/'+CU_EDIT).update(body);
+        else {
+          await db.collection('course_updates').add(body);
+          if(body.task_title)await db.collection('tugas').add({k:body.course_code,judul:body.task_title,tenggat:body.deadline||'',deskripsi:body.submission_url?'Link pengumpulan: '+body.submission_url:'',link:body.task_url,subs:{},dibuat:Date.now()});
+        }
+      },'Pembaruan mata kuliah disimpan');
+      if(ok)CU_EDIT=null;
+      refreshAll();break;
+    }
+    case 'cu-edit':CU_EDIT=d.id;renderAdmin();$('course-update-panel').scrollIntoView({behavior:'smooth',block:'start'});break;
+    case 'cu-cancel':CU_EDIT=null;renderAdmin();break;
+    case 'cu-del':if(!adm())break;await run(()=>db.doc('course_updates/'+d.id).delete(),'Pembaruan dihapus');CU_EDIT=null;break;
+    case 'admin-top':$('admin').scrollIntoView({behavior:'smooth',block:'start'});break;
     case 'open-login':openLogin();break;
     case 'login-no':openLogin(+d.no);break;
     case 'login-back':D.step='pick';D.err='';D.forgot=false;renderDialog(true);break;
@@ -1138,7 +1220,7 @@ document.addEventListener('click',async e=>{
       if(!judul){toast('Isi judul dokumentasi terlebih dahulu.');break;}
       const key='archive_'+Array.from({length:12},()=>Math.floor(Math.random()*36).toString(36)).join('');
       const ok=await run(async()=>{
-        await db.doc('media/'+key).set({data:PEND.archive.data});
+        await db.doc('media/'+key).set({url:PEND.archive.url});
         try{await db.collection('classArchive').add({judul:judul.slice(0,100),caption:caption.slice(0,300),photoKey:key,no:ME,at:Date.now()});}
         catch(err){try{await db.doc('media/'+key).delete();}catch(ignore){}throw err;}
       },'Foto ditambahkan ke Class Archive');
@@ -1207,8 +1289,8 @@ document.addEventListener('change',async e=>{
     t.value='';
     if(!f)return;
     await run(async()=>{
-      const data=kind==='logo'?await logoImg(f):await squareImg(f,kind==='avatar'?120:280);
-      await db.doc('media/'+key).set({data:data});
+      const visual=await sendFile(f,'media');
+      await db.doc('media/'+key).set({url:visual.url});
     },'Gambar disimpan');
     return;
   }
@@ -1219,18 +1301,18 @@ document.addEventListener('change',async e=>{
     if(kind==='archive'){
       if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');return;}
       if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih foto JPG, PNG, atau WebP.');return;}
-      await run(async()=>{PEND.archive={data:await logoImg(f),name:f.name};renderHome(true);},'Foto siap ditambahkan ke Class Archive.');
+      await run(async()=>{PEND.archive=await sendFile(f,'media');renderHome(true);},'Foto siap ditambahkan ke Class Archive.');
       return;
     }
     if((kind==='bukti'||kind==='tugas')&&!D)return;
     toast('Mengirim berkas…');
     if(kind==='bukti'){
       const k=D.key,n=D.pert;
-      await run(async()=>{const fo=await sendFile(f);await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
+      await run(async()=>{const fo=await sendFile(f,'attendance');await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
     }else if(kind==='ser'||kind==='dok'){
-      await run(async()=>{PEND[kind]=await sendFile(f);renderHome(true);},'Berkas siap. Tekan Simpan.');
+      await run(async()=>{PEND[kind]=await sendFile(f,kind==='ser'?'certificates':'uploads');renderHome(true);},'Berkas siap. Tekan Simpan.');
     }else if(kind==='tugas'){
-      await run(async()=>{const fo=await sendFile(f);D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
+      await run(async()=>{const fo=await sendFile(f,'uploads');D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
     }
     return;
   }
@@ -1281,6 +1363,7 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
 
 (async function init(){
   const use=n=>(window.claude&&window.claude.use)?window.claude.use(n).catch(()=>null):Promise.resolve(null);
+  try{const cfg=await fetch('/api/public-config').then(r=>r.ok?r.json():null);if(cfg&&cfg.superLicenseDriveUrl&&okDrive(cfg.superLicenseDriveUrl))superLicenseDriveUrl=cfg.superLicenseDriveUrl;}catch(e){}
   const got=await Promise.all([use('db'),use('user'),use('assets')]);
   db=got[0];user=got[1];AS=got[2];
   AUTH=window.claude&&window.claude.auth||null;
@@ -1300,7 +1383,7 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();if(key==='tu'&&D&&D.kind==='hasil')loadHasil();refreshAll();
   },onErr);
-  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');
+  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
   if(AUTH){
     AUTH.me().then(m=>{ME=m&&m.no||null;if(ME)loadSektor();refreshAll();});
   }else if(uid){
