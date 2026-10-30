@@ -586,6 +586,8 @@ function renderAdmin(){
   h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th class="num">Belum</th><th class="num">Sertifikat</th><th class="num">Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
   $('admin').innerHTML=h;
   $('admin').dataset.activeSection=ADMIN_SECTION;
+  const adminPanels={'course-update':['course-update-panel'],'announcements':['announcement-panel'],'tasks':['task-panel'],'accounts':['account-panel'],'recap':['recap-panel','recap-student-panel']};
+  Object.entries(adminPanels).forEach(([section,ids])=>ids.forEach(id=>{const panel=$(id);if(panel)panel.hidden=ADMIN_SECTION!==section;}));
   $('admin').querySelectorAll('.admin-card').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.section===ADMIN_SECTION)));
 }
 
