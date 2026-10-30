@@ -662,6 +662,10 @@ function absenAdmin(c){
 const isPlatformCourse=c=>!!S.pl[c.k];
 function absenBtn(c){
   if(!(ME||adm())||!inSession(c))return '';
+  if(ME&&!adm()){
+    const n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
+    if(status)return '<div class="tcard" role="status" style="margin:0;padding:10px 12px"><b>Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
+  }
   return isPlatformCourse(c)?'<button type="button" class="btn sm pri" data-act="forum-options" data-k="'+esc(c.k)+'">Buka Forum Diskusi Mentari</button>':ME?'<button type="button" class="btn sm pri" data-act="auto-attend" data-k="'+esc(c.k)+'">Isi absen</button>':'';
 }
 function platBtn(c){
