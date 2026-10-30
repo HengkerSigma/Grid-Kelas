@@ -658,18 +658,16 @@ function absenAdmin(c){
   return h+'</ol>';
 }
 
-/* Tombol "Isi absen" di jadwal: hanya muncul saat mata kuliah sedang berlangsung.
-   Tipe platform dengan link → membuka web lain (tab baru); selain itu → absen di dalam situs. */
+/* Absensi otomatis mengikuti tipe ruang: Ruangan = hadir langsung, Platform = konfirmasi forum. */
+const isPlatformCourse=c=>!!S.pl[c.k];
 function absenBtn(c){
   if(!(ME||adm())||!inSession(c))return '';
-  const u=platOf(c.k);
-  if(u)return '<a class="btn sm pri" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" aria-label="Isi absen '+esc(c.nama)+' di '+esc(c.ruang||'platform')+' (buka di tab baru)">Isi absen <span aria-hidden="true">&#8599;</span></a>';
-  return ME?'<button type="button" class="btn sm pri" data-act="open-course" data-k="'+esc(c.k)+'" data-tab="absen">Isi absen</button>':'';
+  return isPlatformCourse(c)?'<button type="button" class="btn sm pri" data-act="forum-options" data-k="'+esc(c.k)+'">Buka Forum Diskusi Mentari</button>':ME?'<button type="button" class="btn sm pri" data-act="auto-attend" data-k="'+esc(c.k)+'">Isi absen</button>':'';
 }
-/* Di kepala dialog mata kuliah: tombol ke platform saat jadwal berlangsung. */
 function platBtn(c){
-  const u=platOf(c.k);
-  return u&&(ME||adm())&&inSession(c)?'<p class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Isi absen di '+esc(c.ruang||'platform')+' <span aria-hidden="true">&#8599;</span></a></p>':'';
+  if(!isPlatformCourse(c)||!(ME||adm())||!inSession(c))return '';
+  const u=platOf(c.k);if(!u)return '<p class="s">Link forum belum diatur oleh admin.</p>';
+  return '<div class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Buka Forum Diskusi Mentari <span aria-hidden="true">&#8599;</span></a>'+(ME&&!adm()?'<p class="s">Sudah Mengerjakan Forum Diskusi?</p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div>':'')+'</div>';
 }
 /* Folder Google Drive tiap mata kuliah (hanya terlihat setelah masuk). */
 function driveBtn(k){
@@ -884,7 +882,7 @@ async function logoImg(file){
   throw new Error('Gambar terlalu besar. Pilih gambar yang lebih kecil.');
 }
 function toBlob(c,type,q){return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Gambar tidak bisa diproses.')),type,q));}
-async function sendFile(file){
+async function sendFile(file,bucket){
   if(!AS)throw new Error('Kirim berkas belum tersedia untuk akun ini.');
   let blob=file;
   const t=file.type||'';
@@ -895,8 +893,8 @@ async function sendFile(file){
     blob=await toBlob(c,'image/jpeg',0.85);
   }else if(t!=='application/pdf'&&t!=='image/gif')throw new Error('Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.');
   if(blob.size>20*1024*1024)throw new Error('Berkas terlalu besar. Maksimal 20 MB.');
-  const r=await AS.upload(blob);
-  return{id:r.id,name:String(file.name||'berkas').slice(0,80),type:r.contentType||blob.type};
+  const r=await AS.upload(blob,bucket||'uploads');
+  return{id:r.id,name:String(file.name||'berkas').slice(0,80),type:r.contentType||blob.type,bucket:bucket||'uploads'};
 }
 
 /* ---------- accounts ---------- */
@@ -987,6 +985,16 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,d=b.dataset;
   switch(a){
+    case 'forum-options':if(!ME||adm()||!canWrite)break;openD('course',d.k,'absen');break;
+    case 'auto-attend':{
+      if(!ME||adm()||!canWrite)break;
+      const k=d.k,n=defaultPert(k);await run(()=>writeSession(k,n,{present:{[ME]:'H'}}),'Absensi berhasil terisi.');break;
+    }
+    case 'forum-done':{
+      if(!ME||adm()||!canWrite)break;
+      const k=d.k,n=defaultPert(k);await run(()=>writeSession(k,n,{present:{[ME]:'H'}}),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
+    }
+    case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
     case 'open-student':openD('student',+d.no);break;
     case 'open-pit':openD('pit');break;
@@ -1226,11 +1234,11 @@ document.addEventListener('change',async e=>{
     toast('Mengirim berkas…');
     if(kind==='bukti'){
       const k=D.key,n=D.pert;
-      await run(async()=>{const fo=await sendFile(f);await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
+      await run(async()=>{const fo=await sendFile(f,'attendance');await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
     }else if(kind==='ser'||kind==='dok'){
-      await run(async()=>{PEND[kind]=await sendFile(f);renderHome(true);},'Berkas siap. Tekan Simpan.');
+      await run(async()=>{PEND[kind]=await sendFile(f,kind==='ser'?'certificates':'uploads');renderHome(true);},'Berkas siap. Tekan Simpan.');
     }else if(kind==='tugas'){
-      await run(async()=>{const fo=await sendFile(f);D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
+      await run(async()=>{const fo=await sendFile(f,'uploads');D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
     }
     return;
   }
