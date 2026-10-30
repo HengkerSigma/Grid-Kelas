@@ -525,7 +525,7 @@ function annPanel(anns){
 /* Team Radio: pengumuman kelas ditampilkan satu per satu seperti transmisi radio tim F1. */
 function teamRadioPanel(anns){
   const total=anns.length;
-  if(!total)return '<section class="team-radio radio-tone-0" aria-label="Team Radio"><div class="tr-top"><span class="tr-kicker">TEAM RADIO</span><span class="tr-signal"><i></i> NO SIGNAL</span></div><div class="tr-empty"><span class="tr-wave" aria-hidden="true">'+[8,14,6,19,11,16,7,13,5,17,9,14,6,11,4,15].map((n,i)=>'<i style="--h:'+n+'px;--i:'+i+'"></i>').join('')+'</span><b>Belum ada transmisi</b><span>Pengumuman kelas akan muncul di frekuensi ini.</span></div></section>';
+  if(!total)return '<section class="team-radio radio-tone-0" aria-label="Team Radio"><div class="tr-top"><span class="tr-kicker"><svg class="tr-mark" viewBox="0 0 64 30" aria-hidden="true"><path d="M14 0H64L59 9H9Z"/><path d="M8 11H52L47 20H3Z"/><path d="M0 22H28L24 30H0Z"/></svg> TEAM RADIO</span><span class="tr-signal"><i></i> NO SIGNAL</span></div><div class="tr-empty"><span class="tr-wave" aria-hidden="true">'+[8,14,6,19,11,16,7,13,5,17,9,14,6,11,4,15].map((n,i)=>'<i style="--h:'+n+'px;--i:'+i+'"></i>').join('')+'</span><b>Belum ada transmisi</b><span>Pengumuman kelas akan muncul di frekuensi ini.</span></div></section>';
   TEAM_RADIO_INDEX=((TEAM_RADIO_INDEX%total)+total)%total;
   const x=anns[TEAM_RADIO_INDEX],tone=TEAM_RADIO_INDEX%5;
   const bars=[9,17,12,23,14,29,18,11,25,16,31,13,22,10,27,16,8,24,13,30,18,11,26,15,21,9,28,14,19,12,25,8];
