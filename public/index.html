@@ -59,8 +59,12 @@
 
   <section class="view" id="v-mata-kuliah" hidden>
     <div class="inner gut">
-      <h2 class="title">Grand Prix</h2>
-      <p class="lede">Temukan 9 mata kuliah semester ini. Klik gambar mata kuliah untuk mengisi absen dan tugas.</p>
+      <h2 class="title">Mata Kuliah</h2>
+      <p class="lede">Jelajahi mata kuliah aktif atau buka arsip tugas yang telah melewati tenggat.</p>
+      <div class="course-subtabs" role="tablist" aria-label="Bagian mata kuliah">
+        <button type="button" class="course-subtab" data-act="course-subtab" data-tab="grand-prix" role="tab" aria-selected="true" onclick="this.parentElement.querySelectorAll('[role=tab]').forEach(x=>x.setAttribute('aria-selected',String(x===this)))">Grand Prix</button>
+        <button type="button" class="course-subtab" data-act="course-subtab" data-tab="history" role="tab" aria-selected="false" onclick="this.parentElement.querySelectorAll('[role=tab]').forEach(x=>x.setAttribute('aria-selected',String(x===this)))">History</button>
+      </div>
       <ul class="courses" id="cgrid" aria-busy="true"></ul>
     </div>
   </section>
