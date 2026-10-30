@@ -602,10 +602,10 @@ function renderAdmin(){
   let tk='';
   tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
     const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
-    tk+='<li class="it"><div><b>'+esc(t.judul)+(lk?' <span class="dnfb">DNF</span>':'')+'</b><span class="s">'+esc(cname(t.k))+' · '+dueText(t)+' · '+cnt+'/'+N+' terkumpul'+(lk?' · hilang otomatis dalam '+removeIn(t)+' hari':'')+'</span></div>'+
+    tk+='<li class="it"><div><b>'+esc(t.judul)+(lk?' <span class="dnfb">DNF</span>':'')+'</b><span class="s">'+esc(cname(t.k))+' · '+dueText(t)+' · '+cnt+'/'+N+' terkumpul'+'</span></div>'+
       (tkDel===t.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="tk-del-yes" data-id="'+esc(t.id)+'">Hapus</button><button type="button" class="btn sm" data-act="tk-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="tk-del" data-id="'+esc(t.id)+'">Hapus</button>')+'</li>';
   });
-  h+='<div class="stack"><div class="panel" id="task-panel"><h3 class="ph3">Kelola tugas</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin-bottom:10px">Tugas yang lewat tenggat tampil sebagai DNF selama '+DNF_DAYS+' hari, lalu terhapus otomatis. Hapus manual kapan saja dari sini.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
+  h+='<div class="stack"><div class="panel" id="task-panel"><h3 class="ph3">Kelola tugas</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin-bottom:10px">Tugas yang melewati tenggat otomatis masuk ke tab History dan Time Tower tetap tersedia di arsip. Data tugas tidak dihapus otomatis.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
   // akun
   let ar='';
   for(let n=1;n<=N;n++){
