@@ -421,3 +421,75 @@ button.is-busy{cursor:wait;opacity:.65}
 .admin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0 22px}.admin-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;padding:17px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--fg);cursor:pointer;min-height:112px}.admin-card b{font-size:1rem}.admin-card span{font-weight:700;color:var(--accent)}.admin-card small{color:var(--muted);font-size:.82rem}.admin-card:hover{border-color:var(--accent);transform:translateY(-1px)}.cu-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}#course-update-panel,#announcement-panel,#task-panel,#account-panel,#recap-panel{scroll-margin-top:90px;margin-top:18px}
 
 .admin-back-top{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px auto}
+
+
+/* Team Radio — F1 pit-wall transmission visual */
+.team-radio{
+  --radio-accent:#e10600;
+  position:relative;isolation:isolate;overflow:hidden;
+  display:grid;gap:0;min-width:0;margin:0;
+  color:#f5f5f7;background:#11131b;
+  border:1px solid color-mix(in srgb,var(--radio-accent) 65%,#fff 8%);
+  border-radius:16px;box-shadow:0 14px 38px rgba(0,0,0,.22);
+}
+.team-radio.radio-tone-1{--radio-accent:#00b7a8}
+.team-radio.radio-tone-2{--radio-accent:#7b61ff}
+.team-radio.radio-tone-3{--radio-accent:#f0a51b}
+.team-radio.radio-tone-4{--radio-accent:#e34f9b}
+.tr-noise{position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.2;
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.07) 4px,transparent 5px),
+  linear-gradient(112deg,transparent 15%,color-mix(in srgb,var(--radio-accent) 20%,transparent) 48%,transparent 76%);
+  animation:tr-static 7s steps(2,end) infinite;
+}
+.tr-noise:after{content:"";position:absolute;inset:-40% 0 auto;height:34%;background:linear-gradient(transparent,rgba(255,255,255,.12),transparent);animation:tr-scan 5s linear infinite}
+.tr-top,.tr-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px}
+.tr-top{border-bottom:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.2)}
+.tr-kicker{display:flex;align-items:center;gap:9px;font-family:var(--f-disp);font-size:.78rem;font-weight:800;letter-spacing:.12em}
+.tr-mark{display:grid;place-items:center;width:30px;height:20px;background:var(--radio-accent);font-family:var(--f-disp);font-size:.7rem;font-style:italic;letter-spacing:-.06em;clip-path:polygon(0 0,100% 0,82% 100%,0 100%)}
+.tr-signal{display:inline-flex;align-items:center;gap:7px;color:#b9c0cc;font-size:.66rem;font-weight:700;letter-spacing:.1em}
+.tr-signal i{width:7px;height:7px;border-radius:50%;background:var(--radio-accent);box-shadow:0 0 10px var(--radio-accent);animation:tr-pulse 1.5s ease-in-out infinite}
+.tr-main{padding:20px 22px 17px;min-width:0;animation:tr-in .28s ease-out both}
+.tr-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;color:#aeb5c2;font-size:.72rem;font-weight:700;letter-spacing:.06em}
+.tr-channel{color:var(--radio-accent);text-transform:uppercase}
+.tr-title{margin:12px 0 8px;color:#fff;font-family:var(--f-disp);font-size:clamp(1.1rem,2.4vw,1.55rem);line-height:1.25;overflow-wrap:anywhere}
+.tr-message{margin:0;max-width:75ch;color:#d6d9e0;font-size:.96rem;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.tr-wave-row{display:flex;align-items:center;gap:13px;margin-top:21px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
+.tr-wave-label,.tr-db{flex:none;color:#8d96a5;font-family:var(--f-disp);font-size:.59rem;font-weight:700;letter-spacing:.1em}
+.tr-db{color:var(--radio-accent)}
+.tr-wave{display:flex;align-items:center;justify-content:center;gap:3px;flex:1;min-width:0;height:36px;overflow:hidden}
+.tr-wave i{display:block;width:3px;max-width:3px;height:var(--h);flex:1;background:var(--radio-accent);border-radius:3px;opacity:.9;transform:scaleY(.45);animation:tr-wave .82s ease-in-out infinite alternate;animation-delay:calc(var(--i)*-37ms);box-shadow:0 0 7px color-mix(in srgb,var(--radio-accent) 55%,transparent)}
+.tr-bottom{min-height:55px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.24)}
+.tr-counter{color:#aeb5c2;font-family:var(--f-disp);font-size:.65rem;font-weight:700;letter-spacing:.08em;white-space:nowrap}
+.tr-counter span{color:#687181}
+.tr-dots{display:flex;align-items:center;justify-content:center;gap:7px}
+.tr-dot{width:7px;height:7px;padding:0;border:0;border-radius:50%;background:#5c6471;cursor:pointer;transition:width .2s,background .2s}
+.tr-dot.active{width:21px;border-radius:6px;background:var(--radio-accent);box-shadow:0 0 9px color-mix(in srgb,var(--radio-accent) 65%,transparent)}
+.tr-controls{display:flex;gap:7px}
+.tr-nav{display:grid;place-items:center;width:32px;height:30px;border:1px solid rgba(255,255,255,.25);border-radius:6px;background:rgba(255,255,255,.06);color:#fff;font-size:1rem;cursor:pointer;transition:background .18s,border-color .18s}
+.tr-nav:hover:not(:disabled){background:var(--radio-accent);border-color:var(--radio-accent)}
+.tr-nav:disabled{opacity:.3;cursor:not-allowed}
+.tr-empty{display:grid;justify-items:center;gap:9px;padding:27px 18px;color:#aeb5c2;text-align:center}
+.tr-empty b{color:#fff;font-family:var(--f-disp);font-size:.9rem;letter-spacing:.05em}
+.tr-empty>span:last-child{font-size:.84rem}
+.tr-empty .tr-wave{width:min(230px,80%);flex:none}
+@keyframes tr-wave{from{transform:scaleY(.25);opacity:.5}to{transform:scaleY(1);opacity:1}}
+@keyframes tr-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes tr-static{0%,100%{opacity:.13;transform:translateX(0)}18%{opacity:.24;transform:translateX(1px)}19%{opacity:.1;transform:translateX(-2px)}57%{opacity:.2;transform:translateX(0)}}
+@keyframes tr-scan{from{transform:translateY(0)}to{transform:translateY(520%)}}
+@keyframes tr-in{from{opacity:.45;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:520px){
+  .tr-top,.tr-bottom{padding:11px 13px}
+  .tr-main{padding:17px 15px 14px}
+  .tr-signal{font-size:.56rem;letter-spacing:.06em}
+  .tr-kicker{font-size:.7rem}
+  .tr-wave-row{gap:8px}
+  .tr-wave-label,.tr-db{font-size:.52rem}
+  .tr-wave{gap:2px}
+  .tr-wave i{width:2px}
+  .tr-bottom{flex-wrap:wrap}
+  .tr-counter{order:0}.tr-dots{order:1;flex:1}.tr-controls{order:2}
+}
+@media(prefers-reduced-motion:reduce){
+  .tr-noise,.tr-noise:after,.tr-signal i,.tr-wave i,.tr-main{animation:none!important}
+  .tr-wave i{transform:none;opacity:.8}
+}
