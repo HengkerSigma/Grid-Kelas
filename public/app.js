@@ -680,7 +680,7 @@ async function saveScheduleAttendance(k){
 function platBtn(c){
   if(!isPlatformCourse(c)||!(ME||adm())||!inSession(c))return '';
   const u=platOf(c.k);if(!u)return '<p class="s">Link forum belum diatur oleh admin.</p>';
-  return '<div class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Buka Forum Diskusi Mentari <span aria-hidden="true">&#8599;</span></a>'+(ME&&!adm()?'<p class="s">Sudah Mengerjakan Forum Diskusi?</p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div>':'')+'</div>';
+  return '<div class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Buka Forum Diskusi Mentari <span aria-hidden="true">&#8599;</span></a>'+(ME?'<p class="s">Sudah Mengerjakan Forum Diskusi?</p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div>':'')+'</div>';
 }
 /* Folder Google Drive tiap mata kuliah (hanya terlihat setelah masuk). */
 function driveBtn(k){
