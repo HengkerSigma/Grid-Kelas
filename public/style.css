@@ -445,7 +445,7 @@ button.is-busy{cursor:wait;opacity:.65}
 .tr-top,.tr-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px}
 .tr-top{border-bottom:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.2)}
 .tr-kicker{display:flex;align-items:center;gap:9px;font-family:var(--f-disp);font-size:.78rem;font-weight:800;letter-spacing:.12em}
-.tr-mark{display:grid;place-items:center;width:30px;height:20px;background:var(--radio-accent);font-family:var(--f-disp);font-size:.7rem;font-style:italic;letter-spacing:-.06em;clip-path:polygon(0 0,100% 0,82% 100%,0 100%)}
+.tr-mark{display:block;width:30px;height:15px;flex:none;background:transparent;clip-path:none}.tr-mark path{fill:#e10600}
 .tr-signal{display:inline-flex;align-items:center;gap:7px;color:#b9c0cc;font-size:.66rem;font-weight:700;letter-spacing:.1em}
 .tr-signal i{width:7px;height:7px;border-radius:50%;background:var(--radio-accent);box-shadow:0 0 10px var(--radio-accent);animation:tr-pulse 1.5s ease-in-out infinite}
 .tr-main{padding:20px 22px 17px;min-width:0;animation:tr-in .28s ease-out both}
