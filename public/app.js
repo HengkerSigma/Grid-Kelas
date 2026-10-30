@@ -884,7 +884,7 @@ async function logoImg(file){
   throw new Error('Gambar terlalu besar. Pilih gambar yang lebih kecil.');
 }
 function toBlob(c,type,q){return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Gambar tidak bisa diproses.')),type,q));}
-async function sendFile(file){
+async function sendFile(file,bucket){
   if(!AS)throw new Error('Kirim berkas belum tersedia untuk akun ini.');
   let blob=file;
   const t=file.type||'';
@@ -895,7 +895,7 @@ async function sendFile(file){
     blob=await toBlob(c,'image/jpeg',0.85);
   }else if(t!=='application/pdf'&&t!=='image/gif')throw new Error('Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.');
   if(blob.size>20*1024*1024)throw new Error('Berkas terlalu besar. Maksimal 20 MB.');
-  const r=await AS.upload(blob);
+  const r=await AS.upload(blob,bucket);
   return{id:r.id,name:String(file.name||'berkas').slice(0,80),type:r.contentType||blob.type};
 }
 
@@ -1226,11 +1226,11 @@ document.addEventListener('change',async e=>{
     toast('Mengirim berkas…');
     if(kind==='bukti'){
       const k=D.key,n=D.pert;
-      await run(async()=>{const fo=await sendFile(f);await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
+      await run(async()=>{const fo=await sendFile(f,'attendance');await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
     }else if(kind==='ser'||kind==='dok'){
-      await run(async()=>{PEND[kind]=await sendFile(f);renderHome(true);},'Berkas siap. Tekan Simpan.');
+      await run(async()=>{PEND[kind]=await sendFile(f,kind==='ser'?'certificates':'uploads');renderHome(true);},'Berkas siap. Tekan Simpan.');
     }else if(kind==='tugas'){
-      await run(async()=>{const fo=await sendFile(f);D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
+      await run(async()=>{const fo=await sendFile(f,'uploads');D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
     }
     return;
   }
