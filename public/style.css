@@ -417,3 +417,5 @@ h2 .flag,.gname .flag{width:.85em;height:.85em;vertical-align:-.1em}
 button.is-busy{cursor:wait;opacity:.65}
 @keyframes gk-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.loading-spinner{animation-duration:1.8s}}
+
+.admin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0 22px}.admin-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;padding:17px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--fg);cursor:pointer;min-height:112px}.admin-card b{font-size:1rem}.admin-card span{font-weight:700;color:var(--accent)}.admin-card small{color:var(--muted);font-size:.82rem}.admin-card:hover{border-color:var(--accent);transform:translateY(-1px)}.cu-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}#course-update-panel,#announcement-panel,#task-panel,#account-panel,#recap-panel{scroll-margin-top:90px;margin-top:18px}
