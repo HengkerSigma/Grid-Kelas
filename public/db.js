@@ -97,9 +97,9 @@
   /* ---- unggah berkas ---- */
   const ASSETS = {
     // 1) minta izin ke server, 2) unggah langsung ke penyimpanan (tidak lewat server, jadi tak ada batas 4,5 MB Vercel)
-    upload: async (blob) => {
+    upload: async (blob, bucket) => {
       const type = blob.type || 'application/octet-stream';
-      const init = await req('POST', '/api/upload', { type: type, size: blob.size });
+      const init = await req('POST', '/api/upload', { type: type, size: blob.size, bucket: bucket || 'uploads' });
       const fd = new FormData();
       fd.append('cacheControl', '3600');
       fd.append('', blob);
@@ -110,7 +110,7 @@
         req('DELETE', '/api/upload/' + init.id).catch(() => {});
         throw { code: r.status === 413 ? 'too_large' : 'unavailable', message: 'Gagal mengunggah berkas. Coba lagi.' };
       }
-      return { id: init.id, url: '/_blob/' + init.id, sizeBytes: blob.size, contentType: init.contentType };
+      return { id: init.id, url: init.publicUrl || '/_blob/' + init.id, publicUrl: init.publicUrl || null, sizeBytes: blob.size, contentType: init.contentType };
     },
     delete: (id) => req('DELETE', '/api/upload/' + encodeURIComponent(id)),
     list: async () => ({ assets: [], usage: {} })
