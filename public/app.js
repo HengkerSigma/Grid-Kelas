@@ -67,7 +67,7 @@ const dv=(k,def)=>DR[k]!==undefined?DR[k]:def;
 function today(){const d=new Date();return d.getFullYear()+'-'+PAD(d.getMonth()+1)+'-'+PAD(d.getDate());}
 function fmtDate(s){if(!s)return '';const p=String(s).split('-');if(p.length!==3)return esc(s);try{return new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'short'}).format(new Date(+p[0],+p[1]-1,+p[2]));}catch(e){return esc(s);}}
 function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(e){return '';}}
-const photo=key=>{const m=S.md[key];return m&&okImg(m.data)?'<img src="'+m.data+'" alt="">':SIL;};
+const photo=key=>{const m=S.md[key],src=m&&(m.url||m.data);return src&&((m.url&&/^https:\/\//.test(src))||okImg(src))?'<img src="'+esc(src)+'" alt="">':SIL;};
 const stu=n=>S.st[PAD(n)]||null;
 const nameOf=n=>{const s=stu(n);return s?((s.depan||'')+' '+(s.belakang||'')).trim():'Mahasiswa '+n;};
 const courseList=()=>Object.values(S.co).sort((a,b)=>(a.urut||0)-(b.urut||0));
@@ -469,7 +469,7 @@ function classArchivePanel(){
   if(!rows.length)return h+'<p class="empty">Belum ada dokumentasi kelas.</p></div>';
   h+='<ul class="gal">';
   rows.forEach(x=>{
-    const m=x.photoKey&&S.md[x.photoKey],url=m&&okImg(m.data)?m.data:'';
+    const m=x.photoKey&&S.md[x.photoKey],url=m&&(m.url||m.data)&&((m.url&&/^https:\/\//.test(m.url))||okImg(m.data))?(m.url||m.data):'';
     h+='<li class="gi">'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(url)+'" alt="'+esc(x.judul||'Dokumentasi kelas')+'" loading="lazy"></a>':'<div class="gf"><span class="s">Foto tidak tersedia</span></div>')+
       '<div class="gc"><b>'+esc(x.judul||'Dokumentasi kelas')+'</b>'+
       (x.caption?'<span>'+esc(x.caption)+'</span>':'')+
@@ -894,7 +894,7 @@ async function sendFile(file,bucket){
   }else if(t!=='application/pdf'&&t!=='image/gif')throw new Error('Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.');
   if(blob.size>20*1024*1024)throw new Error('Berkas terlalu besar. Maksimal 20 MB.');
   const r=await AS.upload(blob,bucket||'uploads');
-  return{id:r.id,name:String(file.name||'berkas').slice(0,80),type:r.contentType||blob.type,bucket:bucket||'uploads'};
+  return{id:r.id,name:String(file.name||'berkas').slice(0,80),type:r.contentType||blob.type,bucket:bucket||'uploads',url:r.publicUrl||null};
 }
 
 /* ---------- accounts ---------- */
@@ -1146,7 +1146,7 @@ document.addEventListener('click',async e=>{
       if(!judul){toast('Isi judul dokumentasi terlebih dahulu.');break;}
       const key='archive_'+Array.from({length:12},()=>Math.floor(Math.random()*36).toString(36)).join('');
       const ok=await run(async()=>{
-        await db.doc('media/'+key).set({data:PEND.archive.data});
+        await db.doc('media/'+key).set({url:PEND.archive.url});
         try{await db.collection('classArchive').add({judul:judul.slice(0,100),caption:caption.slice(0,300),photoKey:key,no:ME,at:Date.now()});}
         catch(err){try{await db.doc('media/'+key).delete();}catch(ignore){}throw err;}
       },'Foto ditambahkan ke Class Archive');
@@ -1215,8 +1215,8 @@ document.addEventListener('change',async e=>{
     t.value='';
     if(!f)return;
     await run(async()=>{
-      const data=kind==='logo'?await logoImg(f):await squareImg(f,kind==='avatar'?120:280);
-      await db.doc('media/'+key).set({data:data});
+      const visual=await sendFile(f,'media');
+      await db.doc('media/'+key).set({url:visual.url});
     },'Gambar disimpan');
     return;
   }
@@ -1227,7 +1227,7 @@ document.addEventListener('change',async e=>{
     if(kind==='archive'){
       if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');return;}
       if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih foto JPG, PNG, atau WebP.');return;}
-      await run(async()=>{PEND.archive={data:await logoImg(f),name:f.name};renderHome(true);},'Foto siap ditambahkan ke Class Archive.');
+      await run(async()=>{PEND.archive=await sendFile(f,'media');renderHome(true);},'Foto siap ditambahkan ke Class Archive.');
       return;
     }
     if((kind==='bukti'||kind==='tugas')&&!D)return;
