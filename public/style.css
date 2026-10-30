@@ -420,14 +420,4 @@ button.is-busy{cursor:wait;opacity:.65}
 
 .admin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0 22px}.admin-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;padding:17px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--fg);cursor:pointer;min-height:112px}.admin-card b{font-size:1rem}.admin-card span{font-weight:700;color:var(--accent)}.admin-card small{color:var(--muted);font-size:.82rem}.admin-card:hover{border-color:var(--accent);transform:translateY(-1px)}.cu-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}#course-update-panel,#announcement-panel,#task-panel,#account-panel,#recap-panel{scroll-margin-top:90px;margin-top:18px}
 
-/* Pengelola: tampilkan satu kelompok konten setelah kartu dipilih */
-#admin:not([data-active-section="course-update"]) #course-update-panel,
-#admin:not([data-active-section="announcements"]) #announcement-panel,
-#admin:not([data-active-section="tasks"]) #task-panel,
-#admin:not([data-active-section="accounts"]) #account-panel,
-#admin:not([data-active-section="recap"]) #recap-panel,
-#admin:not([data-active-section="recap"]) #recap-student-panel{display:none!important}
-.admin-card[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:var(--surface-2)}
-
-/* Pastikan panel Pengelola mengikuti status kartu aktif */
-#admin [hidden]{display:none!important}
+.admin-back-top{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px auto}
