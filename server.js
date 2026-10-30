@@ -307,7 +307,7 @@ async function archiveCertificateToDrive(file, title, no) {
     bytes,
     Buffer.from('\r\n--' + boundary + '--')
   ]);
-  const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+  const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
     body: body
