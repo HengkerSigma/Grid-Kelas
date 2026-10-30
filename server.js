@@ -788,7 +788,7 @@ const server = http.createServer(async (req, res) => {
       const type = String(body.type || '').split(';')[0].trim().toLowerCase();
       const size = Number(body.size), bucket = String(body.bucket || UPLOAD_BUCKET), target = storeFor(bucket);
       if (!target) return fail(res, 400, 'invalid_bucket', 'Tujuan penyimpanan tidak valid.');
-      const allowed = bucket === MEDIA_BUCKET ? /^image\\/(jpeg|png|webp|gif)$/.test(type) : FILE_TYPES.indexOf(type) >= 0;
+      const allowed = bucket === MEDIA_BUCKET ? /^image\/(jpeg|png|webp|gif)$/.test(type) : FILE_TYPES.indexOf(type) >= 0;
       if (!allowed) return fail(res, 415, 'unsupported_type', 'Format belum didukung untuk bucket ini.');
       if (!Number.isFinite(size) || size <= 0) return fail(res, 400, 'invalid_request', 'Berkas kosong.');
       const maxSize = bucket === CERTIFICATE_BUCKET ? 10 * 1024 * 1024 : bucket === MEDIA_BUCKET ? 5 * 1024 * 1024 : MAX_FILE;
@@ -797,7 +797,7 @@ const server = http.createServer(async (req, res) => {
       const { data, error } = await target.createSignedUploadUrl(id);
       if (error || !data) { console.error(error); return fail(res, 500, 'unavailable', 'Tidak bisa menyiapkan unggahan.'); }
       await setDoc(UPL(id), { type: type, size: size, owner: s.no, bucket: bucket, at: Date.now() });
-      const publicUrl = bucket === MEDIA_BUCKET ? SUPABASE_URL.replace(/\\/$/, '') + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + id : null;
+      const publicUrl = bucket === MEDIA_BUCKET ? SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + id : null;
       return json(res, 200, { id: id, uploadUrl: data.signedUrl, contentType: type, publicUrl: publicUrl });
     }
     if (pathname.startsWith('/api/upload/') && method === 'DELETE') {
