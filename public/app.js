@@ -587,7 +587,7 @@ function renderAdmin(){
   $('admin').innerHTML=h;
   $('admin').dataset.activeSection=ADMIN_SECTION;
   const adminPanels={'course-update':['course-update-panel'],'announcements':['announcement-panel'],'tasks':['task-panel'],'accounts':['account-panel'],'recap':['recap-panel','recap-student-panel']};
-  Object.entries(adminPanels).forEach(([section,ids])=>ids.forEach(id=>{const panel=$(id);if(panel)panel.hidden=ADMIN_SECTION!==section;}));
+  Object.entries(adminPanels).forEach(([section,ids])=>ids.forEach(id=>{const panel=$(id);if(panel){const visible=ADMIN_SECTION===section;panel.hidden=!visible;panel.style.setProperty('display',visible?'block':'none','important');}}));
   $('admin').querySelectorAll('.admin-card').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.section===ADMIN_SECTION)));
 }
 
