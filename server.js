@@ -6,13 +6,19 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uboroxjkcvjbywcshdbq.s
  * jadi tabel bisa dikunci total dari kunci publik (anon). Kunci ini hanya boleh ada di environment
  * variable server — jangan di kode, repo, atau folder public/. */
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
-const BUCKET = process.env.UPLOAD_BUCKET || 'uploads';
-const MEDIA_BUCKET = process.env.MEDIA_BUCKET || 'media'; // bucket PUBLIK: foto mahasiswa/dosen, logo
+const UPLOAD_BUCKET = process.env.UPLOAD_BUCKET || 'uploads';
+const CERTIFICATE_BUCKET = process.env.CERTIFICATE_BUCKET || 'certificates';
+const ATTENDANCE_BUCKET = process.env.ATTENDANCE_BUCKET || 'attendance';
+const MEDIA_BUCKET = process.env.MEDIA_BUCKET || 'media';
 if (!SERVICE_KEY) console.error('PERINGATAN: SUPABASE_SERVICE_KEY belum di-set. Database dan unggah berkas tidak akan berfungsi.');
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY || 'missing-key', { auth: { persistSession: false, autoRefreshToken: false } });
-const storage = SERVICE_KEY ? supabase.storage.from(BUCKET) : null;
+const storage = SERVICE_KEY ? supabase.storage.from(UPLOAD_BUCKET) : null;
+const certificateStore = SERVICE_KEY ? supabase.storage.from(CERTIFICATE_BUCKET) : null;
+const attendanceStore = SERVICE_KEY ? supabase.storage.from(ATTENDANCE_BUCKET) : null;
 const mediaStore = SERVICE_KEY ? supabase.storage.from(MEDIA_BUCKET) : null;
+function storeFor(bucket) { if (!SERVICE_KEY) return null; return bucket === MEDIA_BUCKET ? mediaStore : bucket === CERTIFICATE_BUCKET ? certificateStore : bucket === ATTENDANCE_BUCKET ? attendanceStore : bucket === UPLOAD_BUCKET ? storage : null; }
+function bucketFor(meta) { return meta && [MEDIA_BUCKET,CERTIFICATE_BUCKET,ATTENDANCE_BUCKET,UPLOAD_BUCKET].includes(meta.bucket) ? meta.bucket : UPLOAD_BUCKET; }
 const SUPA_ORIGIN = (() => { try { return new URL(SUPABASE_URL).origin; } catch (e) { return ''; } })();
 
 const http = require('http');
@@ -292,7 +298,7 @@ async function archiveCertificateToDrive(file, title, no) {
   if (!DRIVE_EMAIL || !DRIVE_PRIVATE_KEY || !DRIVE_CERT_FOLDER_ID) return { driveStatus: 'not_configured' };
   if (!storage) throw new Error('Penyimpanan privat belum tersedia.');
   const token = await driveToken();
-  const downloaded = await storage.download(file.id);
+  const downloaded = await certificateStore.download(file.id);
   if (downloaded.error || !downloaded.data) throw new Error('Berkas sertifikat tidak bisa dibaca dari penyimpanan.');
   const bytes = Buffer.from(await downloaded.data.arrayBuffer());
   const boundary = 'gk_' + crypto.randomBytes(12).toString('hex');
@@ -399,13 +405,14 @@ async function readMeta(id) {
   if (!/^[0-9a-f]{32}$/.test(String(id || ''))) return null;
   return await getDoc(UPL(id));
 }
-async function cleanFile(f, sess) {
+async function cleanFile(f, sess, expectedBucket) {
   if (f === null || f === undefined) return null;
   if (!isObj(f) || !/^[0-9a-f]{32}$/.test(f.id || '')) return undefined;
   const meta = await readMeta(f.id);
   if (!meta) return undefined;
   if (!sess.admin && meta.owner !== sess.no) return undefined;
-  return { id: f.id, name: String(f.name || 'berkas').slice(0, 80), type: meta.type };
+  if (expectedBucket && bucketFor(meta) !== expectedBucket) return undefined;
+  return { id: f.id, name: String(f.name || 'berkas').slice(0, 80), type: meta.type, bucket: bucketFor(meta) };
 }
 
 /* ---------- siapa melihat apa ---------- */
@@ -580,7 +587,7 @@ async function decide(method, p, body, sess, existing) {
     if (body.bukti !== undefined) {
       if (!isObj(body.bukti) || !onlyKeys(body.bukti, [me])) return ERR_FORBID;
       if (body.bukti[me] !== undefined) {
-        const f = await cleanFile(body.bukti[me], sess);
+        const f = await cleanFile(body.bukti[me], sess, ATTENDANCE_BUCKET);
         if (f === undefined) return ERR_BAD('Berkas bukti tidak valid.');
         out.bukti[me] = f;
       }
@@ -611,7 +618,7 @@ async function decide(method, p, body, sess, existing) {
         if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me])) return ERR_FORBID;
         const s = body.subs[me];
         const tautan = String(s.tautan || '').trim().slice(0, 500);
-        const berkas = await cleanFile(s.berkas, sess);
+        const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET);
         const catatan = String(s.catatan || '').slice(0, 500);
         // Dua cara mengumpulkan: unggah berkas langsung, atau tautan https (Google Drive, Dropbox, GitHub, dll.).
         if (berkas === undefined) return ERR_BAD('Berkas tidak valid. Unggah ulang berkasnya.');
@@ -658,7 +665,7 @@ async function decide(method, p, body, sess, existing) {
     const jenis = body.jenis;
     if (jenis !== 'ser' && jenis !== 'dok') return ERR_BAD('Jenis berkas tidak valid.');
     const judul = String(body.judul || '').trim().slice(0, 100);
-    const file = await cleanFile(body.file, sess);
+    const file = await cleanFile(body.file, sess, jenis === 'ser' ? CERTIFICATE_BUCKET : UPLOAD_BUCKET);
     if (!file) return ERR_BAD('Pilih berkas dulu.');
     let drive = { driveStatus: 'not_configured' };
     if (jenis === 'ser') {
@@ -775,37 +782,42 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/upload' && method === 'POST') {
       const s = await getSession(req);
       if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
-      if (!storage) return fail(res, 500, 'unavailable', 'Penyimpanan berkas belum dikonfigurasi.');
+      if (!SERVICE_KEY) return fail(res, 500, 'unavailable', 'Penyimpanan berkas belum dikonfigurasi.');
       if (!take('up:' + s.no, 60, 600000)) return fail(res, 429, 'rate_limited', 'Terlalu banyak unggahan. Coba lagi nanti.');
       const body = await readJson(req, res); if (!body) return;
       const type = String(body.type || '').split(';')[0].trim().toLowerCase();
-      const size = Number(body.size);
-      if (FILE_TYPES.indexOf(type) < 0) return fail(res, 415, 'unsupported_type', 'Format belum didukung.');
+      const size = Number(body.size), bucket = String(body.bucket || UPLOAD_BUCKET), target = storeFor(bucket);
+      if (!target) return fail(res, 400, 'invalid_bucket', 'Tujuan penyimpanan tidak valid.');
+      const allowed = bucket === MEDIA_BUCKET ? /^image\\/(jpeg|png|webp|gif)$/.test(type) : FILE_TYPES.indexOf(type) >= 0;
+      if (!allowed) return fail(res, 415, 'unsupported_type', 'Format belum didukung untuk bucket ini.');
       if (!Number.isFinite(size) || size <= 0) return fail(res, 400, 'invalid_request', 'Berkas kosong.');
-      if (size > MAX_FILE) return fail(res, 413, 'too_large', 'Berkas lebih dari 20 MB.');
+      const maxSize = bucket === CERTIFICATE_BUCKET ? 10 * 1024 * 1024 : bucket === MEDIA_BUCKET ? 5 * 1024 * 1024 : MAX_FILE;
+      if (size > maxSize) return fail(res, 413, 'too_large', 'Berkas melebihi batas ukuran bucket.');
       const id = crypto.randomBytes(16).toString('hex');
-      const { data, error } = await storage.createSignedUploadUrl(id);
+      const { data, error } = await target.createSignedUploadUrl(id);
       if (error || !data) { console.error(error); return fail(res, 500, 'unavailable', 'Tidak bisa menyiapkan unggahan.'); }
-      await setDoc(UPL(id), { type: type, size: size, owner: s.no, at: Date.now() });
-      return json(res, 200, { id: id, uploadUrl: data.signedUrl, contentType: type });
+      await setDoc(UPL(id), { type: type, size: size, owner: s.no, bucket: bucket, at: Date.now() });
+      const publicUrl = bucket === MEDIA_BUCKET ? SUPABASE_URL.replace(/\\/$/, '') + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + id : null;
+      return json(res, 200, { id: id, uploadUrl: data.signedUrl, contentType: type, publicUrl: publicUrl });
     }
     if (pathname.startsWith('/api/upload/') && method === 'DELETE') {
       const s = await getSession(req);
       if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
-      const id = pathname.slice(12);
-      const meta = await readMeta(id);
+      const id = pathname.slice(12), meta = await readMeta(id), target = storeFor(bucketFor(meta));
       if (meta && (s.admin || meta.owner === s.no)) {
-        if (storage) { try { await storage.remove([id]); } catch (e) { /* sudah tidak ada */ } }
+        if (target) { try { await target.remove([id]); } catch (e) { /* sudah tidak ada */ } }
         await deleteDoc(UPL(id));
       }
       return json(res, 200, { deleted: !!meta });
     }
     if (pathname.startsWith('/_blob/') && method === 'GET') {
-      const id = pathname.slice(7);
-      const s = await getSession(req);
-      const meta = await readMeta(id);
-      if (!meta || !s || !storage || !(s.admin || meta.owner === s.no)) { res.writeHead(404); return res.end(); }
-      const { data, error } = await storage.createSignedUrl(id, 300);
+      const id = pathname.slice(7), s = await getSession(req), meta = await readMeta(id), target = storeFor(bucketFor(meta));
+      if (!meta || !s || !target || !(s.admin || meta.owner === s.no)) { res.writeHead(404); return res.end(); }
+      if (bucketFor(meta) === MEDIA_BUCKET) {
+        const url = SUPABASE_URL.replace(/\\/$/, '') + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + id;
+        res.writeHead(302, { Location: url, 'Cache-Control': 'public, max-age=300' }); return res.end();
+      }
+      const { data, error } = await target.createSignedUrl(id, 300);
       if (error || !data) { res.writeHead(404); return res.end(); }
       res.writeHead(302, { Location: data.signedUrl, 'Cache-Control': 'private, max-age=120' });
       return res.end();
