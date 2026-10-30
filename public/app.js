@@ -56,7 +56,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{}};
-let CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0;
+let CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null;
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -1041,6 +1041,21 @@ async function pwChange(){
   },'Password diganti');
   if(ok){['pw-old','pw-new','pw-new2'].forEach(i=>{const el=$(i);if(el)el.value='';});}
 }
+
+/* Swipe horizontal untuk berpindah transmisi Team Radio pada layar sentuh. */
+document.addEventListener('touchstart',e=>{
+  if(e.target.closest('.team-radio')&&e.touches&&e.touches.length===1)TEAM_RADIO_TOUCH_X=e.touches[0].clientX;
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(TEAM_RADIO_TOUCH_X===null)return;
+  const end=e.changedTouches&&e.changedTouches[0]?e.changedTouches[0].clientX:TEAM_RADIO_TOUCH_X;
+  const delta=end-TEAM_RADIO_TOUCH_X;TEAM_RADIO_TOUCH_X=null;
+  if(Math.abs(delta)<48||!e.target.closest('.team-radio')||e.target.closest('.tr-nav,.tr-dot'))return;
+  const total=Math.min(8,Object.keys(S.an).length);
+  if(!total)return;
+  TEAM_RADIO_INDEX=(TEAM_RADIO_INDEX+(delta<0?1:-1)+total)%total;
+  renderHome(true);
+},{passive:true});
 
 /* ---------- events ---------- */
 document.addEventListener('click',async e=>{
