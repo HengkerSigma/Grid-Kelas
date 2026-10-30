@@ -985,13 +985,19 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,d=b.dataset;
   switch(a){
-    case 'forum-options':if(!ME||adm()||!canWrite)break;openD('course',d.k,'absen');break;
+    case 'forum-options':{
+      if(!ME){toast('Masuk sebagai mahasiswa untuk membuka forum.');break;}
+      if(adm()){toast('Aksi forum ini tersedia pada akun mahasiswa.');break;}
+      if(!S.co[d.k]){toast('Data mata kuliah tidak ditemukan. Muat ulang halaman.');break;}
+      openD('course',d.k,'absen');break;
+    }
     case 'auto-attend':{
       if(!ME||adm()||!canWrite)break;
       const k=d.k,n=defaultPert(k);await run(()=>writeSession(k,n,{present:{[ME]:'H'}}),'Absensi berhasil terisi.');break;
     }
     case 'forum-done':{
-      if(!ME||adm()||!canWrite)break;
+      if(!ME||adm())break;
+      if(!canWrite){toast('Absensi belum dapat disimpan. Periksa koneksi atau izin akun.');break;}
       const k=d.k,n=defaultPert(k);await run(()=>writeSession(k,n,{present:{[ME]:'H'}}),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
     case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
