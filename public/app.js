@@ -20,7 +20,7 @@ const SIL='<svg class="sil" viewBox="0 0 100 100" aria-hidden="true"><circle cx=
 const FLAG=(function(){let r='';for(let y=0;y<3;y++)for(let x=0;x<4;x++)if((x+y)%2===0)r+='<rect x="'+(6+x*4)+'" y="'+(3+y*4)+'" width="4" height="4" fill="#111"/>';return '<svg class="flag" viewBox="0 0 24 24" role="img" aria-label="Admin"><title>Admin</title><path d="M4.5 2v20" stroke="#8a8a99" stroke-width="2" stroke-linecap="round"/><rect x="6" y="3" width="16" height="12" fill="#fff" stroke="#8a8a99" stroke-width="1"/>'+r+'</svg>';})();
 const HARI=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 const HARI_ALL=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']; // urutan Date.getDay()
-const DNF_DAYS=3; // tugas lewat tenggat tampil sebagai DNF selama 3 hari, lalu hilang
+const DNF_DAYS=3; // tugas lewat tenggat tampil di daftar aktif selama 3 hari, lalu pindah ke History
 /* Jadwal boleh satu hari atau rentang (Senin–Jumat). Data lama berupa teks "Senin-Jumat" juga dikenali. */
 function hariRange(c){
   let a=String(c.hari||'').trim(),b=String(c.hariSampai||'').trim();
@@ -187,7 +187,7 @@ function renderCourses(){
       const status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
       return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+
         (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
-        '<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span></div></article></li>';
+        '<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article></li>';
     }).join('');
     host.setAttribute('aria-busy',String(!loaded.co));
     return;
@@ -368,10 +368,9 @@ function podiumHtml(r){
       '<div class="pb"><span class="pn">P'+(i+1)+'</span></div></div>';
   }).join('')+'</div>';
 }
-function towerHtml(r){
-  // Mahasiswa yang sudah mengumpulkan, mulai dari P4
-  // karena P1-P3 ditampilkan di podium.
-  const rows=r.done.slice(3);
+function towerHtml(r,full){
+  // Arsip tugas menampilkan seluruh posisi dari P1; tugas aktif memakai podium untuk P1-P3.
+  const rows=full?r.done:r.done.slice(3);
   if(!rows.length&&!r.rest.length)return '';
 
   // Gunakan kode mahasiswa yang tersimpan; fallback ke 3 huruf nama depan.
@@ -420,8 +419,9 @@ function hasilDlg(){
   const r=hasilData(D.key);
   if(!r)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Tugas tidak ditemukan atau sudah dihapus.</p></div>';
   const t=r.t;
-  let h=dlgHead('HASIL TUGAS',esc(t.judul),esc(cname(t.k))+' · '+dueText(t)+' · '+r.done.length+' dari '+N+' sudah mengumpulkan','#e10600');
-  h+='<div class="db">'+(ME?'<div class="row2"><button type="button" class="btn sm" data-act="open-pit">&lsaquo; Pit Tugas</button></div>':'')+podiumHtml(r)+towerHtml(r)+'</div>';
+  const archived=r.locked;
+  let h=dlgHead(archived?'TIME TOWER':'HASIL TUGAS',esc(t.judul),esc(cname(t.k))+' · '+dueText(t)+' · '+r.done.length+' dari '+N+' sudah mengumpulkan','#e10600');
+  h+='<div class="db">'+(ME?'<div class="row2"><button type="button" class="btn sm" data-act="open-pit">&lsaquo; Pit Tugas</button></div>':'')+(archived?towerHtml(r,true):podiumHtml(r)+towerHtml(r))+'</div>';
   return h;
 }
 function sektorDlg(){
