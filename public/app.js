@@ -56,7 +56,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{}};
-let CU_EDIT=null,ADMIN_SECTION='';
+let CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0;
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -441,7 +441,7 @@ function renderHome(force){
     h+=homeTiles(ME);
     const left=[],right=[];
     left.push(schedPanel(sched,dayN));
-    right.push(annPanel(anns));
+    right.push(teamRadioPanel(anns));
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
     h+='<div class="cols" style="margin-top:14px"><div class="col">'+superLicensePanel()+'</div><div class="col">'+classArchivePanel()+'</div></div>';
   }else if(adm()){
@@ -450,11 +450,11 @@ function renderHome(force){
     const act=tasks.filter(t=>!t.tenggat||t.tenggat>=td);
     let li='';
     act.slice(0,6).forEach(t=>{li+='<li class="it"><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</span></div></li>';});
-    h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+annPanel(anns)+'</div></div>';
+    h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+teamRadioPanel(anns)+'</div></div>';
     h+='<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }else{
     $('homeLede').textContent='Lihat info kelas dan pengumuman terbaru.';
-    h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+annPanel(anns)+'<div style="margin-top:14px">'+classArchivePanel()+'</div>';
+    h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+teamRadioPanel(anns)+'<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }
   $('home').innerHTML=h;
 }
@@ -520,6 +520,26 @@ function annPanel(anns){
   let a='';
   anns.forEach(x=>{a+='<div class="ann"><b>'+esc(x.judul)+'</b>'+(x.isi?'<p>'+esc(x.isi)+'</p>':'')+'<span class="s">'+fmtTime(x.at)+(x.k?' · '+esc(cname(x.k)):'')+'</span></div>';});
   return '<div class="panel"><h3 class="ph3">Pengumuman</h3>'+(a||'<p class="empty">Belum ada pengumuman.</p>')+'</div>';
+}
+
+/* Team Radio: pengumuman kelas ditampilkan satu per satu seperti transmisi radio tim F1. */
+function teamRadioPanel(anns){
+  const total=anns.length;
+  if(!total)return '<section class="team-radio radio-tone-0" aria-label="Team Radio"><div class="tr-top"><span class="tr-kicker">TEAM RADIO</span><span class="tr-signal"><i></i> NO SIGNAL</span></div><div class="tr-empty"><span class="tr-wave" aria-hidden="true">'+[8,14,6,19,11,16,7,13,5,17,9,14,6,11,4,15].map((n,i)=>'<i style="--h:'+n+'px;--i:'+i+'"></i>').join('')+'</span><b>Belum ada transmisi</b><span>Pengumuman kelas akan muncul di frekuensi ini.</span></div></section>';
+  TEAM_RADIO_INDEX=((TEAM_RADIO_INDEX%total)+total)%total;
+  const x=anns[TEAM_RADIO_INDEX],tone=TEAM_RADIO_INDEX%5;
+  const bars=[9,17,12,23,14,29,18,11,25,16,31,13,22,10,27,16,8,24,13,30,18,11,26,15,21,9,28,14,19,12,25,8];
+  const wave=bars.map((n,i)=>'<i style="--h:'+n+'px;--i:'+i+'"></i>').join('');
+  const dots=anns.map((item,i)=>'<button type="button" class="tr-dot'+(i===TEAM_RADIO_INDEX?' active':'')+'" data-act="team-radio-go" data-index="'+i+'" aria-label="Buka pengumuman '+(i+1)+'" aria-current="'+(i===TEAM_RADIO_INDEX?'true':'false')+'"></button>').join('');
+  return '<section class="team-radio radio-tone-'+tone+'" aria-label="Team Radio">'+
+    '<div class="tr-noise" aria-hidden="true"></div>'+
+    '<div class="tr-top"><span class="tr-kicker"><span class="tr-mark">F1</span> TEAM RADIO</span><span class="tr-signal"><i></i> TRANSMISSION RECEIVED</span></div>'+
+    '<div class="tr-main" aria-live="polite"><div class="tr-meta"><span class="tr-channel">'+esc(x.k?cname(x.k):'ALL CLASS CHANNEL')+'</span><span class="tr-time">'+fmtTime(x.at)+'</span></div>'+
+    '<h3 class="tr-title">'+esc(x.judul)+'</h3>'+(x.isi?'<p class="tr-message">'+esc(x.isi)+'</p>':'')+
+    '<div class="tr-wave-row"><span class="tr-wave-label">AUDIO FEED</span><span class="tr-wave" aria-hidden="true">'+wave+'</span><span class="tr-db">RX&nbsp; 100%</span></div></div>'+
+    '<div class="tr-bottom"><span class="tr-counter">MESSAGE&nbsp; '+String(TEAM_RADIO_INDEX+1).padStart(2,'0')+' <span>/</span> '+String(total).padStart(2,'0')+'</span>'+
+    '<div class="tr-dots" aria-label="Pilih pengumuman">'+dots+'</div>'+
+    '<div class="tr-controls"><button type="button" class="tr-nav" data-act="team-radio-prev" aria-label="Pengumuman sebelumnya"'+(total<2?' disabled':'')+'>&#8592;</button><button type="button" class="tr-nav" data-act="team-radio-next" aria-label="Pengumuman berikutnya"'+(total<2?' disabled':'')+'>&#8594;</button></div></div></section>';
 }
 
 function renderAdmin(){
@@ -1147,6 +1167,16 @@ document.addEventListener('click',async e=>{
       break;
     }
     case 'img-del':await run(()=>db.doc('media/'+d.key).delete(),'Gambar dihapus');break;
+    case 'team-radio-prev':TEAM_RADIO_INDEX=Math.max(0,TEAM_RADIO_INDEX-1);renderHome(true);break;
+    case 'team-radio-next':{
+      const total=Object.keys(S.an).length;
+      TEAM_RADIO_INDEX=total?(TEAM_RADIO_INDEX+1)%total:0;renderHome(true);break;
+    }
+    case 'team-radio-go':{
+      const total=Object.keys(S.an).length;
+      if(Number.isInteger(+d.index)&&+d.index>=0&&+d.index<total){TEAM_RADIO_INDEX=+d.index;renderHome(true);}
+      break;
+    }
     case 'ann-save':{
       if(!adm())break;
       const judul=$('an-judul').value.trim();
