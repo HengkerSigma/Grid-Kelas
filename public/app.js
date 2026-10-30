@@ -1106,6 +1106,7 @@ document.addEventListener('click',async e=>{
     case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
     case 'course-subtab':{
       COURSE_SUBTAB=d.tab==='history'?'history':'grand-prix';
+      document.querySelectorAll('.course-subtab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===COURSE_SUBTAB)));
       renderCourses();break;
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
