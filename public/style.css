@@ -428,3 +428,6 @@ button.is-busy{cursor:wait;opacity:.65}
 #admin:not([data-active-section="recap"]) #recap-panel,
 #admin:not([data-active-section="recap"]) #recap-student-panel{display:none!important}
 .admin-card[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:var(--surface-2)}
+
+/* Pastikan panel Pengelola mengikuti status kartu aktif */
+#admin [hidden]{display:none!important}
