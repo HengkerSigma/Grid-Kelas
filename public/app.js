@@ -906,7 +906,7 @@ function studentDlg(){
   const canPhoto=canWrite&&(adm()||own),ac=S.ak[PAD(no)]||{},nim=ac.nim||'';
   let h='<div class="db"><div class="row2" style="justify-content:flex-end"><button type="button" class="btn sm" data-act="close">Tutup</button></div>'+
     '<div class="shead"><div class="sbig">'+photo('s'+PAD(no))+fb(no)+'</div><div><div class="k">NO. '+no+(s&&s.kode?' · '+esc(s.kode):'')+(isAd(no)?' · ADMIN':'')+'</div><h2 id="dtitle">'+esc(nameOf(no))+(isAd(no)?' '+FLAG:'')+'</h2>'+
-    ((adm()||own)&&nim?'<div class="student-nim">NIM · '+esc(nim)+'</div>':'')+
+    ((adm()||ME!==null)&&nim?'<div class="student-nim">NIM · '+esc(nim)+'</div>':'')+
     '<div class="row2" style="margin-top:12px">'+
     (canPhoto?'<label class="btn sm pickfile">Ganti foto<input type="file" accept="image/*" data-up="s'+PAD(no)+'" data-kind="photo"></label>':'')+
     (canPhoto&&S.md['s'+PAD(no)]?'<button type="button" class="btn sm" data-act="img-del" data-key="s'+PAD(no)+'">Hapus foto</button>':'')+
