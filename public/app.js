@@ -20,7 +20,7 @@ const SIL='<svg class="sil" viewBox="0 0 100 100" aria-hidden="true"><circle cx=
 const FLAG=(function(){let r='';for(let y=0;y<3;y++)for(let x=0;x<4;x++)if((x+y)%2===0)r+='<rect x="'+(6+x*4)+'" y="'+(3+y*4)+'" width="4" height="4" fill="#111"/>';return '<svg class="flag" viewBox="0 0 24 24" role="img" aria-label="Admin"><title>Admin</title><path d="M4.5 2v20" stroke="#8a8a99" stroke-width="2" stroke-linecap="round"/><rect x="6" y="3" width="16" height="12" fill="#fff" stroke="#8a8a99" stroke-width="1"/>'+r+'</svg>';})();
 const HARI=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 const HARI_ALL=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']; // urutan Date.getDay()
-const DNF_DAYS=3; // tugas lewat tenggat tampil di daftar aktif selama 3 hari, lalu pindah ke History
+// Tugas yang sudah melewati tenggat langsung dipindahkan dari daftar aktif ke History.
 /* Jadwal boleh satu hari atau rentang (Senin–Jumat). Data lama berupa teks "Senin-Jumat" juga dikenali. */
 function hariRange(c){
   let a=String(c.hari||'').trim(),b=String(c.hariSampai||'').trim();
@@ -74,9 +74,8 @@ const stu=n=>S.st[PAD(n)]||null;
 const nameOf=n=>{const s=stu(n);return s?((s.depan||'')+' '+(s.belakang||'')).trim():'Mahasiswa '+n;};
 const courseList=()=>Object.values(S.co).sort((a,b)=>(a.urut||0)-(b.urut||0));
 const dn=c=>Array.isArray(c.dosen)?(c.dosen[0]||''):(c.dosen||'');
-const taskGone=t=>{const d=dayDiff(t.tenggat);return d!==null&&d<-DNF_DAYS;};
 const isLocked=t=>{const d=dayDiff(t.tenggat);return d!==null&&d<0;};
-const taskList=()=>Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>!taskGone(t)).sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
+const taskList=()=>Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>!isLocked(t)).sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
 const cname=k=>S.co[k]?S.co[k].nama:k;
 
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},4200);}
@@ -249,7 +248,6 @@ function dueText(t){
   if(d===1)return 'Besok · '+fmtDate(t.tenggat);
   return d+' hari lagi · '+fmtDate(t.tenggat);
 }
-const removeIn=t=>{const d=dayDiff(t.tenggat);return d===null?null:Math.max(1,d+DNF_DAYS+1);};
 function pitData(no){
   const all=taskList().map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
   const done=all.filter(x=>x.done),dnf=all.filter(x=>!x.done&&isLocked(x.t)),open=all.filter(x=>!x.done&&!isLocked(x.t));
@@ -773,7 +771,7 @@ function smodeOf(id,mine){
 /* Tombol tugas: "Kerjakan" membuka soal (LMS kampus / PDF / dll.), "Kumpulkan" mengirim file atau tautan hasil tugas. */
 function taskActions(t,mine){
   const id=t.id,open=D.subOpen===id,locked=isLocked(t),can=ME&&canWrite&&!locked;
-  let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">DNF</span><span class="s">Tenggat sudah lewat. Pengumpulan ditutup'+(removeIn(t)?' · hilang dalam '+removeIn(t)+' hari':'')+'.</span>':'');
+  let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">DNF</span><span class="s">Tenggat sudah lewat. Pengumpulan ditutup'+'.</span>':'');
   if((ME||adm())&&!locked)h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Soal belum ditautkan oleh dosen.</span>');
   if(can)h+='<button type="button" class="btn sm pri" data-act="tsub-open" data-id="'+esc(id)+'" aria-expanded="'+open+'">'+(mine?'Ubah pengumpulan':'Kumpulkan')+'</button>';
   h+='</div>';
