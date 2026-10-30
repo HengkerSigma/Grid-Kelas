@@ -496,10 +496,11 @@ button.is-busy{cursor:wait;opacity:.65}
 
 
 /* Sub-tab Mata Kuliah: Grand Prix dan History */
-.course-subtabs{display:flex;gap:8px;margin:0 0 22px;border-bottom:1px solid var(--line,rgba(255,255,255,.12));}
-.course-subtab{appearance:none;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted,#a5a5b3);font:600 14px 'Titillium Web',sans-serif;padding:10px 16px;cursor:pointer;transition:color .2s,border-color .2s;}
+.course-subtabs{display:flex;align-items:baseline;gap:clamp(8px,2vw,18px);margin:0 0 26px;}
+.course-subtab{appearance:none;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--muted,#a5a5b3);font-family:var(--f-disp);font-weight:800;text-transform:uppercase;font-size:clamp(1.6rem,5.2vw,3.2rem);line-height:1.08;letter-spacing:-.01em;padding:0 0 7px;cursor:pointer;transition:color .2s,border-color .2s;white-space:nowrap;}
 .course-subtab:hover{color:var(--text,#fff);}
 .course-subtab[aria-selected="true"]{color:var(--text,#fff);border-bottom-color:#e10600;}
+.course-subtab-sep{font-family:var(--f-disp);font-size:clamp(1.6rem,5.2vw,3.2rem);font-weight:800;line-height:1.08;color:var(--muted,#a5a5b3);}
 .history-item{list-style:none;min-width:0;}
 .history-item .tcard{height:100%;margin:0;}
 .history-empty{list-style:none;grid-column:1/-1;padding:28px 16px;text-align:center;color:var(--muted,#a5a5b3);border:1px dashed rgba(255,255,255,.16);border-radius:14px;}
@@ -507,4 +508,4 @@ button.is-busy{cursor:wait;opacity:.65}
 .history-course{display:block;color:var(--accent,#e10600);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;}
 .history-top h3{margin:0;}
 .history-bottom{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.09);}
-@media(max-width:600px){.course-subtabs{margin-bottom:16px}.course-subtab{flex:1;padding:10px 8px}.history-top{align-items:flex-start}.history-bottom{align-items:flex-start}.history-bottom .btn{width:100%;}}
+@media(max-width:600px){.course-subtabs{gap:7px;margin-bottom:18px}.course-subtab{font-size:clamp(1.25rem,6vw,2rem);padding-bottom:5px}.course-subtab-sep{font-size:clamp(1.25rem,6vw,2rem)}.history-top{align-items:flex-start}.history-bottom{align-items:flex-start}.history-bottom .btn{width:100%;}}
