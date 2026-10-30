@@ -56,7 +56,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{}};
-let CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null;
+let CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix';
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -171,6 +171,27 @@ function dosenHtml(c){
   return '<li><span class="dav">'+photo('d_'+c.k)+'</span><span>'+txt+'</span></li>';
 }
 function renderCourses(){
+  const host=$('cgrid');
+  if(COURSE_SUBTAB==='history'){
+    const td=today();
+    const history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id]))
+      .filter(t=>t.tenggat&&t.tenggat<td)
+      .sort((a,b)=>(b.tenggat||'').localeCompare(a.tenggat||''));
+    if(!history.length){
+      host.innerHTML='<li class="history-empty">Belum ada tugas yang melewati tenggat.</li>';
+      host.setAttribute('aria-busy',String(!loaded.co));
+      return;
+    }
+    host.innerHTML=history.map(t=>{
+      const mine=ME&&t.subs?t.subs[ME]:null,subs=t.subs||{},count=Object.keys(subs).length;
+      const status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
+      return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+
+        (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
+        '<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">Lihat tugas</button></div></article></li>';
+    }).join('');
+    host.setAttribute('aria-busy',String(!loaded.co));
+    return;
+  }
   const list=courseList();
   if(!list.length){
     let h='';for(let i=0;i<4;i++)h+='<li class="course skel">'+(dbState==='none'?'Data tidak tersedia':(loaded.co?'Belum ada mata kuliah':'Memuat mata kuliah'))+'</li>';
@@ -1083,6 +1104,10 @@ document.addEventListener('click',async e=>{
       const k=d.k;await run(()=>saveScheduleAttendance(k),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
     case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
+    case 'course-subtab':{
+      COURSE_SUBTAB=d.tab==='history'?'history':'grand-prix';
+      renderCourses();break;
+    }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
     case 'open-student':openD('student',+d.no);break;
     case 'open-pit':openD('pit');break;
