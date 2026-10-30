@@ -534,7 +534,7 @@ function teamRadioPanel(anns){
   return '<section class="team-radio radio-tone-'+tone+'" aria-label="Team Radio">'+
     '<div class="tr-noise" aria-hidden="true"></div>'+
     '<div class="tr-top"><span class="tr-kicker"><svg class="tr-mark" viewBox="0 0 64 30" aria-hidden="true"><path d="M14 0H64L59 9H9Z"/><path d="M8 11H52L47 20H3Z"/><path d="M0 22H28L24 30H0Z"/></svg> TEAM RADIO</span></div>'+
-    '<div class="tr-main" aria-live="polite"><div class="tr-meta"><span class="tr-channel">'+esc(!x.k||x.k==='general'?'FITUR BARU':cname(x.k))+'</span><span class="tr-time">'+fmtTime(x.at)+'</span></div>'+
+    '<div class="tr-main" aria-live="polite"><div class="tr-meta"><span class="tr-channel">'+esc(!x.k||x.k==='general'?'GENERAL':cname(x.k))+'</span><span class="tr-time">'+fmtTime(x.at)+'</span></div>'+
     '<h3 class="tr-title">'+esc(x.judul)+'</h3>'+(x.isi?'<p class="tr-message">'+esc(x.isi)+'</p>':'')+
     '<div class="tr-wave-row"><span class="tr-wave" aria-hidden="true">'+wave+'</span></div></div>'+
     '<div class="tr-bottom"><span class="tr-counter">MESSAGE&nbsp; '+String(TEAM_RADIO_INDEX+1).padStart(2,'0')+' <span>/</span> '+String(total).padStart(2,'0')+'</span>'+
