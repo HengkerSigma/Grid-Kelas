@@ -584,7 +584,9 @@ function renderAdmin(){
   let rows='';
   for(let n=1;n<=N;n++){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);rows+='<tr><td class="num">'+n+'</td><td><button type="button" class="lnk" data-act="open-student" data-no="'+n+'">'+esc(nameOf(n))+'</button></td><td class="num">'+(p==null?'—':p+'%')+'</td><td class="num">'+t.a+'/'+t.b+'</td><td class="num">'+(t.b-t.a)+'</td><td class="num">'+(cs[n]||0)+'</td><td class="num">'+(cd[n]||0)+'</td></tr>';}
   h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th class="num">Belum</th><th class="num">Sertifikat</th><th class="num">Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
-  $('admin').innerHTML=h;\n  $('admin').dataset.activeSection=ADMIN_SECTION;\n  $('admin').querySelectorAll('.admin-card').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.section===ADMIN_SECTION)));
+  $('admin').innerHTML=h;
+  $('admin').dataset.activeSection=ADMIN_SECTION;
+  $('admin').querySelectorAll('.admin-card').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.section===ADMIN_SECTION)));
 }
 
 function refreshAll(){
