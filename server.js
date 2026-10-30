@@ -312,8 +312,11 @@ async function archiveCertificateToDrive(file, title, no) {
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
     body: body
   });
-  const result = await response.json();
-  if (!response.ok || !result.id) throw new Error('Google Drive menolak arsip sertifikat.');
+ const result = await response.json();
+if (!response.ok || !result.id) {
+  console.error('DETAIL ERROR GOOGLE DRIVE:', JSON.stringify(result));
+  throw new Error('Google Drive menolak arsip sertifikat.');
+}
   return { driveStatus: 'archived', driveFileId: result.id, driveUrl: result.webViewLink || ('https://drive.google.com/open?id=' + result.id) };
 }
 
