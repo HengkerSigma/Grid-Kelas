@@ -561,7 +561,7 @@ function tabsHtml(list){
 }
 function defaultPert(k){
   let m=0;
-  Object.values(S.se).forEach(se=>{if(se.k===k&&(se.rec===true||Object.values(se.present||{}).some(Boolean))&&se.n>m)m=se.n;});
+  Object.values(S.se).forEach(se=>{if(se.k===k&&(se.tanggal||se.topik||se.rec===true||Object.values(se.present||{}).some(Boolean))&&se.n>m)m=se.n;});
   return m||1;
 }
 function openD(kind,key,tab,pert){
