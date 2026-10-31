@@ -463,8 +463,9 @@ function homeTiles(no){
 }
 
 /* ---------- Grid Class Rookie Lap · tutorial pengguna baru ---------- */
+var GRID_TOUR_STARTED=false;
 function startGridClassTour(){
-  if(!ME||!window.driver||!window.driver.js||typeof window.driver.js.driver!=='function')return;
+  if(GRID_TOUR_STARTED||!ME||!window.driver||!window.driver.js||typeof window.driver.js.driver!=='function')return;
   let seen=false;try{seen=localStorage.getItem('gk_tour_v1_'+ME)==='done';}catch(e){}
   if(seen)return;
   const d=window.driver.js.driver({
@@ -494,6 +495,7 @@ function startGridClassTour(){
     ],
     onDestroyed:()=>{try{localStorage.setItem('gk_tour_v1_'+ME,'done');}catch(e){}}
   });
+  GRID_TOUR_STARTED=true;
   d.drive();
 }
 
@@ -1838,7 +1840,7 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
   if(!db){
     dbState='none';
     try{const v=localStorage.getItem('gk_me');ME=v?(parseInt(v,10)||null):null;}catch(e){}
-    refreshAll();return;
+    refreshAll();if(ME)setTimeout(startGridClassTour,1100);return;
   }
   dbState='ok';
   const onErr=err=>{console.error(err);dbState='err';refreshAll();};
@@ -1848,10 +1850,10 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
   },onErr);
   sub('students','st');sub('courses','co');sub('constructors','cs');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
   if(AUTH){
-    AUTH.me().then(m=>{ME=m&&m.no||null;if(ME)loadSektor();refreshAll();});
+    AUTH.me().then(m=>{ME=m&&m.no||null;if(ME){loadSektor();refreshAll();setTimeout(startGridClassTour,1100);}else refreshAll();});
   }else if(uid){
     db.doc('data/users/'+uid+'/profil').onSnapshot(s=>{
-      const x=s.data();ME=x&&Number.isInteger(x.absen)?x.absen:null;refreshAll();
+      const x=s.data();ME=x&&Number.isInteger(x.absen)?x.absen:null;refreshAll();if(ME)setTimeout(startGridClassTour,1100);
     },()=>{});
   }else{
     try{const v=localStorage.getItem('gk_me');ME=v?(parseInt(v,10)||null):null;}catch(e){}
