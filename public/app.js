@@ -223,6 +223,7 @@ function renderCourses(){
 
 function renderConstructor(){
   const host=$('constructorPanel');if(!host)return;
+  host.className='constructor-grid';
   const groups=Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
   const mine=ME!=null?S.ak[PAD(ME)]||{}:{};
   const isAdmin=adm();
@@ -238,7 +239,8 @@ function renderConstructor(){
     const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
     const principal=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===g.id)||null;
     const canEdit=isAdmin||(ME!=null&&mine.teamPrincipal===g.id);
-    h+='<article class="constructor-card"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span>';
+    const tones=['#e10600','#087e8b','#6546a5','#b66a12','#26734d','#8b365c'];
+    h+='<article class="constructor-card" style="--tc:'+tones[groups.indexOf(g)%tones.length]+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span>';
     h+=canEdit?'<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'" aria-label="Nama kelompok">':'<h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3>';
     h+='<p class="constructor-principal">'+(principal?'TEAM PRINCIPAL · '+esc(nameOf(principal)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+members.length+' anggota</span></div>';
     if(canEdit){
