@@ -611,3 +611,12 @@ button.is-busy{cursor:wait;opacity:.65}
 .constructor-grid .constructor-actions .btn{border-color:rgba(255,255,255,.35)}
 .constructor-grid .constructor-empty{border-color:var(--line);color:var(--muted)}
 @media(max-width:600px){.constructor-grid{grid-template-columns:minmax(0,1fr);gap:16px}.constructor-grid>.constructor-card{padding:15px}.constructor-grid .constructor-head{align-items:flex-start}}
+
+
+.constructor-editor{margin-top:16px;padding-top:15px;border-top:1px solid rgba(255,255,255,.2);display:grid;gap:12px}
+.constructor-field{display:grid;gap:6px;font-size:.85rem;font-weight:700;color:rgba(255,255,255,.9)}
+.constructor-field input,.constructor-field select{box-sizing:border-box;width:100%;max-width:100%;min-height:42px;padding:9px 11px;border:1px solid rgba(255,255,255,.28);border-radius:8px;background:rgba(0,0,0,.24);color:#fff}
+.constructor-field select option{color:#111;background:#fff}
+.constructor-editor .constructor-members.edit{max-height:360px;overflow:auto;padding:2px}
+.constructor-editor .constructor-member{cursor:pointer}
+.constructor-editor .constructor-member input{accent-color:var(--accent);flex:none}
