@@ -429,7 +429,7 @@ function pitDlg(){
   const groupTasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
   const individual=pitData(ME);
   let h=dlgHead('HUB TUGAS','Pusat Tugas','Pilih kategori tugas yang ingin kamu lihat.','#e10600');
-  h+='<div class="db"><div class="constructor-subtabs" role="tablist" aria-label="Kategori tugas"><button type="button" class="student-subtab" data-act="hub-task-tab" data-tab="individual" aria-selected="'+(tab==='individual')+'">PIT TUGAS · INDIVIDU</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="hub-task-tab" data-tab="group" aria-selected="'+(tab==='group')+'">PADDOCK CONSTRUCTOR · KELOMPOK</button></div>';
+  h+='<div class="db"><div class="constructor-subtabs hub-task-tabs" role="tablist" aria-label="Kategori tugas"><button type="button" class="student-subtab" data-act="hub-task-tab" data-tab="individual" aria-selected="'+(tab==='individual')+'">PIT TUGAS · INDIVIDU</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="hub-task-tab" data-tab="group" aria-selected="'+(tab==='group')+'">PADDOCK CONSTRUCTOR · KELOMPOK</button></div>';
   if(tab==='individual'){
     h+='<p class="s">Tugas yang harus kamu kerjakan dan kumpulkan sendiri.</p><ul class="pleg"><li>'+flagSvg('r')+'Kurang dari 1 hari</li><li>'+flagSvg('y')+'Kurang dari 3 hari</li><li>'+flagSvg('g')+'3 hari atau lebih</li><li><span class="dnfb">DNF</span>Lewat tenggat, tidak terselesaikan</li></ul>';
     if(individual.open.length)h+='<ul class="plist">'+individual.open.map(x=>{const f=flagOf(x.t);return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Kumpulkan</button>'+hasilBtn(x.t)+'</span></li>';}).join('')+'</ul>';
@@ -437,7 +437,7 @@ function pitDlg(){
     if(individual.dnf.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+individual.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact">'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
     if(individual.done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+individual.done.map(x=>'<li class="pit-it done"><span class="pck">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
   }else{
-    h+='<p class="s">Daftar tugas kelompok untuk Constructor kamu. Pengumpulan dilakukan oleh Team Principal.</p>';
+    h+='<p class="s hub-task-intro">Daftar tugas kelompok untuk Constructor kamu. Pengumpulan dilakukan oleh Team Principal.</p>';
     if(!myGroup)h+='<p class="empty">Kamu belum terdaftar dalam Constructor.</p>';
     else if(!groupTasks.length)h+='<p class="empty">Belum ada tugas kelompok.</p>';
     else{
