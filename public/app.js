@@ -767,7 +767,7 @@ function renderAdmin(){
   const updates=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).sort((a,b)=>a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
   const edit=CU_EDIT&&S.cu[CU_EDIT]?Object.assign({id:CU_EDIT},S.cu[CU_EDIT]):null;
   const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+(u.attendance_url?'<a href="'+esc(u.attendance_url)+'" target="_blank" rel="noopener">Absensi</a>':'—')+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Tugas</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');
-  h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Satu baris untuk setiap pertemuan. Data disimpan pada tabel Supabase <code>course_updates</code>.</p><div class="cu-form"><div class="field"><label>Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(edit&&edit.course_code===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div><div class="field"><label>Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" value="'+(edit?edit.meeting_number:1)+'"></div><div class="field"><label>Link absensi</label><input id="cu-attendance" type="url" placeholder="https://..." value="'+esc(edit&&edit.attendance_url||'')+'"></div><div class="field"><label>Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" value="'+esc(edit&&edit.task_title||'')+'"></div><div class="field"><label>Link tugas / materi</label><input id="cu-task" type="url" placeholder="https://..." value="'+esc(edit&&edit.task_url||'')+'"></div><div class="field"><label>Link pengumpulan</label><input id="cu-submit" type="url" placeholder="https://..." value="'+esc(edit&&edit.submission_url||'')+'"></div><div class="field"><label>Tenggat pengumpulan (opsional)</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div><div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Absensi</th><th>Tugas</th><th>Link tugas</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="7" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div></div>';
+  h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Satu baris untuk setiap pertemuan. Data disimpan pada tabel Supabase <code>course_updates</code>.</p><div class="cu-form"><div class="field"><label>Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(edit&&edit.course_code===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div><div class="field"><label>Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" value="'+(edit?edit.meeting_number:1)+'"></div><div class="field"><label>Link absensi</label><input id="cu-attendance" type="url" placeholder="https://..." value="'+esc(edit&&edit.attendance_url||'')+'"></div><div class="field"><label>Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" value="'+esc(edit&&edit.task_title||'')+'"></div><div class="field"><label>Link tugas / materi</label><input id="cu-task" type="url" placeholder="https://..." value="'+esc(edit&&edit.task_url||'')+'"></div><div class="field"><label>Link pengumpulan</label><input id="cu-submit" type="url" placeholder="https://..." value="'+esc(edit&&edit.submission_url||'')+'"></div><div class="field"><label>Tenggat pengumpulan (opsional)</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div><div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Absensi</th><th>Tugas</th><th>Link tugas</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="7" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div><section class="panel task-create-panel" id="new-task-panel"><h3 class="ph3">Input tugas baru</h3><p class="s">Buat tugas untuk mata kuliah yang dipilih. Tugas akan langsung muncul pada tab Tugas mahasiswa.</p><div class="fgrid"><div class="field"><label for="admin-tn-course">Mata kuliah</label><select id="admin-tn-course">'+cl.map(c=>'<option value="'+esc(c.k)+'">'+esc(c.nama)+'</option>').join('')+'</select></div><div class="field"><label for="admin-tn-title">Judul tugas</label><input id="admin-tn-title" type="text" maxlength="120" placeholder="Contoh: Tugas 1 – Flowchart"></div><div class="field"><label for="admin-tn-deadline">Tenggat</label><input id="admin-tn-deadline" type="date"></div><div class="field"><label for="admin-tn-mode">Jenis tugas</label><select id="admin-tn-mode"><option value="individual">Individu</option><option value="group">Kelompok</option></select></div><div class="field" style="grid-column:1/-1"><label for="admin-tn-link">Tautan kerjakan (LMS kampus, PDF soal, dan sebagainya)</label><input id="admin-tn-link" type="url" inputmode="url" placeholder="https://..."></div><div class="field" style="grid-column:1/-1"><label for="admin-tn-desc">Petunjuk tugas</label><textarea id="admin-tn-desc" maxlength="1000" placeholder="Jelaskan instruksi dan apa yang harus dikumpulkan"></textarea></div></div><div class="row2"><button type="button" class="btn pri" data-act="admin-task-save"'+(cl.length?'':' disabled')+'>Simpan tugas baru</button></div></section></div>';
   h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="stack">'+
     '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(annEdit?annEdit.judul:dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
     '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(annEdit?annEdit.isi:dv('an-isi',''))+'</textarea></div>'+
@@ -981,45 +981,33 @@ function tugasStudent(c){
   return h;
 }
 function tugasAdmin(c){
-  const list=taskList().filter(t=>t.k===c.k),td=today();
+  const list=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k).sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
+  const active=list.filter(t=>!isLocked(t)),history=list.filter(t=>isLocked(t));
   let h='';
-  if(canWrite){
-    if(D.newOpen){
-      h+='<div class="tcard"><div class="field"><label for="tn-judul">Judul tugas</label><input id="tn-judul" data-dr="tn-judul" type="text" maxlength="120" value="'+esc(dv('tn-judul',''))+'" placeholder="Contoh: Tugas 1 – Flowchart"></div>'+
-         '<div class="fgrid"><div class="field"><label for="tn-tenggat">Tenggat</label><input id="tn-tenggat" data-dr="tn-tenggat" type="date" value="'+esc(dv('tn-tenggat',''))+'"></div><div class="field"><label for="tn-mode">Jenis tugas</label><select id="tn-mode" data-dr="tn-mode"><option value="individual">Individu</option><option value="group">Kelompok</option></select></div></div>'+
-         '<div class="field"><label for="tn-link">Tautan kerjakan (LMS kampus, PDF soal, dsb.)</label><input id="tn-link" data-dr="tn-link" type="url" inputmode="url" placeholder="https://" value="'+esc(dv('tn-link',''))+'"></div>'+
-         '<div class="field"><label for="tn-desk">Petunjuk</label><textarea id="tn-desk" data-dr="tn-desk" maxlength="1000" placeholder="Jelaskan apa yang harus dikumpulkan">'+esc(dv('tn-desk',''))+'</textarea></div>'+
-         '<div class="row2"><button type="button" class="btn pri" data-act="tnew-save">Simpan tugas</button><button type="button" class="btn" data-act="tnew-toggle">Batal</button></div></div>';
-    }else h+='<div class="row2"><button type="button" class="btn pri" data-act="tnew-toggle">+ Tugas baru</button></div>';
-  }
-  if(!list.length)h+='<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
-  list.forEach(t=>{
-    const subs=t.subs||{},cnt=Object.keys(subs).length,late=t.tenggat&&t.tenggat<td;
+  if(!list.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
+  const renderTask=t=>{
+    const subs=t.subs||{},cnt=Object.keys(subs).length,late=isLocked(t);
     if(t.mode==='group'){
       const groups=constructorGroups(t.k),gc=groups.length,done=Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).length;
-      h+='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">Kelompok</span></div>'+
+      return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">Kelompok</span></div>'+
+        (late?'<span class="chip late">Masuk riwayat</span>':'')+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+
         (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div><div class="track"><i style="width:'+Math.round((gc?done/gc:0)*100)+'%"></i></div><span class="s">'+done+' dari '+gc+' Constructor sudah mengumpulkan</span></div>'+
-        '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).map(gid=>{const g=S.cs[gid]||{},principal=Number(g.principal)||null,sub=t.groupSubs[gid];return '<li><b>'+esc(g.name||gid)+'</b> · Team Principal: '+esc(principal?nameOf(principal):'—')+' · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka pengumpulan</a>':(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+'</li>';}).join('')+'</ul></details>'+
-        (canWrite?'<div class="row2"><button type="button" class="btn sm" data-act="tdel" data-id="'+esc(t.id)+'">Hapus tugas</button></div>':'')+'</article>';
-      return;
+        '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).map(gid=>{const g=S.cs[gid]||{},principal=Number(g.principal)||null,sub=t.groupSubs[gid];return '<li><b>'+esc(g.name||gid)+'</b> · Team Principal: '+esc(principal?nameOf(principal):'—')+' · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka pengumpulan</a>':(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+'</li>';}).join('')+'</ul></details></article>';
     }
-    h+='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3>'+
-      (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
-      (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
-      '<div><div class="track" aria-hidden="true"><i style="width:'+Math.round(cnt/N*100)+'%"></i></div><span class="s">'+cnt+' dari '+N+' mahasiswa sudah mengumpulkan</span></div>';
-    if(canWrite)h+='<div class="field"><label for="tl-'+esc(t.id)+'">Tautan kerjakan (LMS kampus, PDF soal, dsb.)</label><div class="row2" style="flex-wrap:nowrap"><input id="tl-'+esc(t.id)+'" data-dr="tl-'+esc(t.id)+'" type="url" inputmode="url" placeholder="https://" value="'+esc(dv('tl-'+t.id,t.link||''))+'" style="flex:1"><button type="button" class="btn sm" data-act="tlink-save" data-id="'+esc(t.id)+'">Simpan</button></div></div>';
-    if(ME&&canWrite)h+=taskActions(t,subs[ME]);
     const keys=Object.keys(subs).map(Number).sort((a,b)=>a-b);
-    h+='<details><summary>Lihat pengumpulan ('+cnt+')</summary><ul class="subs" style="margin-top:8px">'+
-      (keys.length?keys.map(no=>{const s=subs[no];return '<li><b>No. '+no+' · '+esc(nameOf(no))+'</b> · '+fmtTime(s.at)+(okUrl(s.tautan)?'<br><a href="'+esc(s.tautan)+'" target="_blank" rel="noopener noreferrer">'+esc(s.tautan)+'</a>':(s.tautan?'<br>'+esc(s.tautan):''))+(s.catatan?'<br>'+esc(s.catatan):'')+(s.berkas&&s.berkas.id?'<br>'+fileHtml(s.berkas):'')+'</li>';}).join(''):'<li>Belum ada yang mengumpulkan.</li>')+'</ul></details>';
-    if(canWrite)h+=D.confirmDel===t.id
-      ?'<div class="row2"><span>Hapus tugas ini beserta pengumpulannya?</span><button type="button" class="btn sm pri" data-act="tdel-yes" data-id="'+esc(t.id)+'">Ya, hapus</button><button type="button" class="btn sm" data-act="tdel-no">Batal</button></div>'
-      :'<div class="row2"><button type="button" class="btn sm" data-act="tdel" data-id="'+esc(t.id)+'">Hapus tugas</button></div>';
-    h+='</article>';
-  });
+    return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3>'+
+      (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Riwayat · ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
+      (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
+      (t.link&&okUrl(t.link)?'<p><a href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Buka instruksi / soal ↗</a></p>':'')+
+      '<div><div class="track" aria-hidden="true"><i style="width:'+Math.round(cnt/N*100)+'%"></i></div><span class="s">'+cnt+' dari '+N+' mahasiswa sudah mengumpulkan</span></div>'+
+      '<details><summary>Lihat pengumpulan ('+cnt+')</summary><ul class="subs" style="margin-top:8px">'+
+      (keys.length?keys.map(no=>{const sub=subs[no];return '<li><b>No. '+no+' · '+esc(nameOf(no))+'</b> · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">'+esc(sub.tautan)+'</a>':(sub.tautan?'<br>'+esc(sub.tautan):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):'')+'</li>';}).join(''):'<li>Belum ada yang mengumpulkan.</li>')+'</ul></details></article>';
+  };
+  if(active.length)h+='<h3 class="ph3">Tugas aktif</h3>'+active.map(renderTask).join('');
+  else h+='<p class="empty">Tidak ada tugas aktif.</p>';
+  if(history.length)h+='<details class="task-history"><summary>Riwayat tugas ('+history.length+')</summary>'+history.map(renderTask).join('')+'</details>';
   return h;
 }
-
 function settingsHtml(c){
   const plat=!!S.pl[c.k];
   return '<div class="fgrid">'+
@@ -1423,6 +1411,16 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const p={};for(let i=1;i<=N;i++)p[i]='H';
       await run(()=>writeSession(D.key,D.pert,{present:p}),'Semua ditandai hadir');
+      break;
+    }
+    case 'admin-task-save':{
+      if(!adm())break;
+      const k=$('admin-tn-course').value,judul=$('admin-tn-title').value.trim(),deadline=$('admin-tn-deadline').value||'',link=$('admin-tn-link').value.trim(),deskripsi=$('admin-tn-desc').value.trim(),mode=$('admin-tn-mode').value==='group'?'group':'individual';
+      if(!k||!S.co[k]){toast('Pilih mata kuliah terlebih dahulu.');break;}
+      if(!judul){toast('Isi judul tugas terlebih dahulu.');break;}
+      if(link&&!okUrl(link)){toast('Tautan kerjakan harus diawali http:// atau https://');break;}
+      const ok=await run(()=>db.collection('tugas').add({k:k,judul:judul.slice(0,120),tenggat:deadline,deskripsi:deskripsi.slice(0,1000),link:link,mode:mode,subs:{},groupSubs:{},dibuat:Date.now()}),'Tugas baru berhasil dibuat');
+      if(ok){['admin-tn-title','admin-tn-deadline','admin-tn-link','admin-tn-desc'].forEach(id=>{const el=$(id);if(el)el.value='';});const m=$('admin-tn-mode');if(m)m.value='individual';refreshAll();}
       break;
     }
     case 'tnew-toggle':D.newOpen=!D.newOpen;renderDialog(true);break;
