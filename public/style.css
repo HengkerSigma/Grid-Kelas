@@ -144,8 +144,6 @@ td .lnk:hover{text-decoration-color:var(--accent)}
 .snm .f{display:block;font-size:.98rem;color:var(--muted)}
 .snm b{display:block;font-family:var(--f-disp);font-weight:700;font-size:.95rem;text-transform:uppercase;letter-spacing:.01em}
 .smeta{display:flex;flex-wrap:wrap;gap:4px 12px;padding:0 14px 14px;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-4px}
-.scard>.sxm{width:auto;align-self:stretch;margin:0 14px 13px;gap:3px;min-width:0}
-.scard>.sxm .sxc{height:7px;min-width:0}
 .scard.skel{min-height:200px;background:var(--surface);color:var(--muted)}
 
 /* course grid */
@@ -543,4 +541,4 @@ button.is-busy{cursor:wait;opacity:.65}
 .achievement-icon.gold{background:rgba(245,196,0,.15);color:#f5c400}
 .achievement-icon.purple{background:rgba(155,92,255,.16);color:#b58aff}
 .student-admin-edit{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
-@media(max-width:600px){.student-overview{gap:6px}.student-overview>div{padding:9px}.student-overview small{font-size:.68rem}.student-attendance li{grid-template-columns:42px minmax(72px,1fr) minmax(42px,.8fr) 40px;gap:7px}.student-history li{gap:8px}.student-history .chip{font-size:.68rem;padding:4px 6px}}
+@media(max-width:600px){.student-overview{gap:6px}.student-overview>div{padding:9px}.student-overview small{font-size:.68rem}.student-attendance li{grid-template-columns:42px minmax(72px,1fr) minmax(52px,.8fr) 40px;gap:7px}.student-attendance .sector-track{display:block;width:100%;min-width:52px;height:10px;align-self:center;border-radius:5px;background:var(--surface-2);overflow:hidden}.student-attendance .sector-track i{display:block;height:100%;min-width:0;border-radius:inherit}.student-history li{gap:8px}.student-history .chip{font-size:.68rem;padding:4px 6px}}
