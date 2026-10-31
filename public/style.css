@@ -629,3 +629,16 @@ button.is-busy{cursor:wait;opacity:.65}
 .paddock-constructor{margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
 .paddock-constructor .ph3{letter-spacing:.04em}
 .group-task-card{border-left:3px solid var(--tc,#e10600)}
+
+
+/* Hub Tugas: keep long Paddock Constructor tab labels and intro inside the dialog on mobile. */
+.hub-task-tabs{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;min-width:0;width:100%}
+.hub-task-tabs .student-subtab{flex:1 1 240px;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal;text-align:left;line-height:1.2}
+.hub-task-tabs .course-subtab-sep{display:none}
+.hub-task-intro{min-width:0;max-width:100%;width:100%;overflow-wrap:anywhere;word-break:normal}
+.db>.hub-task-tabs,.db>.hub-task-intro{min-width:0}
+@media(max-width:600px){
+  .hub-task-tabs{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
+  .hub-task-tabs .student-subtab{width:100%;padding:10px 0;font-size:clamp(1rem,4.6vw,1.25rem);letter-spacing:0}
+  .hub-task-intro{font-size:.86rem;line-height:1.5}
+}
