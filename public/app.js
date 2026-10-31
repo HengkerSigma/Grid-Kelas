@@ -716,7 +716,7 @@ function absenStudent(c){
   const bk=se.bukti&&se.bukti[ME];
   h+='<div class="tcard"><div><b>Absen saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div>'+
     '<div class="ast" role="group" aria-label="Status absen saya">'+
-    ['H','I','S','K'].map(s=>'<button type="button" class="sb big" data-act="st" data-no="'+ME+'" data-st="'+s+'" aria-label="'+LBL[s]+'" title="'+LBL[s]+'" aria-pressed="'+(mine===s)+'"'+(canWrite&&(s!=='K'||(bk&&bk.id))?'':' disabled')+'>'+(s==='K'?'K. Berjalan':LBL[s])+'</button>').join('')+'</div>';
+    ['H','I','S','K'].map(s=>'<button type="button" class="sb big" data-act="st" data-no="'+ME+'" data-st="'+s+'" aria-label="'+LBL[s]+'" title="'+LBL[s]+'" aria-pressed="'+(mine===s)+'"'+(canWrite?'':' disabled')+'>'+(s==='K'?'K. Berjalan':LBL[s])+'</button>').join('')+'</div>';
   if(AS&&canWrite){
     h+='<div class="row2"><label class="btn sm pickfile">'+(bk&&bk.id?'Ganti bukti':'Kirim bukti absen')+'<input type="file" accept="image/*,application/pdf" data-file="bukti"></label>'+(bk&&bk.id?'<button type="button" class="btn sm" data-act="bukti-del">Hapus bukti</button>':'')+'</div>'+
       (bk&&bk.id?'<div>'+fileHtml(bk)+'</div>':'<span class="s">Foto atau PDF, misalnya surat izin atau foto kehadiran. Lampirkan berkas sebelum memilih status Kelas Berjalan.</span>');
@@ -748,7 +748,7 @@ function absenAdmin(c){
   for(let i=1;i<=N;i++){
     h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span>'+
       '<span class="ast" role="group" aria-label="Status absen '+esc(nameOf(i))+'">'+
-      ['H','I','S','A','K'].map(s=>'<button type="button" class="sb" data-act="st" data-no="'+i+'" data-st="'+s+'" aria-pressed="'+(p[i]===s)+'" title="'+LBL[s]+'" aria-label="'+LBL[s]+'"'+(w&&(s!=='K'||(bk[i]&&bk[i].id))?'':' disabled')+'>'+(s==='K'?'KB':s)+'</button>').join('')+'</span></li>';
+      ['H','I','S','A','K'].map(s=>'<button type="button" class="sb" data-act="st" data-no="'+i+'" data-st="'+s+'" aria-pressed="'+(p[i]===s)+'" title="'+LBL[s]+'" aria-label="'+LBL[s]+'"'+(w?'':' disabled')+'>'+(s==='K'?'KB':s)+'</button>').join('')+'</span></li>';
   }
   return h+'</ol>';
 }
@@ -1182,7 +1182,7 @@ document.addEventListener('click',async e=>{
     case 'st':{
       const no=+d.no,c=D.key,session=S.se[c+'_'+PAD(D.pert)]||{},cur=(session.present||{})[no]||'';
       if(!adm()&&no!==ME)break;
-      if(d.st==='K'&&!(session.bukti&&session.bukti[no]&&session.bukti[no].id)){toast('Lampirkan file bukti terlebih dahulu untuk memilih Kelas Berjalan.');break;}
+      if(d.st==='K'&&!(session.bukti&&session.bukti[no]&&session.bukti[no].id)){alert('Berkas bukti belum dikirim. Silakan unggah foto atau PDF bukti absensi terlebih dahulu sebelum memilih status Kelas Berjalan.');break;}
       await run(()=>writeSession(c,D.pert,{present:{[no]:cur===d.st?'':d.st}}));
       break;
     }
