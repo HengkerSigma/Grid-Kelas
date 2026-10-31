@@ -328,13 +328,23 @@ function pitDlg(){
   const p=pitData(ME);
   let h=dlgHead('PIT TUGAS',p.a+'/'+p.b+' tugas selesai','Diurutkan menurut tenggat terdekat.','#e10600');
   h+='<div class="db"><ul class="pleg"><li>'+flagSvg('r')+'Kurang dari 1 hari</li><li>'+flagSvg('y')+'Kurang dari 3 hari</li><li>'+flagSvg('g')+'3 hari atau lebih</li><li><span class="dnfb">DNF</span>Lewat tenggat, tidak terselesaikan</li></ul>';
-  if(!p.b)return h+'<p class="empty">Belum ada tugas dari dosen.</p></div>';
-  if(p.open.length){
+  if(p.b&&p.open.length){
     h+='<ul class="plist">'+p.open.map(x=>{const f=flagOf(x.t);
       return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Kumpulkan</button>'+hasilBtn(x.t)+'</span></li>';}).join('')+'</ul>';
-  }else if(!p.dnf.length)h+='<p class="empty">Semua tugas sudah Anda kumpulkan.</p>';
+  }else if(p.b&&!p.dnf.length&&!p.done.length)h+='<p class="empty">Belum ada tugas aktif.</p>';
   if(p.dnf.length)h+='<h3 class="ph3" style="margin-top:6px">DNF · Tidak terselesaikan</h3><ul class="plist">'+p.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+' · pengumpulan ditutup</span></div><span class="pact">'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
   if(p.done.length)h+='<h3 class="ph3" style="margin-top:6px">Sudah dikumpulkan</h3><ul class="plist">'+p.done.map(x=>'<li class="pit-it done"><span class="pck" aria-hidden="true">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
+  const history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.tenggat&&t.tenggat<today()).sort((a,b)=>(b.tenggat||'').localeCompare(a.tenggat||''));
+  h+='<div class="pit-history-toggle"><button type="button" class="btn sm" data-act="pit-history-toggle" aria-expanded="'+!!D.historyOpen+'">'+(D.historyOpen?'Tutup History Tugas':'Lihat History Tugas')+' ('+history.length+')</button></div>';
+  if(D.historyOpen){
+    h+='<h3 class="ph3" style="margin-top:14px">History Tugas</h3>';
+    if(!history.length)h+='<p class="empty">Belum ada tugas yang masuk history.</p>';
+    else h+='<ul class="plist">'+history.map(t=>{
+      const result=hasilData(t.id),entry=result&&result.done.find(x=>x.no===ME);
+      const status=entry?('Dikumpulkan · '+fmtTime(entry.at)+' · P'+entry.pos):'DNF · Tidak dikumpulkan';
+      return '<li class="pit-it '+(entry?'done':'dnf')+'"><span class="'+(entry?'pck':'dnfb')+'">'+(entry?'&#10003;':'DNF')+'</span><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+fmtDate(t.tenggat)+' · '+status+'</span></div><span class="pact">'+hasilBtn(t)+'</span></li>';
+    }).join('')+'</ul>';
+  }
   return h+'</div>';
 }
 /* ---------- Hasil tugas: podium + time tower ---------- */
@@ -1163,7 +1173,8 @@ document.addEventListener('click',async e=>{
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
     case 'open-student':openD('student',+d.no);loadHasil(true);break;
-    case 'open-pit':openD('pit');break;
+    case 'open-pit':openD('pit');loadHasil(true);break;
+    case 'pit-history-toggle':D.historyOpen=!D.historyOpen;renderDialog(true);break;
     case 'open-sektor':openD('sektor');break;
     case 'close':dlg.close();break;
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
