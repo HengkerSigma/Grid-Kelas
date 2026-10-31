@@ -461,6 +461,42 @@ function homeTiles(no){
     '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
+
+/* ---------- Grid Class Rookie Lap · tutorial pengguna baru ---------- */
+function startGridClassTour(){
+  if(!ME||!window.driver||!window.driver.js||typeof window.driver.js.driver!=='function')return;
+  let seen=false;try{seen=localStorage.getItem('gk_tour_v1_'+ME)==='done';}catch(e){}
+  if(seen)return;
+  const d=window.driver.js.driver({
+    animate:true,showProgress:true,showButtons:['previous','next','close'],
+    nextBtnText:'Lanjutkan',prevBtnText:'Kembali',doneBtnText:'Mulai balapan',
+    progressText:'{current} / {total}',allowClose:true,overlayColor:'rgba(4,8,16,.82)',
+    stagePadding:7,stageRadius:12,popoverClass:'gk-race-tour',
+    steps:[
+      {element:'.nav',popover:{title:'01 · PIT WALL NAVIGATION',description:'Ini pusat navigasi Grid Kelas. Dari sini kamu bisa berpindah ke Beranda, Line-Up mahasiswa, dan daftar Mata Kuliah.',side:'bottom',align:'center'},
+       onNextClick:()=>{setView('mahasiswa',true);setTimeout(()=>d.moveNext(),120);}},
+      {element:'#v-mahasiswa .student-subtabs',popover:{title:'02 · DRIVER LINE-UP',description:'Tab LINE-UP menampilkan kartu seluruh mahasiswa. Pilih kartu untuk membuka profil, melihat kehadiran, hasil tugas, dan achievement. Tab CONSTRUCTOR berisi tim kelompok kelas.',side:'bottom',align:'start'},
+       onNextClick:()=>{const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="constructor"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
+      {element:'#constructorPanel',popover:{title:'03 · CONSTRUCTOR GARAGE',description:'Di sini kamu bisa melihat daftar tim Constructor, anggota tim, Team Principal, serta klasemen berdasarkan progres pengumpulan tugas kelompok.',side:'top',align:'center'},
+       onNextClick:()=>{setView('mata-kuliah',true);setTimeout(()=>d.moveNext(),120);}},
+      {element:'#v-mata-kuliah .course-subtabs',popover:{title:'04 · GRAND PRIX & HISTORY',description:'GRAND PRIX berisi kartu mata kuliah aktif. HISTORY menyimpan tugas yang sudah melewati tenggat. Pilih tab untuk mengganti tampilan.',side:'bottom',align:'start'},
+       onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="history"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
+      {element:'#cgrid',popover:{title:'05 · COURSE GARAGE',description:'Setiap kartu mewakili satu mata kuliah. Buka kartu untuk melihat informasi perkuliahan, absensi, materi, dan tugas yang terhubung dengan mata kuliah tersebut.',side:'top',align:'center'},
+       onNextClick:()=>{setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
+      {element:'#home .tiles',popover:{title:'06 · RACE CONTROL',description:'Hub Tugas merangkum tugas individu dan Constructor yang perlu kamu selesaikan. Sektor Absensi menunjukkan progres kehadiran dan posisi sektormu di kelas.',side:'bottom',align:'center'},
+       onNextClick:()=>{const b=document.querySelector('#home [data-act="open-pit"]');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
+      {element:'#dlg .hub-task-tabs',popover:{title:'07 · PIT LANE TUGAS',description:'Pilih PIT TUGAS untuk pekerjaan individu atau PADDOCK CONSTRUCTOR untuk tugas kelompok. Periksa instruksi dan tenggat sebelum mengirim hasil.',side:'top',align:'center'},
+       onNextClick:()=>{if(dlg.open)dlg.close();setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
+      {element:'#home .schedule-panel',popover:{title:'08 · RACE WEEKEND SCHEDULE',description:'Jadwal hari ini menampilkan kelas dan jam perkuliahan. Gunakan tombol Isi Absen saat sesi dibuka, atau buka riwayat absensi untuk mengecek catatan sebelumnya.',side:'top',align:'center'}},
+      {element:'#home .team-radio',popover:{title:'09 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'}},
+      {element:'#home #superLicensePanel',popover:{title:'10 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
+      {element:'#home .panel',popover:{title:'11 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}}
+    ],
+    onDestroyed:()=>{try{localStorage.setItem('gk_tour_v1_'+ME,'done');}catch(e){}}
+  });
+  d.drive();
+}
+
 function dlgHead(kind,title,sub,col){
   return '<div class="dh" style="--tc:'+col+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">'+kind+'</div><h2 id="dtitle">'+title+'</h2>'+(sub?'<p class="jadwal">'+sub+'</p>':'')+'</div>';
 }
@@ -654,7 +690,7 @@ function renderHome(force){
 function superLicensePanel(){
   const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
     .filter(x=>x.no===ME&&x.jenis==='ser').sort((a,b)=>(b.at||0)-(a.at||0));
-  let h='<div class="panel"><h3 class="ph3">Super License</h3>'+
+  let h='<div class="panel" id="superLicensePanel"><h3 class="ph3">Super License</h3>'+
     '<p class="s" style="margin-bottom:12px">Kumpulkan sertifikat pentingmu di satu tempat. Biar gampang dicari kapan pun dibutuhkan.</p>';
   if(ME&&AS){
     h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama sertifikat</label>'+
@@ -1252,7 +1288,7 @@ async function loginGo(){
   if(AUTH){
     try{
       const r=await AUTH.login(D.no,nim,pw);
-      fails=0;ME=r.no;loadSektor();dlg.close();setView('beranda',true);toast('Selamat datang, '+nameOf(r.no));refreshAll();
+      fails=0;ME=r.no;loadSektor();dlg.close();setView('beranda',true);toast('Selamat datang, '+nameOf(r.no));refreshAll();setTimeout(startGridClassTour,650);
     }catch(e){
       if(D){D.err=(e&&e.message)||'Tidak bisa masuk. Coba lagi.';renderDialog(true);const el=$('lg-pw');if(el)el.focus();}
     }
@@ -1267,7 +1303,7 @@ async function loginGo(){
   if(ok){
     fails=0;
     const saved=await run(()=>setMe(no));
-    if(saved){toast('Selamat datang, '+nameOf(no));dlg.close();setView('beranda',true);}
+    if(saved){toast('Selamat datang, '+nameOf(no));dlg.close();setView('beranda',true);refreshAll();setTimeout(startGridClassTour,650);}
     return;
   }
   if(!msg){fails++;if(fails>=5){fails=0;lockUntil=Date.now()+30000;msg='Terlalu banyak percobaan. Tunggu 30 detik.';}else msg='NIM atau password salah.';}
