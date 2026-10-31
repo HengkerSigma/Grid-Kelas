@@ -470,7 +470,7 @@ function startGridClassTour(){
   const d=window.driver.js.driver({
     animate:true,showProgress:true,showButtons:['previous','next','close'],
     nextBtnText:'Lanjutkan',prevBtnText:'Kembali',doneBtnText:'Mulai balapan',
-    progressText:'{current} / {total}',allowClose:true,overlayColor:'rgba(4,8,16,.82)',
+    progressText:'{{current}} / {{total}}',allowClose:true,overlayColor:'rgba(4,8,16,.82)',
     stagePadding:7,stageRadius:12,popoverClass:'gk-race-tour',
     steps:[
       {element:'.nav',popover:{title:'01 · PIT WALL NAVIGATION',description:'Ini pusat navigasi Grid Kelas. Dari sini kamu bisa berpindah ke Beranda, Line-Up mahasiswa, dan daftar Mata Kuliah.',side:'bottom',align:'center'},
@@ -717,7 +717,7 @@ function superLicensePanel(){
 function classArchivePanel(){
   const canEdit=adm()||(ME!=null&&S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true);
   const rows=Object.keys(S.ca).map(id=>Object.assign({id:id},S.ca[id])).sort((a,b)=>(b.at||0)-(a.at||0));
-  let h='<div class="panel"><div class="row2" style="justify-content:space-between;align-items:center"><div><h3 class="ph3">Class Archive</h3>'+
+  let h='<div class="panel" id="classArchivePanel"><div class="row2" style="justify-content:space-between;align-items:center"><div><h3 class="ph3">Class Archive</h3>'+
     '<p class="s">Tempat menyimpan momen dan keseruan kegiatan kelas. Lihat-lihat atau tambahkan foto kalau punya izin.</p></div><span class="chip">'+rows.length+' foto</span></div>';
   if(canEdit&&ME&&AS){
     h+='<div class="stack" style="margin:12px 0 16px"><div class="field"><label for="archive-judul">Judul dokumentasi</label>'+
