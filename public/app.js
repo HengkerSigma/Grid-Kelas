@@ -445,11 +445,15 @@ const SXNAME={p:'Sektor ungu',g:'Sektor hijau',y:'Sektor kuning'};
 function sxStrip(row,cl){return '<span class="sxm" aria-hidden="true">'+cl.map(k=>'<i class="sxc '+(row.cells[k].c||'n')+'"></i>').join('')+'</span>';}
 function homeTiles(no){
   const pit=pitData(no),sx=sektorData(),r=sx.byNo[no],miss=missingOf(no);
+  const groupTasks=taskList().filter(t=>t.mode==='group');
+  const mineGroupTasks=groupTasks.map(t=>({t:t,g:myConstructor(no,t.k)})).filter(x=>x.g);
+  const groupDone=mineGroupTasks.filter(x=>!!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at)).length;
+  const groupTotal=mineGroupTasks.length;
   const pp=[];if(pit.open.length)pp.push(pit.open.length+' belum dikumpulkan');if(pit.dnf.length)pp.push(pit.dnf.length+' DNF');
-  const pitD=pit.b?(pp.length?pp.join(' · '):'Semua sudah dikumpulkan'):'Belum ada tugas';
+  const pitD=pit.b?(pp.length?pp.join(' · '):'Semua tugas individu sudah dikumpulkan'):'Belum ada tugas individu';
   const flags=(pit.open.length||pit.dnf.length)?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+(pit.dnf.length?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+pit.dnf.length+'</span>':'')+'</span>':'';
   return '<div class="tiles">'+
-    '<button type="button" class="tile tilebtn" data-act="open-pit" aria-haspopup="dialog"><div class="v">'+pit.a+'/'+pit.b+'</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · Individu & kelompok</div>'+flags+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
+    '<button type="button" class="tile tilebtn" data-act="open-pit" aria-haspopup="dialog"><div class="v">IDV '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' CON</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · '+(groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai':'Belum ada tugas Constructor untuk kelompokmu')+'</div>'+flags+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
     '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
