@@ -387,7 +387,7 @@ function view(p, data, sess) {
   const parts = p.split('/'), root = parts[0];
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
-  if (root === 'students' || root === 'courses' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
+  if (root === 'students' || root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
   if (root === 'course_updates') return sess ? data : null;
   if (root === 'drives') return sess ? data : null; // folder Drive: hanya untuk yang sudah masuk
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
@@ -396,6 +396,7 @@ function view(p, data, sess) {
     // NIM boleh dilihat oleh seluruh mahasiswa yang sudah login.
     // Data sensitif akun tetap hanya untuk pemilik akun dan admin.
     if (sess) out.nim = data.nim;
+    out.teamPrincipal = data.teamPrincipal || null;
     if (admin) { out.resetReq = data.resetReq || null; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
     else if (sess && sess.no === data.no) { out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
     return out;
@@ -459,6 +460,10 @@ async function decide(method, p, body, sess, existing) {
       if (k === 'nim' && isStr(v, 20)) base.nim = v;
       else if (k === 'admin' && typeof v === 'boolean') base.admin = v;
       else if (k === 'archiveEdit' && typeof v === 'boolean') base.archiveEdit = v;
+      else if (k === 'teamPrincipal' && (v === null || (typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v)))) {
+        if (v !== null && !(await getDoc('constructors/' + v))) return ERR_BAD('Kelompok untuk Team Principal tidak ditemukan.');
+        base.teamPrincipal = v;
+      }
       else if (k === 'resetReq' && (v === null || typeof v === 'number')) base.resetReq = v;
       else if ((k === 'hash' || k === 'salt') && v === null) { base.hash = null; base.salt = null; reset = true; }
       else if (k === 'no') continue;
@@ -621,6 +626,34 @@ async function decide(method, p, body, sess, existing) {
         if (out.link && (out.link.length > 500 || !isHttpUrl(out.link))) return ERR_BAD('Tautan kerjakan harus diawali http:// atau https://.');
       }
       return { data: out };
+    }
+    return ERR_FORBID;
+  }
+
+  if (root === 'constructors') {
+    if (parts.length !== 2 || !/^[A-Za-z0-9_-]{1,40}$/.test(id)) return ERR_FORBID;
+    if (method === 'DELETE') {
+      if (!admin) return ERR_FORBID;
+      const accounts = await Promise.all(Array.from({length:32},(_,i)=>getDoc('akun/'+pad(i+1))));
+      if (accounts.some(a=>a&&a.teamPrincipal===id)) return ERR_BAD('Cabut atau pindahkan role Team Principal sebelum menghapus kelompok.');
+      return { del: true };
+    }
+    if (method === 'POST' || method === 'PUT') {
+      if (!admin) return ERR_FORBID;
+      const name=String(body.name||'').trim();
+      const members=Array.isArray(body.members)?body.members:[];
+      if (!name || name.length>80 || members.length>32 || members.some(n=>!Number.isInteger(n)||n<1||n>32) || new Set(members).size!==members.length) return ERR_BAD('Nama kelompok atau daftar anggota tidak valid.');
+      return { data:{name:name,members:members,createdAt:existing&&existing.createdAt||Date.now()} };
+    }
+    if (method === 'PATCH') {
+      if (!existing) return ERR_MISSING;
+      const acc=admin?null:await getDoc('akun/'+pad(sess.no));
+      if (!admin && !(acc&&acc.teamPrincipal===id)) return ERR_FORBID;
+      if (!onlyKeys(body,['name','members'])) return ERR_FORBID;
+      const name=String(body.name===undefined?existing.name||'':body.name).trim();
+      const members=body.members===undefined?(Array.isArray(existing.members)?existing.members:[]):body.members;
+      if (!name || name.length>80 || !Array.isArray(members) || members.length>32 || members.some(n=>!Number.isInteger(n)||n<1||n>32) || new Set(members).size!==members.length) return ERR_BAD('Nama kelompok atau daftar anggota tidak valid.');
+      return { data:Object.assign({},existing,{name:name,members:members,updatedAt:Date.now()}) };
     }
     return ERR_FORBID;
   }
