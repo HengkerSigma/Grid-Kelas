@@ -14,6 +14,7 @@ const okDrive=u=>{try{const x=new URL(String(u||'').trim());return x.protocol===
 /* Mata kuliah bertipe platform: doc platform/<k> berisi link khusus tempat absen diisi (hanya terlihat setelah masuk). */
 const okHttps=u=>{try{return new URL(String(u||'').trim()).protocol==='https:';}catch(e){return false;}};
 const platOf=k=>{const d=S.pl[k];return d&&okHttps(d.url)?String(d.url).trim():'';};
+const isPlatformCourse=c=>!!(c&&c.k&&S.pl[c.k]);
 const okId=i=>/^[0-9a-f]{32}$/.test(i||'');
 const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';
 const SIL='<svg class="sil" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="34" r="18"/><path d="M12 100c2-27 18-42 38-42s36 15 38 42z"/></svg>';
