@@ -468,32 +468,52 @@ var GRID_DRIVER_PROMISE=null;
 function tourKey(){return 'gk_tour_v1_'+ME;}
 function tourDone(){try{return localStorage.getItem(tourKey())==='done';}catch(e){return false;}}
 function loadGridDriver(){
-  if(window.driver&&window.driver.js&&typeof window.driver.js.driver==='function')return Promise.resolve(true);
-  if(GRID_DRIVER_PROMISE)return GRID_DRIVER_PROMISE;
-  GRID_DRIVER_PROMISE=(async()=>{
-    const sources=[
-      'https://cdn.jsdelivr.net/npm/driver.js@1.3.5/dist/driver.js.iife.js',
-      'https://unpkg.com/driver.js@1.3.5/dist/driver.js.iife.js'
-    ];
-    for(const src of sources){
-      const ok=await new Promise(resolve=>{
-        const script=document.createElement('script');
-        let settled=false;
-        const finish=loaded=>{
-          if(settled)return;settled=true;
-          resolve(!!(loaded&&window.driver&&window.driver.js&&typeof window.driver.js.driver==='function'));
+  if(!window.driver)window.driver={};
+  if(!window.driver.js)window.driver.js={};
+  if(typeof window.driver.js.driver!=='function'){
+    window.driver.js.driver=function(options){
+      let index=0,layer=null,spot=null,pop=null;
+      const steps=options.steps||[];
+      const cleanup=()=>{if(layer)layer.remove();layer=spot=pop=null;};
+      const destroy=()=>{cleanup();if(typeof options.onDestroyed==='function')options.onDestroyed();};
+      const render=()=>{
+        cleanup();
+        if(index>=steps.length){destroy();return;}
+        const step=steps[index],target=typeof step.element==='string'?document.querySelector(step.element):step.element;
+        if(!target){index++;render();return;}
+        target.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
+        layer=document.createElement('div');layer.className='gk-native-tour-layer';
+        spot=document.createElement('div');spot.className='gk-native-tour-spot';
+        pop=document.createElement('section');pop.className='gk-native-tour-pop';
+        const rect=target.getBoundingClientRect(),pad=8;
+        spot.style.top=Math.max(8,rect.top-pad)+'px';spot.style.left=Math.max(8,rect.left-pad)+'px';
+        spot.style.width=Math.min(window.innerWidth-16,rect.width+pad*2)+'px';
+        spot.style.height=Math.min(window.innerHeight-16,rect.height+pad*2)+'px';
+        const p=step.popover||{};
+        pop.innerHTML='<div class="gk-native-tour-kicker">GRID KELAS · ROOKIE LAP</div><div class="gk-native-tour-count">'+(index+1)+' / '+steps.length+'</div><h3></h3><p></p><div class="gk-native-tour-actions"><button type="button" data-tour="close">Tutup</button><span></span><button type="button" data-tour="prev">Kembali</button><button type="button" data-tour="next"></button></div>';
+        pop.querySelector('h3').textContent=p.title||'';pop.querySelector('p').textContent=p.description||'';
+        pop.querySelector('[data-tour="prev"]').disabled=index===0;
+        pop.querySelector('[data-tour="next"]').textContent=index===steps.length-1?'Selesai':'Lanjutkan';
+        const place=()=>{
+          const r=target.getBoundingClientRect(),w=Math.min(380,window.innerWidth-28);
+          pop.style.width=w+'px';
+          let top=p.side==='top'?r.top-pop.offsetHeight-14:r.bottom+14;
+          if(top<12||top+pop.offsetHeight>window.innerHeight-12)top=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.bottom+14));
+          pop.style.top=top+'px';pop.style.left=Math.max(14,Math.min(window.innerWidth-w-14,r.left+(r.width-w)/2))+'px';
         };
-        script.src=src;script.async=true;script.dataset.gridDriver='1';
-        script.addEventListener('load',()=>finish(true),{once:true});
-        script.addEventListener('error',()=>finish(false),{once:true});
-        document.head.appendChild(script);
-        setTimeout(()=>finish(false),10000);
-      });
-      if(ok)return true;
-    }
-    return false;
-  })().finally(()=>{GRID_DRIVER_PROMISE=null;});
-  return GRID_DRIVER_PROMISE;
+        layer.appendChild(spot);layer.appendChild(pop);document.body.appendChild(layer);place();
+        pop.querySelector('[data-tour="close"]').onclick=destroy;
+        pop.querySelector('[data-tour="prev"]').onclick=()=>{index=Math.max(0,index-1);render();};
+        pop.querySelector('[data-tour="next"]').onclick=()=>{
+          if(index===steps.length-1){destroy();return;}
+          if(typeof step.onNextClick==='function')step.onNextClick();else{index++;render();}
+        };
+        window.addEventListener('resize',place,{once:true});
+      };
+      return {drive:()=>{index=0;render();},moveNext:()=>{index++;render();},movePrevious:()=>{index=Math.max(0,index-1);render();},destroy};
+    };
+  }
+  return Promise.resolve(true);
 }
 function renderTourHelp(){
   let b=document.getElementById('gkTourHelp');
@@ -551,8 +571,7 @@ function startGridClassTour(){
 async function launchGridClassTour(force){
   if(GRID_TOUR_STARTED||!ME)return false;
   if(!force&&tourDone()){renderTourHelp();return false;}
-  const loaded=await loadGridDriver();
-  if(!loaded)return false;
+  await loadGridDriver();
   if(GRID_TOUR_STARTED)return false;
   const d=window.driver.js.driver({
     animate:true,showProgress:true,showButtons:['previous','next','close'],
