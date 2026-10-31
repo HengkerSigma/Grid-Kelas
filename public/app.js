@@ -447,7 +447,7 @@ function pitDlg(){
   h+='<div class="pit-history-toggle"><button type="button" class="btn sm" data-act="pit-history-toggle" aria-expanded="'+!!D.historyOpen+'">'+(D.historyOpen?'Tutup History Tugas':'Lihat History Tugas')+' ('+(history.length+groupHistory.length)+')</button></div>';
   if(D.historyOpen){
     h+='<h3 class="ph3" style="margin-top:14px">History Tugas</h3>';
-    if(!history.length)h+='<p class="empty">Belum ada tugas yang masuk history.</p>';
+    if(!history.length&&!groupHistory.length)h+='<p class="empty">Belum ada tugas yang masuk history.</p>';else if(!history.length)h+='';
     else h+='<ul class="plist">'+history.map(t=>{
       const result=hasilData(t.id),entry=result&&result.done.find(x=>x.no===ME);
       const status=entry?('Dikumpulkan · '+fmtTime(entry.at)+' · P'+entry.pos):'DNF · Tidak dikumpulkan';
@@ -974,7 +974,7 @@ function tugasAdmin(c){
       const groups=constructorGroups(),gc=groups.length,done=Object.keys(t.groupSubs||{}).length;
       h+='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">Kelompok</span></div>'+
         (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div><div class="track"><i style="width:'+Math.round((gc?done/gc:0)*100)+'%"></i></div><span class="s">'+done+' dari '+gc+' Constructor sudah mengumpulkan</span></div>'+
-        '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).map(gid=>{const g=S.cs[gid]||{};return '<li><b>'+esc(g.name||gid)+'</b> · '+fmtTime(t.groupSubs[gid].at)+'</li>';}).join('')+'</ul></details>'+
+        '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).map(gid=>{const g=S.cs[gid]||{},principal=Object.keys(S.ak).map(Number).find(n=>(S.ak[PAD(n)]||{}).teamPrincipal===gid)||null,sub=t.groupSubs[gid];return '<li><b>'+esc(g.name||gid)+'</b> · Team Principal: '+esc(principal?nameOf(principal):'—')+' · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka pengumpulan</a>':(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+'</li>';}).join('')+'</ul></details>'+
         (canWrite?'<div class="row2"><button type="button" class="btn sm" data-act="tdel" data-id="'+esc(t.id)+'">Hapus tugas</button></div>':'')+'</article>';
       return;
     }
