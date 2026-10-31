@@ -101,6 +101,7 @@ h3.ph3{margin:0 0 12px;font-family:var(--f-disp);font-weight:700;font-size:.95re
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:20px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
 .tile .v{font-family:var(--f-disp);font-weight:800;font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile-hub .hub-task-value{font-size:clamp(.82rem,4.2vw,1.15rem);line-height:1.15;white-space:nowrap;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
 .tile .l{font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
 .tile .d{font-size:.88rem;color:var(--muted);margin-top:4px}
 .tile.warn .v{color:var(--warn)}
