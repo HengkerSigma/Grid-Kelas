@@ -655,3 +655,39 @@ button.is-busy{cursor:wait;opacity:.65}
   .hub-task-tabs .student-subtab{width:100%;padding:10px 0;font-size:clamp(1rem,4.6vw,1.25rem);letter-spacing:0}
   .hub-task-intro{font-size:.86rem;line-height:1.5}
 }
+
+/* Strong self-identification highlight: override Constructor card theme styles. */
+.rail .rs.me-highlight,
+.rail .rs.me-highlight:focus-visible{
+  border-color:#ff514b!important;
+  box-shadow:0 0 0 2px rgba(225,6,0,.62),0 0 18px 5px rgba(225,6,0,.52),inset 0 0 14px rgba(225,6,0,.18)!important;
+}
+.rail .rs.me-highlight .sav{
+  border-color:#ff514b!important;
+  box-shadow:0 0 0 3px rgba(225,6,0,.68),0 0 18px 6px rgba(225,6,0,.62)!important;
+}
+.rail .rs.me-highlight .rl{
+  color:#ff6b65!important;
+  text-shadow:0 0 9px rgba(225,6,0,.9),0 0 18px rgba(225,6,0,.55)!important;
+}
+.constructor-grid .constructor-member.me-highlight{
+  background:rgba(225,6,0,.24)!important;
+  border-color:#ff514b!important;
+  box-shadow:0 0 0 2px rgba(225,6,0,.5),0 0 18px 4px rgba(225,6,0,.48),inset 0 0 14px rgba(225,6,0,.16)!important;
+}
+.constructor-grid .constructor-member.me-highlight .constructor-avatar{
+  border-color:#ff514b!important;
+  box-shadow:0 0 0 3px rgba(225,6,0,.62),0 0 16px 5px rgba(225,6,0,.58)!important;
+}
+.constructor-grid .constructor-member.me-highlight b{
+  color:#fff!important;
+  text-shadow:0 0 8px #ff514b,0 0 16px rgba(225,6,0,.8)!important;
+}
+.tile-hub .hub-task-value{
+  font-size:clamp(.68rem,3.15vw,.86rem);
+  letter-spacing:-.045em;
+  font-weight:800;
+}
+@media(max-width:600px){
+  .tile-hub .hub-task-value{font-size:clamp(.66rem,3.1vw,.82rem);letter-spacing:-.05em}
+}
