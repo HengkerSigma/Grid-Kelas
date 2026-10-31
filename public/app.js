@@ -333,7 +333,7 @@ function renderConstructor(){
     if(op)occupiedInCourse.add(op);
     (Array.isArray(other.members)?other.members:[]).forEach(x=>{const n=Number(x);if(Number.isInteger(n)&&n>=1&&n<=N)occupiedInCourse.add(n);});
    });
-   const canEdit=isAdmin||(ME!=null&&principalNo===ME),editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
+   const canEdit=isAdmin||(ME!=null&&principalNo!==null&&principalNo===Number(ME)),editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
    const colorId=CONSTRUCTOR_COLORS.some(c=>c.id===g.color)?g.color:CONSTRUCTOR_COLORS[index%CONSTRUCTOR_COLORS.length].id;
    h+='<article class="constructor-card" style="--tc:'+constructorColor(colorId)+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+displayMembers.length+' anggota</span></div><div class="constructor-members">';
    h+=displayMembers.length?displayMembers.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
@@ -393,7 +393,7 @@ function dueText(t){
   return d+' hari lagi · '+fmtDate(t.tenggat);
 }
 function pitData(no){
-  const all=taskList().filter(t=>t.mode!=='group').map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
+  const all=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode!=='group').map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
   const done=all.filter(x=>x.done),dnf=all.filter(x=>!x.done&&isLocked(x.t)),open=all.filter(x=>!x.done&&!isLocked(x.t));
   const n={r:0,y:0,g:0};open.forEach(x=>{n[flagOf(x.t)]++;});
   return{open:open,done:done,dnf:dnf,a:done.length,b:all.length,n:n};
@@ -1358,11 +1358,11 @@ document.addEventListener('click',async e=>{
       const ok=await run(()=>db.collection('constructors').add({courseCode:courseCode,name:name.slice(0,80),members:[],principal:null,createdAt:Date.now()}),'Constructor dibuat');
       if(ok){CONSTRUCTOR_CREATE_COURSE=null;renderConstructor();}break;
     }
-    case 'constructor-edit':CONSTRUCTOR_EDIT_ID=d.id;renderConstructor();break;
+    case 'constructor-edit':{const group=S.cs[d.id];if(!group||!(adm()||(Number(group.principal)>0&&Number(group.principal)===Number(ME))))break;CONSTRUCTOR_EDIT_ID=d.id;renderConstructor();break;}
     case 'constructor-edit-cancel':CONSTRUCTOR_EDIT_ID=null;renderConstructor();break;
     case 'constructor-save':{
       const id=d.id,group=S.cs[id];
-      if(!group||!(adm()||Number(group.principal)===Number(ME)))break;
+      if(!group||!(adm()||(Number(group.principal)>0&&Number(group.principal)===Number(ME))))break;
       const name=document.querySelector('[data-constructor-name="'+id+'"]');
       const selectedMembers=Array.from(document.querySelectorAll('[data-constructor-member="'+id+'"]:checked')).map(x=>Number(x.value));
       if(!name||!name.value.trim()){toast('Nama kelompok tidak boleh kosong.');break;}
