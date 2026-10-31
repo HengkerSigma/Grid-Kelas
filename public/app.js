@@ -56,7 +56,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{}};
-let CONSTRUCTOR_EDIT_ID=null,CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up';
+let CONSTRUCTOR_EDIT_ID=null,CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list';
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -391,11 +391,11 @@ function pitDlg(){
 }
 /* ---------- Hasil tugas: podium + time tower ---------- */
 /* Waktu kumpul semua mahasiswa dari server (/api/hasil: hanya waktu, tanpa tautan/berkas). Tanpa server, dari data yang terlihat. */
-let HS=null,hsTimer=null;
+let HS=null,HS_GROUP=null,hsTimer=null;
 function loadHasil(now){
   if(!(ME||adm())||!AUTH||!AUTH.hasil)return;
   clearTimeout(hsTimer);
-  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;if(D&&(D.kind==='hasil'||D.kind==='student'||D.kind==='pit'))renderDialog(true);}catch(e){/* tetap pakai data lokal */}},now?0:400);
+  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;HS_GROUP=r&&r.groupTugas||null;if(D&&(D.kind==='hasil'||D.kind==='group-hasil'||D.kind==='student'||D.kind==='pit'))renderDialog(true);}catch(e){/* tetap pakai data lokal */}},now?0:400);
 }
 function fmtDT(ms){try{return new Intl.DateTimeFormat('id-ID',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(e){return '';}}
 function fmtGap(ms){
@@ -862,6 +862,11 @@ function tugasStudent(c){
   if(!ME)h+='<div class="mine"><div><b>Masuk untuk mengerjakan dan mengumpulkan tugas</b><span class="s">Pilih nomor absen Anda terlebih dahulu.</span></div><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>';
   list.forEach(t=>{
     const mine=ME&&t.subs?t.subs[ME]:null,late=t.tenggat&&t.tenggat<td;
+    if(t.mode==='group'){
+      const g=myConstructor(ME),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&g.principal===ME;
+      h+=groupTaskCard(t,g,sub,principal);
+      return;
+    }
     h+='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+
       (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+
       (mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+
@@ -875,7 +880,7 @@ function tugasAdmin(c){
   if(canWrite){
     if(D.newOpen){
       h+='<div class="tcard"><div class="field"><label for="tn-judul">Judul tugas</label><input id="tn-judul" data-dr="tn-judul" type="text" maxlength="120" value="'+esc(dv('tn-judul',''))+'" placeholder="Contoh: Tugas 1 – Flowchart"></div>'+
-         '<div class="fgrid"><div class="field"><label for="tn-tenggat">Tenggat</label><input id="tn-tenggat" data-dr="tn-tenggat" type="date" value="'+esc(dv('tn-tenggat',''))+'"></div></div>'+
+         '<div class="fgrid"><div class="field"><label for="tn-tenggat">Tenggat</label><input id="tn-tenggat" data-dr="tn-tenggat" type="date" value="'+esc(dv('tn-tenggat',''))+'"></div><div class="field"><label for="tn-mode">Jenis tugas</label><select id="tn-mode" data-dr="tn-mode"><option value="individual">Individu</option><option value="group">Kelompok</option></select></div></div>'+
          '<div class="field"><label for="tn-link">Tautan kerjakan (LMS kampus, PDF soal, dsb.)</label><input id="tn-link" data-dr="tn-link" type="url" inputmode="url" placeholder="https://" value="'+esc(dv('tn-link',''))+'"></div>'+
          '<div class="field"><label for="tn-desk">Petunjuk</label><textarea id="tn-desk" data-dr="tn-desk" maxlength="1000" placeholder="Jelaskan apa yang harus dikumpulkan">'+esc(dv('tn-desk',''))+'</textarea></div>'+
          '<div class="row2"><button type="button" class="btn pri" data-act="tnew-save">Simpan tugas</button><button type="button" class="btn" data-act="tnew-toggle">Batal</button></div></div>';
@@ -884,6 +889,14 @@ function tugasAdmin(c){
   if(!list.length)h+='<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   list.forEach(t=>{
     const subs=t.subs||{},cnt=Object.keys(subs).length,late=t.tenggat&&t.tenggat<td;
+    if(t.mode==='group'){
+      const groups=constructorGroups(),gc=groups.length,done=Object.keys(t.groupSubs||{}).length;
+      h+='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">Kelompok</span></div>'+
+        (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div><div class="track"><i style="width:'+Math.round((gc?done/gc:0)*100)+'%"></i></div><span class="s">'+done+' dari '+gc+' Constructor sudah mengumpulkan</span></div>'+
+        '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).map(gid=>{const g=S.cs[gid]||{};return '<li><b>'+esc(g.name||gid)+'</b> · '+fmtTime(t.groupSubs[gid].at)+'</li>';}).join('')+'</ul></details>'+
+        (canWrite?'<div class="row2"><button type="button" class="btn sm" data-act="tdel" data-id="'+esc(t.id)+'">Hapus tugas</button></div>':'')+'</article>';
+      return;
+    }
     h+='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3>'+
       (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
       (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
@@ -1297,7 +1310,7 @@ document.addEventListener('click',async e=>{
       const judul=$('tn-judul').value.trim();
       if(!judul){toast('Isi judul tugas dulu.');break;}
       if($('tn-link').value.trim()&&!okUrl($('tn-link').value.trim())){toast('Tautan kerjakan harus diawali http:// atau https://');break;}
-      const ok=await run(()=>db.collection('tugas').add({k:D.key,judul:judul.slice(0,120),tenggat:$('tn-tenggat').value||'',deskripsi:$('tn-desk').value.trim().slice(0,1000),link:$('tn-link').value.trim(),subs:{},dibuat:Date.now()}),'Tugas disimpan');
+      const ok=await run(()=>db.collection('tugas').add({k:D.key,judul:judul.slice(0,120),tenggat:$('tn-tenggat').value||'',deskripsi:$('tn-desk').value.trim().slice(0,1000),link:$('tn-link').value.trim(),mode:$('tn-mode').value==='group'?'group':'individual',subs:{},groupSubs:{},dibuat:Date.now()}),'Tugas disimpan');
       if(ok){['tn-judul','tn-tenggat','tn-desk','tn-link'].forEach(k=>{delete DR[k];});D.newOpen=false;renderDialog(true);}
       break;
     }
