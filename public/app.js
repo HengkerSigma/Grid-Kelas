@@ -233,7 +233,7 @@ function myConstructor(no){
   }).find(g=>g.principal===no||(Array.isArray(g.members)&&g.members.map(Number).includes(no)))||null;
 }
 function groupTaskCard(t,g,sub,principal){
-  const locked=isLocked(t),done=!!(sub&&sub.at),late=t.tenggat&&t.tenggat<today();
+  const id=t.id,locked=isLocked(t),done=!!(sub&&sub.at),late=t.tenggat&&t.tenggat<today(),open=D.subOpen===id;
   let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?'Lewat tenggat':'Tugas kelompok')+'</span></div>'+
     '<p class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</p>'+
     (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'');
@@ -242,9 +242,14 @@ function groupTaskCard(t,g,sub,principal){
   if(done)h+='<p class="tdone"><b>&#10003; Sudah selesai untuk seluruh anggota kelompok.</b><br><span class="s">Dikumpulkan '+fmtTime(sub.at)+'</span></p>';
   else if(locked)h+='<p class="s"><span class="dnfb">DNF</span> Tenggat sudah lewat dan belum dikumpulkan.</p>';
   else if(g&&principal&&canWrite){
-    h+='<div class="tform"><div class="field"><label for="gsl-'+esc(t.id)+'-'+esc(g.id)+'">Tautan pengumpulan kelompok</label><input id="gsl-'+esc(t.id)+'-'+esc(g.id)+'" type="url" inputmode="url" placeholder="https://drive.google.com/…"></div>'+
-      '<div class="field"><label for="gsc-'+esc(t.id)+'-'+esc(g.id)+'">Catatan (opsional)</label><textarea id="gsc-'+esc(t.id)+'-'+esc(g.id)+'" maxlength="500"></textarea></div>'+
-      '<button type="button" class="btn pri" data-act="tsub-group" data-id="'+esc(t.id)+'" data-gid="'+esc(g.id)+'">Kumpulkan sebagai Team Principal</button></div>';
+    h+='<div class="row2"><button type="button" class="btn sm pri" data-act="tsub-group-open" data-id="'+esc(id)+'">'+(open?'Tutup form':'Kumpulkan sebagai Team Principal')+'</button></div>';
+    if(open){
+      const mode=smodeOf(id,sub),pf=(D.pending&&D.pending[id])||(sub&&sub.berkas&&sub.berkas.id?sub.berkas:null);
+      h+='<div class="tform"><div><div class="lbl" style="margin-bottom:8px">Cara mengumpulkan</div><div class="row2" role="group" aria-label="Cara mengumpulkan"><button type="button" class="btn sm" data-act="smode" data-id="'+esc(id)+'" data-m="file" aria-pressed="'+(mode==='file')+'"'+(AS?'':' disabled')+'>Unggah file</button><button type="button" class="btn sm" data-act="smode" data-id="'+esc(id)+'" data-m="link" aria-pressed="'+(mode==='link')+'">Tautan (Drive dll.)</button></div></div>';
+      if(mode==='file')h+='<div class="field"><span class="lbl">Berkas tugas kelompok</span><div class="row2"><label class="btn sm pickfile">'+(pf?'Ganti berkas':'Pilih berkas')+'<input type="file" accept="image/*,application/pdf" data-file="tugas" data-id="'+esc(id)+'"></label><span class="s">'+(pf?esc(pf.name):'Belum ada berkas dipilih')+'</span></div></div>';
+      else h+='<div class="field"><label for="sl-'+esc(id)+'">Tautan pengumpulan kelompok</label><input id="sl-'+esc(id)+'" data-dr="sl-'+esc(id)+'" type="url" inputmode="url" placeholder="https://drive.google.com/…" value="'+esc(dv('sl-'+id,sub&&sub.tautan||''))+'"></div>';
+      h+='<div class="field"><label for="sc-'+esc(id)+'">Catatan (opsional)</label><textarea id="sc-'+esc(id)+'" data-dr="sc-'+esc(id)+'" maxlength="500">'+esc(dv('sc-'+id,sub&&sub.catatan||''))+'</textarea></div><div class="row2"><button type="button" class="btn pri" data-act="tsub-group" data-id="'+esc(id)+'" data-gid="'+esc(g.id)+'">Kirim tugas kelompok</button><button type="button" class="btn" data-act="tsub-group-open" data-id="'+esc(id)+'">Batal</button></div></div>';
+    }
   }else if(g)h+='<p class="s">Menunggu Team Principal mengumpulkan tugas ini.</p>';
   return h+'</article>';
 }
@@ -1394,12 +1399,21 @@ document.addEventListener('click',async e=>{
       const id=d.id,gid=d.gid,t=S.tu[id],g=S.cs[gid],acc=S.ak[PAD(ME)]||{};
       if(!t||t.mode!=='group'||!g||acc.teamPrincipal!==gid){toast('Hanya Team Principal kelompok yang dapat mengumpulkan.');break;}
       if(isLocked(t)){toast('Tenggat sudah lewat. Pengumpulan ditutup.');break;}
-      const link=$('gsl-'+id+'-'+gid).value.trim(),cat=$('gsc-'+id+'-'+gid).value.trim();
-      if(!okHttps(link)){toast('Tempel tautan pengumpulan yang diawali https://');break;}
-      const ok=await run(()=>db.doc('tugas/'+id).update({groupSubs:{[gid]:{tautan:link,catatan:cat.slice(0,500),berkas:null,at:Date.now()}}}),'Tugas kelompok dikumpulkan');
-      if(ok){renderDialog(true);loadHasil(true);}
+      const cat=$('sc-'+id).value.trim();
+      let link='',berkas=null;
+      if(smodeOf(id,t.groupSubs&&t.groupSubs[gid])==='file'){
+        const prev=t.groupSubs&&t.groupSubs[gid];
+        berkas=(D.pending&&D.pending[id])||(prev&&prev.berkas&&prev.berkas.id?prev.berkas:null);
+        if(!berkas){toast('Pilih berkas dulu, lalu tekan Kirim.');break;}
+      }else{
+        link=$('sl-'+id).value.trim();
+        if(!okHttps(link)){toast('Tempel tautan pengumpulan yang diawali https://');break;}
+      }
+      const ok=await run(()=>db.doc('tugas/'+id).update({groupSubs:{[gid]:{tautan:link,catatan:cat.slice(0,500),berkas:berkas,at:Date.now()}}}),'Tugas kelompok dikumpulkan');
+      if(ok){D.subOpen=null;delete DR['sl-'+id];delete DR['sc-'+id];if(D.pending)delete D.pending[id];if(D.smode)delete D.smode[id];renderDialog(true);loadHasil(true);}
       break;
     }
+    case 'tsub-group-open':D.subOpen=D.subOpen===d.id?null:d.id;renderDialog(true);break;
     case 'tsub':{
       if(!ME)break;
       const id=d.id,cat=$('sc-'+id).value.trim();
