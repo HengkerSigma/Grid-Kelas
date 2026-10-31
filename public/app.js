@@ -766,7 +766,7 @@ function renderAdmin(){
   });
   const updates=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).sort((a,b)=>a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
   const edit=CU_EDIT&&S.cu[CU_EDIT]?Object.assign({id:CU_EDIT},S.cu[CU_EDIT]):null;
-  const linkedTask=edit&&edit.task_id&&S.tu[edit.task_id]?S.tu[edit.task_id]:(edit&&edit.task_title?Object.values(S.tu).find(t=>t.k===edit.course_code&&t.judul===edit.task_title):null);
+  const linkedTask=edit&&edit.task_title?Object.entries(S.tu).find(([id,t])=>t.k===edit.course_code&&t.judul===edit.task_title):null;
   const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+(u.attendance_url?'<a href="'+esc(u.attendance_url)+'" target="_blank" rel="noopener">Absensi</a>':'—')+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Materi/soal</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');
   h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Satu formulir untuk mengatur informasi pertemuan, absensi, dan tugas. Informasi pertemuan disimpan di <code>course_updates</code>; tugas yang diisi juga diterbitkan ke tab Tugas mahasiswa.</p>'+
     '<div class="cu-form"><div class="field"><label for="cu-course">Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((edit?edit.course_code:cl[0]&&cl[0].k)===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
@@ -1546,7 +1546,7 @@ document.addEventListener('click',async e=>{
       if(ok){ANN_EDIT=null;['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});renderAdmin();}
       break;
     }
-    const editTaskId=()=>{const e=CU_EDIT&&S.cu[CU_EDIT];if(!e)return null;if(e.task_id&&S.tu[e.task_id])return e.task_id;const match=e.task_title&&Object.keys(S.tu).find(id=>S.tu[id].k===e.course_code&&S.tu[id].judul===e.task_title);return match||null;};
+    const editTaskId=()=>{const e=CU_EDIT&&S.cu[CU_EDIT];if(!e||!e.task_title)return null;const match=Object.keys(S.tu).find(id=>S.tu[id].k===e.course_code&&S.tu[id].judul===e.task_title);return match||null;};
     case 'cu-save':{
       if(!adm())break;
       const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),attendance_url:$('cu-attendance').value.trim(),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null};
@@ -1564,10 +1564,10 @@ document.addEventListener('click',async e=>{
           const taskBody={k:body.course_code,judul:body.task_title,tenggat:body.deadline||'',deskripsi:deskripsi,link:body.task_url,mode:mode,subs:(taskId&&S.tu[taskId]?S.tu[taskId].subs||{}:{}),groupSubs:(taskId&&S.tu[taskId]?S.tu[taskId].groupSubs||{}:{}),dibuat:(taskId&&S.tu[taskId]?S.tu[taskId].dibuat||Date.now():Date.now())};
           if(taskId)await db.doc('tugas/'+taskId).update(taskBody);
           else {const ref=await db.collection('tugas').add(Object.assign({},taskBody,{subs:{},groupSubs:{},dibuat:Date.now()}));taskId=ref.id;}
-          await db.doc('course_updates/'+updateId).update({task_id:taskId});
+          /* relasi tugas ditelusuri dari mata kuliah dan judul pada course_updates */
         }else if(taskId){
           await db.doc('tugas/'+taskId).delete();
-          await db.doc('course_updates/'+updateId).update({task_id:null});
+          
         }
       },'Pembaruan mata kuliah dan tugas berhasil disimpan');
       if(ok)CU_EDIT=null;
