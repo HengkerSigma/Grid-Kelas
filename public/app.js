@@ -1240,11 +1240,12 @@ document.addEventListener('click',async e=>{
       if(!name||!name.value.trim()){toast('Nama kelompok tidak boleh kosong.');break;}
       const principalSelect=document.querySelector('[data-constructor-principal="'+id+'"]');
       const principalValue=principalSelect?Number(principalSelect.value)||null:undefined;
+      const currentPrincipal=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===id)||null;
       const ok=await run(async()=>{
         await db.doc('constructors/'+id).update({name:name.value.trim().slice(0,80),members:members});
         if(principalSelect){
           if(principalValue)await upsertAkun(principalValue,{teamPrincipal:id});
-          if(principalNoForGroup(id)&&principalNoForGroup(id)!==principalValue)await upsertAkun(principalNoForGroup(id),{teamPrincipal:null});
+          if(currentPrincipal&&currentPrincipal!==principalValue)await upsertAkun(currentPrincipal,{teamPrincipal:null});
         }
       },'Isi kelompok disimpan');
       if(ok){CONSTRUCTOR_EDIT_ID=null;renderConstructor();}
