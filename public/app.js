@@ -816,7 +816,7 @@ function defaultPert(k){
   return m||1;
 }
 function openD(kind,key,tab,pert){
-  D={kind:kind,key:key,tab:tab||(kind==='course'?'absen':kind==='student'?'kehadiran':'main'),pert:kind==='course'?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
+  D={kind:kind,key:key,tab:tab||(kind==='course'||kind==='attendance'?'absen':kind==='student'?'kehadiran':'main'),pert:(kind==='course'||kind==='attendance')?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
   renderDialog(true);
   if(!dlg.open)dlg.showModal();
 }
