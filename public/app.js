@@ -83,6 +83,7 @@ const ERRMAP={unauthenticated:'Sesi berakhir. Silakan masuk lagi.',too_large:'Be
 let pendingRuns=0,busyButtons=[];
 function loadingLabel(msg){
   const s=String(msg||'').toLowerCase();
+  if(s.includes('constructor'))return s.includes('dibuat')?'Sedang membuat Constructor…':'Sedang memperbarui anggota Constructor…';
   if(s.includes('absen')||s.includes('forum'))return 'Sedang menyimpan absensi…';
   if(s.includes('tugas'))return 'Sedang mengumpulkan tugas…';
   if(s.includes('sertifikat'))return 'Sedang menyimpan sertifikat…';
@@ -1376,7 +1377,7 @@ document.addEventListener('click',async e=>{
         const payload={name:name.value.trim().slice(0,80),members:members,color:selectedColor};
         if(principalSelect)payload.principal=nextPrincipal;
         await db.doc('constructors/'+id).update(payload);
-      },'Isi kelompok disimpan');
+      },'Constructor diperbarui');
       if(ok){CONSTRUCTOR_EDIT_ID=null;renderConstructor();}
       break;
     }
