@@ -101,7 +101,7 @@ h3.ph3{margin:0 0 12px;font-family:var(--f-disp);font-weight:700;font-size:.95re
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:20px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
 .tile .v{font-family:var(--f-disp);font-weight:800;font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums}
-.tile-hub .hub-task-value{font-size:clamp(.82rem,4.2vw,1.15rem);line-height:1.15;white-space:nowrap;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+.tile-hub .hub-task-value{display:block;width:100%;font-family:var(--f-body);font-size:clamp(.76rem,3.7vw,.95rem);line-height:1.15;white-space:nowrap;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
 .tile .l{font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
 .tile .d{font-size:.88rem;color:var(--muted);margin-top:4px}
 .tile.warn .v{color:var(--warn)}
@@ -509,7 +509,10 @@ button.is-busy{cursor:wait;opacity:.65}
 .history-course{display:block;color:var(--accent,#e10600);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;}
 .history-top h3{margin:0;}
 .history-bottom{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.09);}
-@media(max-width:600px){.course-subtabs{gap:7px;margin-bottom:18px}.course-subtab{font-size:clamp(1.25rem,6vw,2rem);padding-bottom:5px}.course-subtab-sep{font-size:clamp(1.25rem,6vw,2rem)}.history-top{align-items:flex-start}.history-bottom{align-items:flex-start}.history-bottom .btn{width:100%;}}
+@media(max-width:600px){
+  .tiles>.tile-hub{grid-column:1/-1;min-width:0}
+  .tile-hub .hub-task-value{font-size:clamp(.78rem,3.8vw,1rem);letter-spacing:-.04em}
+.course-subtabs{gap:7px;margin-bottom:18px}.course-subtab{font-size:clamp(1.25rem,6vw,2rem);padding-bottom:5px}.course-subtab-sep{font-size:clamp(1.25rem,6vw,2rem)}.history-top{align-items:flex-start}.history-bottom{align-items:flex-start}.history-bottom .btn{width:100%;}}
 
 /* Student profile: compact stats, NIM privacy and three small tabs */
 .s-nim,.student-nim{display:block;color:var(--muted);font-size:.78rem;font-weight:700;letter-spacing:.04em;font-variant-numeric:tabular-nums;margin-top:3px}
