@@ -1311,9 +1311,13 @@ document.addEventListener('touchend',e=>{
 /* ---------- events ---------- */
 dlg.addEventListener('click',e=>{
   const b=e.target.closest('[data-course-tab]');
-  if(!b||!D||D.kind!=='course')return;
+  if(!b||!D||!['course','student'].includes(D.kind))return;
   e.preventDefault();e.stopPropagation();
-  D.tab=b.dataset.courseTab;D.confirmDel=null;renderDialog(true);
+  const allowed=D.kind==='student'?['kehadiran','hasil','achievement']:['absen','tugas','set'];
+  if(!allowed.includes(b.dataset.courseTab))return;
+  D.tab=b.dataset.courseTab;
+  D.confirmDel=null;
+  renderDialog(true);
 });
 
 document.addEventListener('click',async e=>{
