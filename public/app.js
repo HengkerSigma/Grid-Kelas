@@ -221,14 +221,59 @@ function renderCourses(){
   $('cgrid').setAttribute('aria-busy',String(!loaded.co));
 }
 
+function constructorGroups(){
+  return Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
+}
+function myConstructor(no){
+  if(!no)return null;
+  const acc=S.ak[PAD(no)]||{};
+  return constructorGroups().map(g=>{
+    const principal=Object.keys(S.ak).map(Number).find(n=>(S.ak[PAD(n)]||{}).teamPrincipal===g.id)||null;
+    return Object.assign({},g,{principal:principal});
+  }).find(g=>g.principal===no||(Array.isArray(g.members)&&g.members.map(Number).includes(no)))||null;
+}
+function groupTaskCard(t,g,sub,principal){
+  const locked=isLocked(t),done=!!(sub&&sub.at),late=t.tenggat&&t.tenggat<today();
+  let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?'Lewat tenggat':'Tugas kelompok')+'</span></div>'+
+    '<p class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</p>'+
+    (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'');
+  if(!g)h+='<p class="empty">Kamu belum terdaftar dalam Constructor.</p>';
+  else h+='<p class="s">Constructor: <b>'+esc(g.name||'Kelompok')+'</b> · Team Principal: '+esc(g.principal?nameOf(g.principal):'Belum ditetapkan')+'</p>';
+  if(done)h+='<p class="tdone"><b>&#10003; Sudah selesai untuk seluruh anggota kelompok.</b><br><span class="s">Dikumpulkan '+fmtTime(sub.at)+'</span></p>';
+  else if(locked)h+='<p class="s"><span class="dnfb">DNF</span> Tenggat sudah lewat dan belum dikumpulkan.</p>';
+  else if(g&&principal&&canWrite){
+    h+='<div class="tform"><div class="field"><label for="gsl-'+esc(t.id)+'-'+esc(g.id)+'">Tautan pengumpulan kelompok</label><input id="gsl-'+esc(t.id)+'-'+esc(g.id)+'" type="url" inputmode="url" placeholder="https://drive.google.com/…"></div>'+
+      '<div class="field"><label for="gsc-'+esc(t.id)+'-'+esc(g.id)+'">Catatan (opsional)</label><textarea id="gsc-'+esc(t.id)+'-'+esc(g.id)+'" maxlength="500"></textarea></div>'+
+      '<button type="button" class="btn pri" data-act="tsub-group" data-id="'+esc(t.id)+'" data-gid="'+esc(g.id)+'">Kumpulkan sebagai Team Principal</button></div>';
+  }else if(g)h+='<p class="s">Menunggu Team Principal mengumpulkan tugas ini.</p>';
+  return h+'</article>';
+}
+function groupTowerData(id){
+  const t=S.tu[id];if(!t)return null;
+  const src=(HS_GROUP&&HS_GROUP[id])||Object.keys(t.groupSubs||{}).reduce((o,gid)=>{o[gid]=t.groupSubs[gid]&&t.groupSubs[gid].at;return o;},{});
+  const groups=constructorGroups(),done=[],rest=[];
+  groups.forEach(g=>{const at=+src[g.id];if(at>0){const principal=Object.keys(S.ak).map(Number).find(n=>(S.ak[PAD(n)]||{}).teamPrincipal===g.id)||null;done.push({id:g.id,name:g.name||g.id,principal:principal,at:at});}else rest.push(g);});
+  done.sort((a,b)=>a.at-b.at||a.name.localeCompare(b.name,'id'));
+  const lead=done.length?done[0].at:0;
+  done.forEach((x,i)=>{x.pos=i+1;x.gap=x.at-lead;x.int=i?x.at-done[i-1].at:0;});
+  return{t:t,done:done,rest:rest,locked:isLocked(t)};
+}
+function groupTowerHtml(r){
+  if(!r)return '<p class="empty">Klasemen belum tersedia.</p>';
+  if(!r.done.length&&!r.rest.length)return '<p class="empty">Belum ada Constructor yang terdaftar.</p>';
+  const missing=r.locked?'DNF':'NO TIME';
+  let h='<ul class="pleg"><li><b>Interval</b> · selisih waktu dari kelompok di atasnya</li><li><b>Gap ke P1</b> · selisih waktu terhadap P1</li></ul><div class="tblw"><table class="sx tower"><thead><tr><th class="num">POS</th><th>CONSTRUCTOR</th><th>TEAM PRINCIPAL</th><th class="num">WAKTU</th><th class="num">INTERVAL</th><th class="num">GAP KE P1</th></tr></thead><tbody>';
+  r.done.forEach(x=>{h+='<tr><td class="num"><b>P'+x.pos+'</b></td><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.principal?nameOf(x.principal):'—')+'</td><td class="num">'+fmtDT(x.at)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
+  r.rest.forEach((g,i)=>{const principal=Object.keys(S.ak).map(Number).find(n=>(S.ak[PAD(n)]||{}).teamPrincipal===g.id)||null;h+='<tr><td class="num"><b>P'+(r.done.length+i+1)+'</b></td><td><b>'+esc(g.name||g.id)+'</b></td><td>'+esc(principal?nameOf(principal):'—')+'</td><td class="num"><span class="dnfb">'+missing+'</span></td><td class="num"><span class="dnfb">'+missing+'</span></td><td class="num"><span class="dnfb">'+missing+'</span></td></tr>';});
+  return h+'</tbody></table></div>';
+}
 function renderConstructor(){
   const host=$('constructorPanel');if(!host)return;
   host.className='constructor-grid';
   const groups=Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
   const mine=ME!=null?S.ak[PAD(ME)]||{}:{};
   const isAdmin=adm();
-  let h='';
-  if(isAdmin)h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
+  let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';\n  if(CONSTRUCTOR_SUBTAB==='standings'){const tasks=taskList().filter(t=>t.mode==='group');if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';tasks.forEach(t=>{const r=groupTowerData(t.id);h+='<article class="tcard constructor-standing"><div class="row2" style="justify-content:space-between"><div><span class="s">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip">'+(r?r.done.length:0)+'/'+constructorGroups().length+' selesai</span></div>'+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+groupTowerHtml(r)+'</article>';});host.innerHTML=h;return;}\n  if(isAdmin)h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
   if(!groups.length){h+='<div class="constructor-empty">Belum ada kelompok yang dibuat oleh pengelola.</div>';host.innerHTML=h;return;}
   groups.forEach((g,index)=>{
     const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
