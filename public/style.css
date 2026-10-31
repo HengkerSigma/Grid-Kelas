@@ -611,7 +611,7 @@ button.is-busy{cursor:wait;opacity:.65}
 .constructor-grid .constructor-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .constructor-grid .constructor-actions .btn{border-color:rgba(255,255,255,.35)}
 .constructor-grid .constructor-empty{border-color:var(--line);color:var(--muted)}
-@media(max-width:600px){.constructor-grid{grid-template-columns:minmax(0,1fr);gap:16px}.constructor-grid>.constructor-card{padding:15px}.constructor-grid .constructor-head{align-items:flex-start}}
+@media(max-width:600px){.constructor-grid{grid-template-columns:minmax(0,1fr);gap:16px}.constructor-grid .constructor-card{padding:15px}.constructor-grid .constructor-head{align-items:flex-start}}
 
 
 .constructor-editor{margin-top:16px;padding-top:15px;border-top:1px solid rgba(255,255,255,.2);display:grid;gap:12px}
