@@ -192,7 +192,7 @@ function renderCourses(){
     }
     host.innerHTML=history.map(t=>{
       if(t.mode==='group'){
-        const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,count=Object.keys(t.groupSubs||{}).length,total=constructorGroups(t.k).length;
+        const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,courseGroupIds=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(gid=>courseGroupIds.includes(gid)).length,total=courseGroupIds.length;
         const status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';
         return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+' · KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article></li>';
       }
@@ -1331,7 +1331,8 @@ document.addEventListener('click',async e=>{
     case 'constructor-migrate':{
       if(!adm())break;const id=d.id,courseCode=document.querySelector('[data-legacy-course="'+id+'"]')?.value;
       if(!courseList().some(c=>c.k===courseCode)){toast('Pilih mata kuliah terlebih dahulu.');break;}
-      const ok=await run(()=>db.doc('constructors/'+id).update({courseCode:courseCode}),'Constructor dipindahkan ke mata kuliah');if(ok)renderConstructor();break;
+      const principal=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===id)||null;
+      const ok=await run(()=>db.doc('constructors/'+id).update({courseCode:courseCode,principal:principal}),'Constructor dipindahkan ke mata kuliah');if(ok)renderConstructor();break;
     }
     case 'constructor-edit':CONSTRUCTOR_EDIT_ID=d.id;renderConstructor();break;
     case 'constructor-edit-cancel':CONSTRUCTOR_EDIT_ID=null;renderConstructor();break;
