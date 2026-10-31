@@ -273,7 +273,8 @@ function renderConstructor(){
   const groups=Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
   const mine=ME!=null?S.ak[PAD(ME)]||{}:{};
   const isAdmin=adm();
-  let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';\n  if(CONSTRUCTOR_SUBTAB==='standings'){const tasks=taskList().filter(t=>t.mode==='group');if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';tasks.forEach(t=>{const r=groupTowerData(t.id);h+='<article class="tcard constructor-standing"><div class="row2" style="justify-content:space-between"><div><span class="s">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip">'+(r?r.done.length:0)+'/'+constructorGroups().length+' selesai</span></div>'+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+groupTowerHtml(r)+'</article>';});host.innerHTML=h;return;}\n  if(isAdmin)h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
+  let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
+  if(CONSTRUCTOR_SUBTAB==='standings'){const tasks=taskList().filter(t=>t.mode==='group');if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';tasks.forEach(t=>{const r=groupTowerData(t.id);h+='<article class="tcard constructor-standing"><div class="row2" style="justify-content:space-between"><div><span class="s">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip">'+(r?r.done.length:0)+'/'+constructorGroups().length+' selesai</span></div>'+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+groupTowerHtml(r)+'</article>';});host.innerHTML=h;return;}\n  if(isAdmin)h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
   if(!groups.length){h+='<div class="constructor-empty">Belum ada kelompok yang dibuat oleh pengelola.</div>';host.innerHTML=h;return;}
   groups.forEach((g,index)=>{
     const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
@@ -345,7 +346,7 @@ function dueText(t){
   return d+' hari lagi · '+fmtDate(t.tenggat);
 }
 function pitData(no){
-  const all=taskList().map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
+  const all=taskList().filter(t=>t.mode!=='group').map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
   const done=all.filter(x=>x.done),dnf=all.filter(x=>!x.done&&isLocked(x.t)),open=all.filter(x=>!x.done&&!isLocked(x.t));
   const n={r:0,y:0,g:0};open.forEach(x=>{n[flagOf(x.t)]++;});
   return{open:open,done:done,dnf:dnf,a:done.length,b:all.length,n:n};
@@ -421,7 +422,17 @@ function pitDlg(){
   }else if(p.b&&!p.dnf.length&&!p.done.length)h+='<p class="empty">Belum ada tugas aktif.</p>';
   if(p.dnf.length)h+='<h3 class="ph3" style="margin-top:6px">DNF · Tidak terselesaikan</h3><ul class="plist">'+p.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+' · pengumpulan ditutup</span></div><span class="pact">'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
   if(p.done.length)h+='<h3 class="ph3" style="margin-top:6px">Sudah dikumpulkan</h3><ul class="plist">'+p.done.map(x=>'<li class="pit-it done"><span class="pck" aria-hidden="true">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
-  const history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.tenggat&&t.tenggat<today()).sort((a,b)=>(b.tenggat||'').localeCompare(a.tenggat||''));
+  const myGroup=myConstructor(ME);
+  const groupTasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
+  h+='<section class="paddock-constructor"><h3 class="ph3">PADDOCK CONSTRUCTOR</h3><p class="s">Daftar tugas kelompok berdasarkan Constructor kamu.</p>';
+  if(!myGroup)h+='<p class="empty">Kamu belum terdaftar dalam Constructor.</p>';
+  else if(!groupTasks.length)h+='<p class="empty">Belum ada tugas kelompok.</p>';
+  else h+='<ul class="plist">'+groupTasks.map(t=>{
+    const sub=t.groupSubs&&t.groupSubs[myGroup.id],done=!!(sub&&sub.at),late=isLocked(t),principal=myGroup.principal===ME;
+    return '<li class="pit-it '+(done?'done':late?'dnf':'f-g')+'"><span class="'+(done?'pck':late?'dnfb':'pflag g')+'">'+(done?'&#10003;':late?'DNF':'&#9679;')+'</span><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?dueText(t):'Tanpa tenggat')+' · '+esc(myGroup.name||'Constructor')+'</span><span class="s">'+(done?'Dikumpulkan '+fmtTime(sub.at):late?'Tenggat lewat':principal?'Menunggu pengumpulan':'Menunggu Team Principal')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">'+(done?'Lihat':'Buka tugas')+'</button></span></li>';
+  }).join('')+'</ul>';
+  h+='</section>';
+  const history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode!=='group'&&t.tenggat&&t.tenggat<today()).sort((a,b)=>(b.tenggat||'').localeCompare(a.tenggat||''));
   h+='<div class="pit-history-toggle"><button type="button" class="btn sm" data-act="pit-history-toggle" aria-expanded="'+!!D.historyOpen+'">'+(D.historyOpen?'Tutup History Tugas':'Lihat History Tugas')+' ('+history.length+')</button></div>';
   if(D.historyOpen){
     h+='<h3 class="ph3" style="margin-top:14px">History Tugas</h3>';
@@ -1273,6 +1284,7 @@ document.addEventListener('click',async e=>{
       const k=d.k;await run(()=>saveScheduleAttendance(k),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
     case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
+    case 'constructor-subtab':{CONSTRUCTOR_SUBTAB=d.tab==='standings'?'standings':'list';renderConstructor();break;}
     case 'student-subtab':{
       STUDENT_SUBTAB=d.tab==='constructor'?'constructor':'line-up';
       document.querySelectorAll('.student-subtab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===STUDENT_SUBTAB)));
@@ -1375,6 +1387,17 @@ document.addEventListener('click',async e=>{
       if(v&&!okUrl(v)){toast('Tautan harus diawali http:// atau https://');break;}
       const ok=await run(()=>db.doc('tugas/'+d.id).update({link:v}),'Tautan disimpan');
       if(ok)delete DR['tl-'+d.id];
+      break;
+    }
+    case 'tsub-group':{
+      if(!ME)break;
+      const id=d.id,gid=d.gid,t=S.tu[id],g=S.cs[gid],acc=S.ak[PAD(ME)]||{};
+      if(!t||t.mode!=='group'||!g||acc.teamPrincipal!==gid){toast('Hanya Team Principal kelompok yang dapat mengumpulkan.');break;}
+      if(isLocked(t)){toast('Tenggat sudah lewat. Pengumpulan ditutup.');break;}
+      const link=$('gsl-'+id+'-'+gid).value.trim(),cat=$('gsc-'+id+'-'+gid).value.trim();
+      if(!okHttps(link)){toast('Tempel tautan pengumpulan yang diawali https://');break;}
+      const ok=await run(()=>db.doc('tugas/'+id).update({groupSubs:{[gid]:{tautan:link,catatan:cat.slice(0,500),berkas:null,at:Date.now()}}}),'Tugas kelompok dikumpulkan');
+      if(ok){renderDialog(true);loadHasil(true);}
       break;
     }
     case 'tsub':{
