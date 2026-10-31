@@ -435,7 +435,6 @@ const hasilBtn=t=>'<button type="button" class="btn sm" data-act="open-hasil" da
 function pitDlg(){
   if(!ME)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk membuka Hub Tugas.</p></div>';
   const tab=D.taskTab==='group'?'group':'individual';
-  const myGroup=myConstructor(ME);
   const groupTasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
   const individual=pitData(ME);
   let h=dlgHead('HUB TUGAS','Pusat Tugas','Pilih kategori tugas yang ingin kamu lihat.','#e10600');
@@ -447,14 +446,14 @@ function pitDlg(){
     if(individual.dnf.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+individual.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact">'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
     if(individual.done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+individual.done.map(x=>'<li class="pit-it done"><span class="pck">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
   }else{
-    h+='<p class="s hub-task-intro">Daftar tugas kelompok untuk Constructor kamu. Pengumpulan dilakukan oleh Team Principal.</p>';
-    if(!myGroup)h+='<p class="empty">Kamu belum terdaftar dalam Constructor.</p>';
-    else if(!groupTasks.length)h+='<p class="empty">Belum ada tugas kelompok.</p>';
+    h+='<p class="s hub-task-intro">Daftar tugas kelompok dari Constructor kamu di setiap mata kuliah. Pengumpulan dilakukan oleh Team Principal masing-masing kelompok.</p>';
+    const mineTasks=groupTasks.map(t=>({t:t,g:myConstructor(ME,t.k)})).filter(x=>x.g);
+    if(!mineTasks.length)h+='<p class="empty">Kamu belum terdaftar dalam Constructor di mata kuliah mana pun.</p>';
     else{
-      const active=groupTasks.filter(t=>!isLocked(t)&&!(t.groupSubs&&t.groupSubs[myGroup.id]&&t.groupSubs[myGroup.id].at));
-      const done=groupTasks.filter(t=>t.groupSubs&&t.groupSubs[myGroup.id]&&t.groupSubs[myGroup.id].at);
-      const late=groupTasks.filter(t=>isLocked(t)&&!(t.groupSubs&&t.groupSubs[myGroup.id]&&t.groupSubs[myGroup.id].at));
-      const renderGroup=(items,status)=>items.map(t=>{const sub=t.groupSubs&&t.groupSubs[myGroup.id],principal=myGroup.principal===ME;return '<li class="pit-it '+status+'"><span class="'+(status==='done'?'pck':status==='dnf'?'dnfb':'pflag g')+'">'+(status==='done'?'&#10003;':status==='dnf'?'DNF':'&#9679;')+'</span><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?dueText(t):'Tanpa tenggat')+' · '+esc(myGroup.name||'Constructor')+'</span><span class="s">'+(status==='done'?'Dikumpulkan '+fmtTime(sub.at):status==='dnf'?'Tenggat lewat':principal?'Siap dikumpulkan oleh Team Principal':'Menunggu Team Principal')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">'+(status==='done'?'Lihat':'Buka tugas')+'</button></span></li>';}).join('');
+      const active=mineTasks.filter(x=>!isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
+      const done=mineTasks.filter(x=>x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at);
+      const late=mineTasks.filter(x=>isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
+      const renderGroup=(items,status)=>items.map(({t,g})=>{const sub=t.groupSubs&&t.groupSubs[g.id],principal=Number(g.principal)===Number(ME);return '<li class="pit-it '+status+'"><span class="'+(status==='done'?'pck':status==='dnf'?'dnfb':'pflag g')+'">'+(status==='done'?'&#10003;':status==='dnf'?'DNF':'&#9679;')+'</span><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?dueText(t):'Tanpa tenggat')+' · '+esc(g.name||'Constructor')+'</span><span class="s">'+(status==='done'?'Dikumpulkan '+fmtTime(sub.at):status==='dnf'?'Tenggat lewat':principal?'Siap dikumpulkan oleh Team Principal':'Menunggu Team Principal')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">'+(status==='done'?'Lihat':'Buka tugas')+'</button></span></li>';}).join('');
       if(active.length)h+='<h3 class="ph3">Tugas aktif</h3><ul class="plist">'+renderGroup(active,'f-g')+'</ul>';
       if(done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+renderGroup(done,'done')+'</ul>';
       if(late.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+renderGroup(late,'dnf')+'</ul>';
