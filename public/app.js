@@ -353,7 +353,7 @@ let HS=null,hsTimer=null;
 function loadHasil(now){
   if(!(ME||adm())||!AUTH||!AUTH.hasil)return;
   clearTimeout(hsTimer);
-  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;if(D&&(D.kind==='hasil'||D.kind==='student'))renderDialog(true);}catch(e){/* tetap pakai data lokal */}},now?0:400);
+  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;if(D&&(D.kind==='hasil'||D.kind==='student'||D.kind==='pit'))renderDialog(true);}catch(e){/* tetap pakai data lokal */}},now?0:400);
 }
 function fmtDT(ms){try{return new Intl.DateTimeFormat('id-ID',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(e){return '';}}
 function fmtGap(ms){
