@@ -470,17 +470,29 @@ function tourDone(){try{return localStorage.getItem(tourKey())==='done';}catch(e
 function loadGridDriver(){
   if(window.driver&&window.driver.js&&typeof window.driver.js.driver==='function')return Promise.resolve(true);
   if(GRID_DRIVER_PROMISE)return GRID_DRIVER_PROMISE;
-  GRID_DRIVER_PROMISE=new Promise((resolve)=>{
-    let script=document.querySelector('script[data-grid-driver]');
-    if(!script){
-      script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/driver.js@1.3.5/dist/driver.js.iife.js';script.async=true;script.dataset.gridDriver='1';document.head.appendChild(script);
+  GRID_DRIVER_PROMISE=(async()=>{
+    const sources=[
+      'https://cdn.jsdelivr.net/npm/driver.js@1.3.5/dist/driver.js.iife.js',
+      'https://unpkg.com/driver.js@1.3.5/dist/driver.js.iife.js'
+    ];
+    for(const src of sources){
+      const ok=await new Promise(resolve=>{
+        const script=document.createElement('script');
+        let settled=false;
+        const finish=loaded=>{
+          if(settled)return;settled=true;
+          resolve(!!(loaded&&window.driver&&window.driver.js&&typeof window.driver.js.driver==='function'));
+        };
+        script.src=src;script.async=true;script.dataset.gridDriver='1';
+        script.addEventListener('load',()=>finish(true),{once:true});
+        script.addEventListener('error',()=>finish(false),{once:true});
+        document.head.appendChild(script);
+        setTimeout(()=>finish(false),10000);
+      });
+      if(ok)return true;
     }
-    let settled=false;
-    const finish=ok=>{if(settled)return;settled=true;resolve(!!(ok&&window.driver&&window.driver.js&&typeof window.driver.js.driver==='function'));};
-    script.addEventListener('load',()=>finish(true),{once:true});
-    script.addEventListener('error',()=>finish(false),{once:true});
-    setTimeout(()=>finish(false),10000);
-  }).then(ok=>{GRID_DRIVER_PROMISE=null;return ok;});
+    return false;
+  })().finally(()=>{GRID_DRIVER_PROMISE=null;});
   return GRID_DRIVER_PROMISE;
 }
 function renderTourHelp(){
