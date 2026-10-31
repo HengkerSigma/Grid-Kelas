@@ -704,7 +704,7 @@ function classArchivePanel(){
 }
 function schedPanel(sched,dayN){
   let li='';
-  sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div>'+absenBtn(c)+'</li>';});
+  sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
   const needsAttendance=!!ME&&sched.some(c=>inSession(c)&&!(S.se[c.k+'_'+PAD(defaultPert(c.k))]&&S.se[c.k+'_'+PAD(defaultPert(c.k))].present&&S.se[c.k+'_'+PAD(defaultPert(c.k))].present[ME]));
   return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Tidak ada kuliah hari ini.</p>')+'</div>';
 }
@@ -808,7 +808,7 @@ function refreshAll(){
 
 /* ---------- dialog ---------- */
 function tabsHtml(list){
-  return '<div class="tabs" role="tablist">'+list.map(t=>'<button type="button" role="tab" class="tab" data-act="tab" data-tab="'+t[0]+'" aria-selected="'+(D.tab===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
+  return '<div class="tabs" role="tablist">'+list.map(t=>'<button type="button" role="tab" class="tab" data-course-tab="'+t[0]+'" aria-selected="'+(D.tab===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
 }
 function defaultPert(k){
   let m=0;
@@ -1308,6 +1308,13 @@ document.addEventListener('touchend',e=>{
 },{passive:true});
 
 /* ---------- events ---------- */
+dlg.addEventListener('click',e=>{
+  const b=e.target.closest('[data-course-tab]');
+  if(!b||!D||D.kind!=='course')return;
+  e.preventDefault();e.stopPropagation();
+  D.tab=b.dataset.courseTab;D.confirmDel=null;renderDialog(true);
+});
+
 document.addEventListener('click',async e=>{
   const vb=e.target.closest('[data-view]');
   if(vb&&!e.target.closest('[data-act]')){
@@ -1390,6 +1397,7 @@ document.addEventListener('click',async e=>{
       renderCourses();break;
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
+    case 'attendance-history':{if(!S.co[d.k]){toast('Mata kuliah tidak ditemukan.');break;}openD('course',d.k,'absen',defaultPert(d.k));break;}
     case 'schedule-attendance':{const c=S.co[d.k];if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dengan akses absensi.');break;}if(!c||scheduleAttendanceState(c)!=='open'){toast('Waktu pengisian absensi belum tersedia atau sudah lewat.');break;}openD('attendance',d.k,'absen',defaultPert(d.k));break;}
     case 'open-student':openD('student',+d.no);loadHasil(true);break;
     case 'open-pit':openD('pit');loadHasil(true);break;
