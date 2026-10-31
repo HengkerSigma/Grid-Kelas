@@ -188,7 +188,7 @@ function renderCourses(){
       .filter(t=>t.tenggat&&t.tenggat<td)
       .sort((a,b)=>(b.tenggat||'').localeCompare(a.tenggat||''));
     if(!history.length){
-      host.innerHTML='<li class="history-empty">Belum ada tugas yang melewati tenggat.</li>';
+      host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat. Nikmati dulu track yang masih berjalan!</li>';
       host.setAttribute('aria-busy',String(!loaded.co));
       return;
     }
@@ -305,6 +305,7 @@ function renderConstructor(){
  const courses=courseList(),isAdmin=adm();
  if(isAdmin&&loaded.co&&loaded.cs)ensureDefaultConstructors();
  let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
+ h+='<p class="s constructor-intro">'+(CONSTRUCTOR_SUBTAB==='standings'?'Lihat posisi tiap Constructor berdasarkan waktu pengumpulan tugas kelompok.':'Lihat pembagian tim di setiap mata kuliah. Buka detailnya untuk cek anggota dan Team Principal.')+'</p>';
  if(CONSTRUCTOR_SUBTAB==='standings'){
   const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
   if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';
