@@ -56,7 +56,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{}};
-let CONSTRUCTOR_EDIT_ID=null,CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list';
+let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list';
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -192,7 +192,7 @@ function renderCourses(){
     }
     host.innerHTML=history.map(t=>{
       if(t.mode==='group'){
-        const g=ME?myConstructor(ME):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,count=Object.keys(t.groupSubs||{}).length,total=constructorGroups().length;
+        const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,count=Object.keys(t.groupSubs||{}).length,total=constructorGroups(t.k).length;
         const status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';
         return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+' · KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article></li>';
       }
@@ -239,17 +239,8 @@ const CONSTRUCTOR_COLORS=[
   {id:'black',name:'Carbon Black',value:'#34343d'}
 ];
 function constructorColor(id){return (CONSTRUCTOR_COLORS.find(c=>c.id===id)||CONSTRUCTOR_COLORS[0]).value;}
-function constructorGroups(){
-  return Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
-}
-function myConstructor(no){
-  if(!no)return null;
-  const acc=S.ak[PAD(no)]||{};
-  return constructorGroups().map(g=>{
-    const principal=Object.keys(S.ak).map(Number).find(n=>(S.ak[PAD(n)]||{}).teamPrincipal===g.id)||null;
-    return Object.assign({},g,{principal:principal});
-  }).find(g=>g.principal===no||(Array.isArray(g.members)&&g.members.map(Number).includes(no)))||null;
-}
+function constructorGroups(courseCode){return Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).filter(g=>!courseCode||g.courseCode===courseCode).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));}
+function myConstructor(no,courseCode){if(!no)return null;return constructorGroups(courseCode).find(g=>Number(g.principal)===Number(no)||(Array.isArray(g.members)&&g.members.map(Number).includes(Number(no))))||null;}
 function groupTaskCard(t,g,sub,principal){
   const id=t.id,locked=isLocked(t),done=!!(sub&&sub.at),late=t.tenggat&&t.tenggat<today(),open=D.subOpen===id;
   let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?'Lewat tenggat':'Tugas kelompok')+'</span></div>'+
@@ -274,8 +265,8 @@ function groupTaskCard(t,g,sub,principal){
 function groupTowerData(id){
   const t=S.tu[id];if(!t)return null;
   const src=(HS_GROUP&&HS_GROUP[id])||Object.keys(t.groupSubs||{}).reduce((o,gid)=>{o[gid]=t.groupSubs[gid]&&t.groupSubs[gid].at;return o;},{});
-  const groups=constructorGroups(),done=[],rest=[];
-  groups.forEach(g=>{const at=+src[g.id];if(at>0){const principal=Object.keys(S.ak).map(Number).find(n=>(S.ak[PAD(n)]||{}).teamPrincipal===g.id)||null;done.push({id:g.id,name:g.name||g.id,principal:principal,at:at});}else rest.push(g);});
+  const groups=constructorGroups(t.k),done=[],rest=[];
+  groups.forEach(g=>{const at=+src[g.id];if(at>0){const principal=Number(g.principal)||null;done.push({id:g.id,name:g.name||g.id,principal:principal,at:at});}else rest.push(g);});
   done.sort((a,b)=>a.at-b.at||a.name.localeCompare(b.name,'id'));
   const lead=done.length?done[0].at:0;
   done.forEach((x,i)=>{x.pos=i+1;x.gap=x.at-lead;x.int=i?x.at-done[i-1].at:0;});
@@ -287,50 +278,56 @@ function groupTowerHtml(r){
   const missing=r.locked?'DNF':'NO TIME';
   let h='<ul class="pleg"><li><b>Interval</b> · selisih waktu dari kelompok di atasnya</li><li><b>Gap ke P1</b> · selisih waktu terhadap P1</li></ul><div class="tblw"><table class="sx tower"><thead><tr><th class="num">POS</th><th>CONSTRUCTOR</th><th>TEAM PRINCIPAL</th><th class="num">WAKTU</th><th class="num">INTERVAL</th><th class="num">GAP KE P1</th></tr></thead><tbody>';
   r.done.forEach(x=>{h+='<tr><td class="num"><b>P'+x.pos+'</b></td><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.principal?nameOf(x.principal):'—')+'</td><td class="num">'+fmtDT(x.at)+'</td><td class="num">'+fmtGap(x.int)+'</td><td class="num">'+fmtGap(x.gap)+'</td></tr>';});
-  r.rest.forEach((g,i)=>{const principal=Object.keys(S.ak).map(Number).find(n=>(S.ak[PAD(n)]||{}).teamPrincipal===g.id)||null;h+='<tr><td class="num"><b>P'+(r.done.length+i+1)+'</b></td><td><b>'+esc(g.name||g.id)+'</b></td><td>'+esc(principal?nameOf(principal):'—')+'</td><td class="num"><span class="dnfb">'+missing+'</span></td><td class="num"><span class="dnfb">'+missing+'</span></td><td class="num"><span class="dnfb">'+missing+'</span></td></tr>';});
+  r.rest.forEach((g,i)=>{const principal=Number(g.principal)||null;h+='<tr><td class="num"><b>P'+(r.done.length+i+1)+'</b></td><td><b>'+esc(g.name||g.id)+'</b></td><td>'+esc(principal?nameOf(principal):'—')+'</td><td class="num"><span class="dnfb">'+missing+'</span></td><td class="num"><span class="dnfb">'+missing+'</span></td><td class="num"><span class="dnfb">'+missing+'</span></td></tr>';});
   return h+'</tbody></table></div>';
 }
 function renderConstructor(){
-  const host=$('constructorPanel');if(!host)return;
-  host.className='constructor-grid';
-  const groups=Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
-  const mine=ME!=null?S.ak[PAD(ME)]||{}:{};
-  const isAdmin=adm();
-  let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
-  if(CONSTRUCTOR_SUBTAB==='standings'){const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';tasks.forEach(t=>{const r=groupTowerData(t.id);h+='<article class="tcard constructor-standing"><div class="row2" style="justify-content:space-between"><div><span class="s">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip">'+(r?r.done.length:0)+'/'+constructorGroups().length+' selesai</span></div>'+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+groupTowerHtml(r)+'</article>';});host.innerHTML=h;return;}
-  if(isAdmin)h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
-  if(!groups.length){h+='<div class="constructor-empty">Belum ada kelompok yang dibuat oleh pengelola.</div>';host.innerHTML=h;return;}
+ const host=$('constructorPanel');if(!host)return;host.className='constructor-grid';
+ const courses=courseList(),isAdmin=adm();
+ let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
+ if(CONSTRUCTOR_SUBTAB==='standings'){
+  const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
+  if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';
+  tasks.forEach(t=>{const r=groupTowerData(t.id);h+='<article class="tcard constructor-standing"><div class="row2" style="justify-content:space-between"><div><span class="s">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip">'+(r?r.done.length:0)+'/'+constructorGroups(t.k).length+' selesai</span></div>'+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+groupTowerHtml(r)+'</article>';});
+  host.innerHTML=h;return;
+ }
+ if(!courses.length){h+='<div class="constructor-empty">Data mata kuliah belum tersedia.</div>';host.innerHTML=h;return;}
+ courses.forEach(c=>{
+  const groups=constructorGroups(c.k);
+  h+='<section class="panel constructor-course" data-course="'+esc(c.k)+'"><div class="row2" style="justify-content:space-between;align-items:center"><div><span class="constructor-kicker">MATA KULIAH</span><h3 class="ph3">'+esc(c.nama)+'</h3><p class="s">'+groups.length+' Constructor terdaftar</p></div>';
+  if(isAdmin)h+='<button type="button" class="btn pri" data-act="constructor-create" data-course="'+esc(c.k)+'">+ Tambah Constructor</button>';
+  h+='</div>';
+  if(isAdmin&&CONSTRUCTOR_CREATE_COURSE===c.k)h+='<div class="row2 constructor-create"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama Constructor"><button type="button" class="btn pri" data-act="constructor-create-save" data-course="'+esc(c.k)+'">Simpan</button><button type="button" class="btn" data-act="constructor-create-cancel">Batal</button></div>';
+  if(!groups.length)h+='<p class="constructor-empty">Belum ada Constructor untuk mata kuliah ini.</p>';
   groups.forEach((g,index)=>{
-    const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
-    const principalNo=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===g.id)||null;
-    const displayMembers=principalNo?[principalNo,...members.filter(n=>n!==principalNo)]:members;
-    const canEdit=isAdmin||(ME!=null&&mine.teamPrincipal===g.id);
-    const editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
-    const colorId=CONSTRUCTOR_COLORS.some(c=>c.id===g.color)?g.color:CONSTRUCTOR_COLORS[index%CONSTRUCTOR_COLORS.length].id;
-    h+='<article class="constructor-card" style="--tc:'+constructorColor(colorId)+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+displayMembers.length+' anggota</span></div>';
-    h+='<div class="constructor-members">';
-    h+=displayMembers.length?displayMembers.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
-    h+='</div>';
-    if(canEdit&&!editing)h+='<div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-edit" data-id="'+esc(g.id)+'">Atur kelompok</button>'+(isAdmin?'<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>':'')+'</div>';
-    if(editing){
-      h+='<div class="constructor-editor">';
-      if(isAdmin){
-        h+='<label class="constructor-field">Team Principal<select data-constructor-principal="'+esc(g.id)+'"><option value="">Belum ditetapkan</option>';
-        for(let n=1;n<=N;n++){
-          const assigned=(S.ak[PAD(n)]||{}).teamPrincipal;
-          if(!assigned||assigned===g.id||n===principalNo)h+='<option value="'+n+'"'+(n===principalNo?' selected':'')+'>'+n+'. '+esc(nameOf(n))+'</option>';
-        }
-        h+='</select></label>';
-      }
-      h+='<label class="constructor-field">Nama kelompok<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'"></label><label class="constructor-field">Warna kartu Constructor<select data-constructor-color="'+esc(g.id)+'">'+CONSTRUCTOR_COLORS.map(c=>'<option value="'+c.id+'"'+(c.id===colorId?' selected':'')+'>'+c.name+'</option>').join('')+'</select></label><p class="s">Pilih mahasiswa yang menjadi anggota kelompok ini.</p><div class="constructor-members edit">';
-      for(let n=1;n<=N;n++)if(n!==principalNo)h+='<label class="constructor-member"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
-      h+='</div><div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-save" data-id="'+esc(g.id)+'">Simpan perubahan</button><button type="button" class="btn" data-act="constructor-edit-cancel" data-id="'+esc(g.id)+'">Batal</button>';
-      if(isAdmin)h+='<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>';
-      h+='</div></div>';
-    }
-    h+='</article>';
+   const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
+   const principalNo=Number(g.principal)||null,displayMembers=principalNo?[principalNo,...members.filter(n=>n!==principalNo)]:members;
+   const canEdit=isAdmin||(ME!=null&&principalNo===ME),editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
+   const colorId=CONSTRUCTOR_COLORS.some(c=>c.id===g.color)?g.color:CONSTRUCTOR_COLORS[index%CONSTRUCTOR_COLORS.length].id;
+   h+='<article class="constructor-card" style="--tc:'+constructorColor(colorId)+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+displayMembers.length+' anggota</span></div><div class="constructor-members">';
+   h+=displayMembers.length?displayMembers.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
+   h+='</div>';
+   if(canEdit&&!editing)h+='<div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-edit" data-id="'+esc(g.id)+'">Atur kelompok</button>'+(isAdmin?'<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>':'')+'</div>';
+   if(editing){
+    h+='<div class="constructor-editor">';
+    if(isAdmin){h+='<label class="constructor-field">Team Principal<select data-constructor-principal="'+esc(g.id)+'"><option value="">Belum ditetapkan</option>';
+     for(let n=1;n<=N;n++)h+='<option value="'+n+'"'+(n===principalNo?' selected':'')+'>'+n+'. '+esc(nameOf(n))+'</option>';
+     h+='</select></label>';}
+    h+='<label class="constructor-field">Nama Constructor<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'"></label><label class="constructor-field">Warna kartu Constructor<select data-constructor-color="'+esc(g.id)+'">'+CONSTRUCTOR_COLORS.map(c=>'<option value="'+c.id+'"'+(c.id===colorId?' selected':'')+'>'+c.name+'</option>').join('')+'</select></label><p class="s">Pilih mahasiswa yang menjadi anggota kelompok ini.</p><div class="constructor-members edit">';
+    for(let n=1;n<=N;n++)if(n!==principalNo)h+='<label class="constructor-member"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
+    h+='</div><div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-save" data-id="'+esc(g.id)+'">Simpan perubahan</button><button type="button" class="btn" data-act="constructor-edit-cancel" data-id="'+esc(g.id)+'">Batal</button>'+(isAdmin?'<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>':'')+'</div></div>';
+   }
+   h+='</article>';
   });
-  host.innerHTML=h;
+  h+='</section>';
+ });
+ const legacy=constructorGroups().filter(g=>!g.courseCode);
+ if(isAdmin&&legacy.length){
+  h+='<section class="panel constructor-course"><h3 class="ph3">Constructor lama · belum memiliki mata kuliah</h3><p class="s">Pilih mata kuliah untuk memindahkan data Constructor lama ke struktur baru.</p>';
+  legacy.forEach(g=>{h+='<div class="row2"><b>'+esc(g.name||g.id)+'</b><select data-legacy-course="'+esc(g.id)+'"><option value="">Pilih mata kuliah</option>'+courses.map(c=>'<option value="'+esc(c.k)+'">'+esc(c.nama)+'</option>').join('')+'</select><button type="button" class="btn sm pri" data-act="constructor-migrate" data-id="'+esc(g.id)+'">Pindahkan</button></div>';});
+  h+='</section>';
+ }
+ host.innerHTML=h;
 }
 
 /* ---------- header, views ---------- */
@@ -554,7 +551,7 @@ function groupHasilDlg(){
   if(!ME&&!adm())return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Klasemen Konstruktor.</p></div>';
   const r=groupTowerData(D.key);
   if(!r)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Tugas kelompok tidak ditemukan.</p></div>';
-  const done=r.done.length,total=constructorGroups().length;
+  const done=r.done.length,total=constructorGroups(r.t.k).length;
   return dlgHead('KLASEMEN KONSTRUKTOR',esc(r.t.judul),esc(cname(r.t.k))+' · '+done+' dari '+total+' Constructor sudah mengumpulkan','#e10600')+'<div class="db"><div class="row2"><button type="button" class="btn sm" data-act="open-pit">&lsaquo; Pit Tugas</button></div>'+groupTowerHtml(r)+'</div>';
 }
 function hasilDlg(){
@@ -758,10 +755,10 @@ function renderAdmin(){
     ar+='<tr><td class="num">'+n+'</td><td>'+esc(nameOf(n))+(isAd(n)?' '+FLAG:'')+'</td>'+
       '<td><input class="nim" type="text" inputmode="numeric" maxlength="20" data-nim="'+n+'" value="'+esc(k.nim||'')+'" aria-label="NIM nomor absen '+n+'"></td>'+
       '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button><button type="button" class="btn sm" data-act="archive-perm" data-no="'+n+'" aria-pressed="'+(k.archiveEdit===true)+'">'+(k.archiveEdit===true?'Izin arsip · Cabut':'Izin arsip')+'</button></td>'+
-      '<td><select class="tp-select" data-tp-no="'+n+'" aria-label="Team Principal nomor absen '+n+'"><option value="">—</option>'+Object.keys(S.cs).map(id=>'<option value="'+esc(id)+'"'+(k.teamPrincipal===id?' selected':'')+'>'+esc(S.cs[id].name||'Kelompok')+'</option>').join('')+'</select></td>'+
+      ''+
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
-  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Team Principal</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
+  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
   h+='<div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   const cs={},cd={};Object.values(S.be).forEach(x=>{if(x.jenis==='ser')cs[x.no]=(cs[x.no]||0)+1;else if(x.jenis==='dok')cd[x.no]=(cd[x.no]||0)+1;});
@@ -948,7 +945,7 @@ function tugasStudent(c){
   list.forEach(t=>{
     const mine=ME&&t.subs?t.subs[ME]:null,late=t.tenggat&&t.tenggat<td;
     if(t.mode==='group'){
-      const g=myConstructor(ME),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&g.principal===ME;
+      const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);
       h+=groupTaskCard(t,g,sub,principal);
       return;
     }
@@ -975,10 +972,10 @@ function tugasAdmin(c){
   list.forEach(t=>{
     const subs=t.subs||{},cnt=Object.keys(subs).length,late=t.tenggat&&t.tenggat<td;
     if(t.mode==='group'){
-      const groups=constructorGroups(),gc=groups.length,done=Object.keys(t.groupSubs||{}).length;
+      const groups=constructorGroups(t.k),gc=groups.length,done=Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).length;
       h+='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">Kelompok</span></div>'+
         (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div><div class="track"><i style="width:'+Math.round((gc?done/gc:0)*100)+'%"></i></div><span class="s">'+done+' dari '+gc+' Constructor sudah mengumpulkan</span></div>'+
-        '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).map(gid=>{const g=S.cs[gid]||{},principal=Object.keys(S.ak).map(Number).find(n=>(S.ak[PAD(n)]||{}).teamPrincipal===gid)||null,sub=t.groupSubs[gid];return '<li><b>'+esc(g.name||gid)+'</b> · Team Principal: '+esc(principal?nameOf(principal):'—')+' · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka pengumpulan</a>':(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+'</li>';}).join('')+'</ul></details>'+
+        '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).map(gid=>{const g=S.cs[gid]||{},principal=Number(g.principal)||null,sub=t.groupSubs[gid];return '<li><b>'+esc(g.name||gid)+'</b> · Team Principal: '+esc(principal?nameOf(principal):'—')+' · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka pengumpulan</a>':(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+'</li>';}).join('')+'</ul></details>'+
         (canWrite?'<div class="row2"><button type="button" class="btn sm" data-act="tdel" data-id="'+esc(t.id)+'">Hapus tugas</button></div>':'')+'</article>';
       return;
     }
@@ -1322,19 +1319,25 @@ document.addEventListener('click',async e=>{
       if(STUDENT_SUBTAB==='constructor'){renderConstructor();if(CONSTRUCTOR_SUBTAB==='standings')loadHasil(true);}
       break;
     }
-    case 'constructor-create':{
-      if(!adm())break;
-      const name=($('constructor-new-name').value||'').trim();
-      if(!name){toast('Isi nama kelompok terlebih dahulu.');break;}
-      const ok=await run(()=>db.collection('constructors').add({name:name.slice(0,80),members:[],createdAt:Date.now()}),'Kelompok dibuat');
-      if(ok)$('constructor-new-name').value='';
-      break;
+    case 'constructor-create':{if(!adm())break;CONSTRUCTOR_CREATE_COURSE=d.course;renderConstructor();break;}
+    case 'constructor-create-cancel':CONSTRUCTOR_CREATE_COURSE=null;renderConstructor();break;
+    case 'constructor-create-save':{
+      if(!adm())break;const courseCode=d.course,name=($('constructor-new-name')&&$('constructor-new-name').value||'').trim();
+      if(!courseList().some(c=>c.k===courseCode)){toast('Mata kuliah tidak valid.');break;}
+      if(!name){toast('Isi nama Constructor terlebih dahulu.');break;}
+      const ok=await run(()=>db.collection('constructors').add({courseCode:courseCode,name:name.slice(0,80),members:[],principal:null,createdAt:Date.now()}),'Constructor dibuat');
+      if(ok){CONSTRUCTOR_CREATE_COURSE=null;renderConstructor();}break;
+    }
+    case 'constructor-migrate':{
+      if(!adm())break;const id=d.id,courseCode=document.querySelector('[data-legacy-course="'+id+'"]')?.value;
+      if(!courseList().some(c=>c.k===courseCode)){toast('Pilih mata kuliah terlebih dahulu.');break;}
+      const ok=await run(()=>db.doc('constructors/'+id).update({courseCode:courseCode}),'Constructor dipindahkan ke mata kuliah');if(ok)renderConstructor();break;
     }
     case 'constructor-edit':CONSTRUCTOR_EDIT_ID=d.id;renderConstructor();break;
     case 'constructor-edit-cancel':CONSTRUCTOR_EDIT_ID=null;renderConstructor();break;
     case 'constructor-save':{
-      const id=d.id,group=S.cs[id],mine=ME!=null?S.ak[PAD(ME)]||{}:{};
-      if(!group||!(adm()||mine.teamPrincipal===id))break;
+      const id=d.id,group=S.cs[id];
+      if(!group||!(adm()||Number(group.principal)===Number(ME)))break;
       const name=document.querySelector('[data-constructor-name="'+id+'"]');
       const selectedMembers=Array.from(document.querySelectorAll('[data-constructor-member="'+id+'"]:checked')).map(x=>Number(x.value));
       if(!name||!name.value.trim()){toast('Nama kelompok tidak boleh kosong.');break;}
@@ -1342,15 +1345,11 @@ document.addEventListener('click',async e=>{
       const colorSelect=document.querySelector('[data-constructor-color="'+id+'"]');
       const selectedColor=CONSTRUCTOR_COLORS.some(c=>c.id===(colorSelect&&colorSelect.value))?colorSelect.value:(CONSTRUCTOR_COLORS.some(c=>c.id===group.color)?group.color:'red');
       const principalValue=principalSelect?Number(principalSelect.value)||null:undefined;
-      const currentPrincipal=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===id)||null;
+      const currentPrincipal=Number(group.principal)||null;
       const nextPrincipal=principalSelect?principalValue:currentPrincipal;
       const members=nextPrincipal?[nextPrincipal,...selectedMembers.filter(n=>n!==nextPrincipal)]:selectedMembers;
       const ok=await run(async()=>{
-        await db.doc('constructors/'+id).update({name:name.value.trim().slice(0,80),members:members,color:selectedColor});
-        if(principalSelect){
-          if(currentPrincipal&&currentPrincipal!==principalValue)await upsertAkun(currentPrincipal,{teamPrincipal:null});
-          if(principalValue)await upsertAkun(principalValue,{teamPrincipal:id});
-        }
+        await db.doc('constructors/'+id).update({name:name.value.trim().slice(0,80),members:members,color:selectedColor,principal:nextPrincipal});
       },'Isi kelompok disimpan');
       if(ok){CONSTRUCTOR_EDIT_ID=null;renderConstructor();}
       break;
@@ -1358,7 +1357,7 @@ document.addEventListener('click',async e=>{
     case 'constructor-delete':{
       if(!adm())break;
       const id=d.id;
-      if(Object.keys(S.ak).some(no=>(S.ak[no]||{}).teamPrincipal===id)){toast('Cabut atau pindahkan role Team Principal sebelum menghapus kelompok.');break;}
+      if(Number((S.cs[id]||{}).principal)){toast('Cabut role Team Principal sebelum menghapus Constructor.');break;}
       if(!confirm('Hapus kelompok ini?'))break;
       await run(()=>db.doc('constructors/'+id).delete(),'Kelompok dihapus');
       break;
@@ -1424,7 +1423,7 @@ document.addEventListener('click',async e=>{
     case 'tsub-group':{
       if(!ME)break;
       const id=d.id,gid=d.gid,t=S.tu[id],g=S.cs[gid],acc=S.ak[PAD(ME)]||{};
-      if(!t||t.mode!=='group'||!g||acc.teamPrincipal!==gid){toast('Hanya Team Principal kelompok yang dapat mengumpulkan.');break;}
+      if(!t||t.mode!=='group'||!g||Number(g.principal)!==Number(ME)||g.courseCode!==t.k){toast('Hanya Team Principal Constructor pada mata kuliah ini yang dapat mengumpulkan.');break;}
       if(isLocked(t)){toast('Tenggat sudah lewat. Pengumpulan ditutup.');break;}
       const cat=$('sc-'+id).value.trim();
       let link='',berkas=null;
@@ -1650,10 +1649,7 @@ document.addEventListener('change',async e=>{
     });
     return;
   }
-  if(t.dataset&&t.dataset.tpNo&&adm()){
-    const no=+t.dataset.tpNo,id=t.value||null;
-    await run(()=>upsertAkun(no,{teamPrincipal:id}),'Role Team Principal diperbarui');return;
-  }
+  
   if(t.matches&&t.matches('input[type=file][data-up]')){
     const f=t.files&&t.files[0],key=t.dataset.up,kind=t.dataset.kind;
     t.value='';
