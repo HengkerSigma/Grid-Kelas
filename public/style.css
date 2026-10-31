@@ -540,6 +540,8 @@ button.is-busy{cursor:wait;opacity:.65}
 .achievement-icon{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:9px;font-size:1.2rem}
 .achievement-icon.gold{background:rgba(245,196,0,.15);color:#f5c400}
 .achievement-icon.purple{background:rgba(155,92,255,.16);color:#b58aff}
+.achievement-icon.silver{background:rgba(192,201,212,.2);color:#c0c9d4}
+.achievement-icon.bronze{background:rgba(176,112,72,.18);color:#b8734f}
 .student-admin-edit{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
 @media(max-width:600px){.student-overview{gap:6px}.student-overview>div{padding:9px}.student-overview small{font-size:.68rem}.student-attendance li{grid-template-columns:42px minmax(72px,1fr) minmax(52px,.8fr) 40px;gap:7px}.student-attendance .sector-track{display:block;width:100%;min-width:52px;height:10px;align-self:center;border-radius:5px;background:var(--surface-2);overflow:hidden}.student-attendance .sector-track i{display:block;height:100%;min-width:0;border-radius:inherit}.student-history li{gap:8px}.student-history .chip{font-size:.68rem;padding:4px 6px}}
 
