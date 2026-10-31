@@ -191,6 +191,11 @@ function renderCourses(){
       return;
     }
     host.innerHTML=history.map(t=>{
+      if(t.mode==='group'){
+        const g=ME?myConstructor(ME):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,count=Object.keys(t.groupSubs||{}).length,total=constructorGroups().length;
+        const status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';
+        return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+' · KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article></li>';
+      }
       const mine=ME&&t.subs?t.subs[ME]:null,subs=t.subs||{},count=Object.keys(subs).length;
       const status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
       return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+
@@ -438,7 +443,8 @@ function pitDlg(){
   }).join('')+'</ul>';
   h+='</section>';
   const history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode!=='group'&&t.tenggat&&t.tenggat<today()).sort((a,b)=>(b.tenggat||'').localeCompare(a.tenggat||''));
-  h+='<div class="pit-history-toggle"><button type="button" class="btn sm" data-act="pit-history-toggle" aria-expanded="'+!!D.historyOpen+'">'+(D.historyOpen?'Tutup History Tugas':'Lihat History Tugas')+' ('+history.length+')</button></div>';
+  const groupHistory=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group'&&t.tenggat&&t.tenggat<today()).sort((a,b)=>(b.tenggat||'').localeCompare(a.tenggat||''));
+  h+='<div class="pit-history-toggle"><button type="button" class="btn sm" data-act="pit-history-toggle" aria-expanded="'+!!D.historyOpen+'">'+(D.historyOpen?'Tutup History Tugas':'Lihat History Tugas')+' ('+(history.length+groupHistory.length)+')</button></div>';
   if(D.historyOpen){
     h+='<h3 class="ph3" style="margin-top:14px">History Tugas</h3>';
     if(!history.length)h+='<p class="empty">Belum ada tugas yang masuk history.</p>';
@@ -447,6 +453,12 @@ function pitDlg(){
       const status=entry?('Dikumpulkan · '+fmtTime(entry.at)+' · P'+entry.pos):'DNF · Tidak dikumpulkan';
       return '<li class="pit-it '+(entry?'done':'dnf')+'"><span class="'+(entry?'pck':'dnfb')+'">'+(entry?'&#10003;':'DNF')+'</span><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+fmtDate(t.tenggat)+' · '+status+'</span></div><span class="pact">'+hasilBtn(t)+'</span></li>';
     }).join('')+'</ul>';
+    if(groupHistory.length){
+      h+='<h3 class="ph3" style="margin-top:18px">History Paddock Constructor</h3><ul class="plist">'+groupHistory.map(t=>{
+        const g=myConstructor(ME),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,done=!!(sub&&sub.at);
+        return '<li class="pit-it '+(done?'done':'dnf')+'"><span class="'+(done?'pck':'dnfb')+'">'+(done?'&#10003;':'DNF')+'</span><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+fmtDate(t.tenggat)+' · '+(done?'Sudah selesai untuk seluruh anggota · '+fmtTime(sub.at):'DNF · Belum dikumpulkan kelompok')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button></span></li>';
+      }).join('')+'</ul>';
+    }
   }
   return h+'</div>';
 }
@@ -533,6 +545,13 @@ function towerHtml(r,full){
   });
 
   return h+'</tbody></table></div>';
+}
+function groupHasilDlg(){
+  if(!ME&&!adm())return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Klasemen Konstruktor.</p></div>';
+  const r=groupTowerData(D.key);
+  if(!r)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Tugas kelompok tidak ditemukan.</p></div>';
+  const done=r.done.length,total=constructorGroups().length;
+  return dlgHead('KLASEMEN KONSTRUKTOR',esc(r.t.judul),esc(cname(r.t.k))+' · '+done+' dari '+total+' Constructor sudah mengumpulkan','#e10600')+'<div class="db"><div class="row2"><button type="button" class="btn sm" data-act="open-pit">&lsaquo; Pit Tugas</button></div>'+groupTowerHtml(r)+'</div>';
 }
 function hasilDlg(){
   if(!ME&&!adm())return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat hasil tugas.</p></div>';
@@ -777,6 +796,7 @@ function renderDialog(force){
   else if(D.kind==='pit')box.innerHTML=pitDlg();
   else if(D.kind==='sektor')box.innerHTML=sektorDlg();
   else if(D.kind==='hasil')box.innerHTML=hasilDlg();
+  else if(D.kind==='group-hasil')box.innerHTML=groupHasilDlg();
   else box.innerHTML=loginDlg();
   box.scrollTop=sc;
 }
@@ -1439,6 +1459,7 @@ document.addEventListener('click',async e=>{
       break;
     }
     case 'open-hasil':openD('hasil',d.id);loadHasil(true);break;
+    case 'open-group-hasil':openD('group-hasil',d.id);loadHasil(true);break;
     case 'me-clear':{const ok=await run(clearMe,'Anda sudah keluar');if(ok){if(dlg.open)dlg.close();setView('beranda',true);}break;}
     case 'save-course':{
       if(!adm())break;
