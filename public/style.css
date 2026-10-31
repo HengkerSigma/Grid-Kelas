@@ -620,3 +620,12 @@ button.is-busy{cursor:wait;opacity:.65}
 .constructor-editor .constructor-members.edit{max-height:360px;overflow:auto;padding:2px}
 .constructor-editor .constructor-member{cursor:pointer}
 .constructor-editor .constructor-member input{accent-color:var(--accent);flex:none}
+
+/* Constructor standings and Paddock Constructor */
+.constructor-subtabs{grid-column:1/-1;display:flex;align-items:baseline;gap:clamp(8px,2vw,18px);margin:0 0 8px;flex-wrap:wrap}
+.constructor-subtabs .student-subtab{font-size:clamp(1.05rem,3.2vw,1.7rem)}
+.constructor-standing{grid-column:1/-1}
+.constructor-standing .tblw{margin-top:10px}
+.paddock-constructor{margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
+.paddock-constructor .ph3{letter-spacing:.04em}
+.group-task-card{border-left:3px solid var(--tc,#e10600)}
