@@ -704,7 +704,14 @@ async function decide(method, p, body, sess, existing) {
       if (!/^[A-Za-z0-9_-]{1,40}$/.test(String(courseCode||'')) || !(await getDoc('courses/'+courseCode))) return ERR_BAD('Mata kuliah Constructor tidak valid.');
       if (principal!==undefined && principal!==null && (!Number.isInteger(principal)||principal<1||principal>32)) return ERR_BAD('Team Principal tidak valid.');
       const others=await listCol('constructors');
-      if(others.some(row=>row.key!=='constructors/'+id&&((row.data||{}).courseCode===courseCode)&&(((Array.isArray((row.data||{}).members)?(row.data||{}).members:[]).concat(Number((row.data||{}).principal)||[])).some(n=>members.concat(Number(principal)||[]).includes(Number(n))))))return ERR_BAD('Mahasiswa sudah terdaftar di Constructor lain pada mata kuliah ini.');
+      if(others.some(row=>{
+        if(row.key==='constructors/'+id)return false;
+        const g=row.data||{};
+        if(g.courseCode!==courseCode)return false;
+        const assigned=(Array.isArray(g.members)?g.members:[]).concat(Number(g.principal)||[]);
+        const requested=members.concat(Number(principal)||[]);
+        return assigned.some(n=>requested.includes(Number(n)));
+      }))return ERR_BAD('Mahasiswa sudah terdaftar di Constructor lain pada mata kuliah ini.');
       return { data:Object.assign({},existing,{courseCode:courseCode,name:name,members:members,color:color,principal:principal,updatedAt:Date.now()}) };
     }
     return ERR_FORBID;
