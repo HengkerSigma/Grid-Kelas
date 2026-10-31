@@ -55,8 +55,8 @@ let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='load
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
-const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{}};
-let CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix';
+const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{}};
+let CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up';
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -219,6 +219,42 @@ function renderCourses(){
   });
   $('cgrid').innerHTML=h;
   $('cgrid').setAttribute('aria-busy',String(!loaded.co));
+}
+
+function renderConstructor(){
+  const host=$('constructorPanel');if(!host)return;
+  const groups=Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
+  const mine=ME!=null?S.ak[PAD(ME)]||{}:{};
+  const isAdmin=adm();
+  let h='';
+  if(isAdmin){
+    h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
+  }
+  if(!groups.length){
+    h+='<div class="constructor-empty">Belum ada kelompok yang dibuat oleh pengelola.</div>';
+    host.innerHTML=h;return;
+  }
+  groups.forEach(g=>{
+    const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
+    const principal=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===g.id)||null;
+    const canEdit=isAdmin||(ME!=null&&mine.teamPrincipal===g.id);
+    h+='<article class="constructor-card"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span>';
+    h+=canEdit?'<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'" aria-label="Nama kelompok">':'<h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3>';
+    h+='<p class="constructor-principal">'+(principal?'TEAM PRINCIPAL · '+esc(nameOf(principal)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+members.length+' anggota</span></div>';
+    if(canEdit){
+      h+='<p class="s">Pilih mahasiswa yang menjadi anggota kelompok ini.</p><div class="constructor-members edit">';
+      for(let n=1;n<=N;n++)h+='<label class="constructor-member"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
+      h+='</div><div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-save" data-id="'+esc(g.id)+'">Simpan kelompok</button>';
+      if(isAdmin)h+='<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>';
+      h+='</div>';
+    }else{
+      h+='<div class="constructor-members">';
+      h+=members.length?members.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
+      h+='</div>';
+    }
+    h+='</article>';
+  });
+  host.innerHTML=h;
 }
 
 /* ---------- header, views ---------- */
@@ -632,9 +668,10 @@ function renderAdmin(){
     ar+='<tr><td class="num">'+n+'</td><td>'+esc(nameOf(n))+(isAd(n)?' '+FLAG:'')+'</td>'+
       '<td><input class="nim" type="text" inputmode="numeric" maxlength="20" data-nim="'+n+'" value="'+esc(k.nim||'')+'" aria-label="NIM nomor absen '+n+'"></td>'+
       '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button><button type="button" class="btn sm" data-act="archive-perm" data-no="'+n+'" aria-pressed="'+(k.archiveEdit===true)+'">'+(k.archiveEdit===true?'Izin arsip · Cabut':'Izin arsip')+'</button></td>'+
+      '<td><select class="tp-select" data-tp-no="'+n+'" aria-label="Team Principal nomor absen '+n+'"><option value="">—</option>'+Object.keys(S.cs).map(id=>'<option value="'+esc(id)+'"'+(k.teamPrincipal===id?' selected':'')+'>'+esc(S.cs[id].name||'Kelompok')+'</option>').join('')+'</select></td>'+
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
-  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
+  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Team Principal</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
   h+='<div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   const cs={},cd={};Object.values(S.be).forEach(x=>{if(x.jenis==='ser')cs[x.no]=(cs[x.no]||0)+1;else if(x.jenis==='dok')cd[x.no]=(cd[x.no]||0)+1;});
@@ -647,7 +684,7 @@ function renderAdmin(){
 
 function refreshAll(){
   cancelAnimationFrame(raf);
-  raf=requestAnimationFrame(()=>{renderHeader();renderStrip();renderStudents();renderCourses();renderHome();renderAdmin();if(D)renderDialog(false);});
+  raf=requestAnimationFrame(()=>{renderHeader();renderStrip();renderStudents();renderConstructor();renderCourses();renderHome();renderAdmin();if(D)renderDialog(false);});
 }
 
 /* ---------- dialog ---------- */
@@ -1172,6 +1209,39 @@ document.addEventListener('click',async e=>{
       const k=d.k;await run(()=>saveScheduleAttendance(k),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
     case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
+    case 'student-subtab':{
+      STUDENT_SUBTAB=d.tab==='constructor'?'constructor':'line-up';
+      document.querySelectorAll('.student-subtab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===STUDENT_SUBTAB)));
+      $('lineUpPanel').hidden=STUDENT_SUBTAB!=='line-up';
+      $('constructorPanel').hidden=STUDENT_SUBTAB!=='constructor';
+      if(STUDENT_SUBTAB==='constructor')renderConstructor();
+      break;
+    }
+    case 'constructor-create':{
+      if(!adm())break;
+      const name=($('constructor-new-name').value||'').trim();
+      if(!name){toast('Isi nama kelompok terlebih dahulu.');break;}
+      const ok=await run(()=>db.collection('constructors').add({name:name.slice(0,80),members:[],createdAt:Date.now()}),'Kelompok dibuat');
+      if(ok)$('constructor-new-name').value='';
+      break;
+    }
+    case 'constructor-save':{
+      const id=d.id,group=S.cs[id],mine=ME!=null?S.ak[PAD(ME)]||{}:{};
+      if(!group||!(adm()||mine.teamPrincipal===id))break;
+      const name=document.querySelector('[data-constructor-name="'+id+'"]');
+      const members=Array.from(document.querySelectorAll('[data-constructor-member="'+id+'"]:checked')).map(x=>Number(x.value));
+      if(!name||!name.value.trim()){toast('Nama kelompok tidak boleh kosong.');break;}
+      await run(()=>db.doc('constructors/'+id).update({name:name.value.trim().slice(0,80),members:members}),'Isi kelompok disimpan');
+      break;
+    }
+    case 'constructor-delete':{
+      if(!adm())break;
+      const id=d.id;
+      if(Object.keys(S.ak).some(no=>(S.ak[no]||{}).teamPrincipal===id)){toast('Cabut atau pindahkan role Team Principal sebelum menghapus kelompok.');break;}
+      if(!confirm('Hapus kelompok ini?'))break;
+      await run(()=>db.doc('constructors/'+id).delete(),'Kelompok dihapus');
+      break;
+    }
     case 'course-subtab':{
       COURSE_SUBTAB=d.tab==='history'?'history':'grand-prix';
       document.querySelectorAll('.course-subtab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===COURSE_SUBTAB)));
@@ -1428,6 +1498,10 @@ document.addEventListener('change',async e=>{
     return;
   }
   if(t.dataset&&t.dataset.nim&&adm()){await run(()=>upsertAkun(+t.dataset.nim,{nim:t.value.trim()}),'NIM disimpan');return;}
+  if(t.dataset&&t.dataset.tpNo&&adm()){
+    const no=+t.dataset.tpNo,id=t.value||null;
+    await run(()=>upsertAkun(no,{teamPrincipal:id}),'Role Team Principal diperbarui');return;
+  }
   if(t.matches&&t.matches('input[type=file][data-up]')){
     const f=t.files&&t.files[0],key=t.dataset.up,kind=t.dataset.kind;
     t.value='';
@@ -1527,7 +1601,7 @@ setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join()
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();if(key==='tu'&&D&&D.kind==='hasil')loadHasil();refreshAll();
   },onErr);
-  sub('students','st');sub('courses','co');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
+  sub('students','st');sub('courses','co');sub('constructors','cs');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
   if(AUTH){
     AUTH.me().then(m=>{ME=m&&m.no||null;if(ME)loadSektor();refreshAll();});
   }else if(uid){
