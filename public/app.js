@@ -455,7 +455,7 @@ function homeTiles(no){
   const pitD=pit.b?(pp.length?pp.join(' · '):'Semua tugas individu sudah dikumpulkan'):'Belum ada tugas individu';
   const flags=(pit.open.length||pit.dnf.length)?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+(pit.dnf.length?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+pit.dnf.length+'</span>':'')+'</span>':'';
   return '<div class="tiles">'+
-    '<button type="button" class="tile tilebtn tile-hub" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">Individu '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' Constructor</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · '+(groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai':'Belum ada tugas Constructor untuk kelompokmu')+'</div>'+flags+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
+    '<button type="button" class="tile tilebtn tile-hub'+((pit.open.length||groupDone<groupTotal)?' task-alert':'')+'" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">Individu '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' Constructor</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · '+(groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai':'Belum ada tugas Constructor untuk kelompokmu')+'</div>'+flags+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
     '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
@@ -705,7 +705,8 @@ function classArchivePanel(){
 function schedPanel(sched,dayN){
   let li='';
   sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div>'+absenBtn(c)+'</li>';});
-  return '<div class="panel"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Tidak ada kuliah hari ini.</p>')+'</div>';
+  const needsAttendance=!!ME&&sched.some(c=>inSession(c)&&!(S.se[c.k+'_'+PAD(defaultPert(c.k))]&&S.se[c.k+'_'+PAD(defaultPert(c.k))].present&&S.se[c.k+'_'+PAD(defaultPert(c.k))].present[ME]));
+  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Tidak ada kuliah hari ini.</p>')+'</div>';
 }
 function annPanel(anns){
   let a='';
