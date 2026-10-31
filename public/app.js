@@ -907,16 +907,21 @@ function studentResultsTab(no){
   return '<ul class="student-history">'+rows.map(x=>'<li><span class="student-history-mark">P'+(x.pos||'—')+'</span><span class="student-history-copy"><b>'+esc(x.t.k)+' · '+esc(x.t.judul||'Tugas')+'</b><small>'+fmtTime(x.at)+'</small></span><span class="chip '+(x.pos===1?'done':'')+'">'+(x.pos?'P'+x.pos:'Terkumpul')+'</span></li>').join('')+'</ul>';
 }
 function studentAchievementsTab(no){
-  const sx=sektorData(),row=sx.byNo[no],first=[];
+  const sx=sektorData(),row=sx.byNo[no],earlyBird=[],challenger=[];
   Object.keys(S.tu).forEach(id=>{
     const t=S.tu[id],r=hasilData(id),leader=r&&r.done[0];
-    if(leader&&leader.no===no)first.push({t:t,at:leader.at});
+    if(leader&&leader.no===no)earlyBird.push({t:t,at:leader.at});
+    const podium=r&&r.done.find(x=>x.no===no&&((x.pos===2)||(x.pos===3)));
+    if(podium)challenger.push({t:t,at:podium.at,pos:podium.pos});
   });
-  first.sort((x,y)=>(y.at||0)-(x.at||0));
+  earlyBird.sort((x,y)=>(y.at||0)-(x.at||0));
+  challenger.sort((x,y)=>(y.at||0)-(x.at||0));
   const pole=courseList().filter(course=>row&&row.cells[course.k]&&row.cells[course.k].c==='p');
-  let h='<div class="achievement-summary"><div><b>'+first.length+'</b><small>First to Finish</small></div><div><b>'+pole.length+'</b><small>Pole Position</small></div></div>';
-  h+='<h3 class="ph3">First to Finish</h3>';
-  h+=first.length?'<ul class="achievement-list">'+first.map(x=>'<li><span class="achievement-icon gold">★</span><span><b>'+esc(cname(x.t.k))+' · '+esc(x.t.judul)+'</b><small>P1 · '+fmtTime(x.at)+'</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih First to Finish.</p>';
+  let h='<div class="achievement-summary"><div><b>'+earlyBird.length+'</b><small>Early Bird</small></div><div><b>'+challenger.length+'</b><small>Challenger</small></div><div><b>'+pole.length+'</b><small>Pole Position</small></div></div>';
+  h+='<h3 class="ph3">Early Bird</h3>';
+  h+=earlyBird.length?'<ul class="achievement-list">'+earlyBird.map(x=>'<li><span class="achievement-icon gold">★</span><span><b>'+esc(cname(x.t.k))+' · '+esc(x.t.judul)+'</b><small>P1 · '+fmtTime(x.at)+'</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih Early Bird. Jadilah yang pertama mengumpulkan tugas.</p>';
+  h+='<h3 class="ph3" style="margin-top:22px">Challenger</h3>';
+  h+=challenger.length?'<ul class="achievement-list">'+challenger.map(x=>'<li><span class="achievement-icon purple">◆</span><span><b>'+esc(cname(x.t.k))+' · '+esc(x.t.judul)+'</b><small>P'+x.pos+' · '+fmtTime(x.at)+'</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih Challenger. Selesaikan tugas di posisi P2 atau P3.</p>';
   h+='<h3 class="ph3" style="margin-top:22px">Pole Position</h3>';
   h+=pole.length?'<ul class="achievement-list">'+pole.map(course=>'<li><span class="achievement-icon purple">◆</span><span><b>'+esc(course.nama)+'</b><small>Sektor ungu · 5 besar absensi</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih Pole Position. Raih sektor ungu di mata kuliah untuk mendapatkannya.</p>';
   return h;
@@ -934,7 +939,7 @@ function studentDlg(){
     '</div></div></div>';
   if(seeStats){
     const st=stats(no),ts=tugasStat(no),tabs=[['kehadiran','Kehadiran'],['hasil','Hasil'],['achievement','Achievement']];
-    h+='<div class="student-overview"><div><b>'+(pct(st.tot.h,st.tot.t)==null?'—':pct(st.tot.h,st.tot.t)+'%')+'</b><small>Kehadiran</small></div><div><b>'+ts.a+'/'+ts.b+'</b><small>Tugas terkumpul</small></div><div><b>'+studentAchievementCounts(no).first+'</b><small>First to Finish</small></div></div>';
+    h+='<div class="student-overview"><div><b>'+(pct(st.tot.h,st.tot.t)==null?'—':pct(st.tot.h,st.tot.t)+'%')+'</b><small>Kehadiran</small></div><div><b>'+ts.a+'/'+ts.b+'</b><small>Tugas terkumpul</small></div><div><b>'+studentAchievementCounts(no).earlyBird+'</b><small>Early Bird</small></div></div>';
     h+=tabsHtml(tabs);
     h+='<section class="student-tab-panel">'+(D.tab==='hasil'?studentResultsTab(no):D.tab==='achievement'?studentAchievementsTab(no):studentAttendanceTab(no))+'</section>';
   }else{
@@ -949,10 +954,11 @@ function studentDlg(){
   return h+'</div>';
 }
 function studentAchievementCounts(no){
-  const first=Object.keys(S.tu).filter(id=>{const r=hasilData(id);return r&&r.done[0]&&r.done[0].no===no;}).length;
+  const earlyBird=Object.keys(S.tu).filter(id=>{const r=hasilData(id);return r&&r.done[0]&&r.done[0].no===no;}).length;
+  const challenger=Object.keys(S.tu).filter(id=>{const r=hasilData(id);return r&&r.done.some(x=>x.no===no&&(x.pos===2||x.pos===3));}).length;
   const row=sektorData().byNo[no];
   const pole=courseList().filter(course=>row&&row.cells[course.k]&&row.cells[course.k].c==='p').length;
-  return{first:first,pole:pole};
+  return{earlyBird:earlyBird,challenger:challenger,pole:pole};
 }
 function loginDlg(){
   let h='<div class="db"><div class="row2" style="justify-content:space-between"><h2 id="dtitle" style="margin:0;font-family:var(--f-disp);font-size:1.3rem;text-transform:uppercase">'+(ME?'Akun':'Masuk')+'</h2><button type="button" class="btn sm" data-act="close">Tutup</button></div>';
