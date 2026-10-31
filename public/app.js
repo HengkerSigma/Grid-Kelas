@@ -825,6 +825,7 @@ function renderDialog(force){
   if(!force){const a=document.activeElement;if(a&&dlg.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;}
   const sc=box.scrollTop;
   if(D.kind==='course')box.innerHTML=courseDlg();
+  else if(D.kind==='attendance')box.innerHTML=scheduleAttendanceDlg();
   else if(D.kind==='student')box.innerHTML=studentDlg();
   else if(D.kind==='pit')box.innerHTML=pitDlg();
   else if(D.kind==='sektor')box.innerHTML=sektorDlg();
@@ -834,6 +835,11 @@ function renderDialog(force){
   box.scrollTop=sc;
 }
 
+function scheduleAttendanceDlg(){
+  const c=S.co[D.key];
+  if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
+  return '<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">'+esc(c.k)+' · ABSENSI</div><h2 id="dtitle">Isi Absen · '+esc(c.nama)+'</h2><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p></div><div class="db">'+absenStudent(c)+'</div>';
+}
 function courseDlg(){
   const c=S.co[D.key];
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
@@ -866,59 +872,44 @@ function absenStudent(c){
   const n=D.pert,se=S.se[c.k+'_'+PAD(n)]||{},p=se.present||{},mine=ME?(p[ME]||''):'';
   let h=pertPicker(c,'mhs');
   if(se.tanggal||se.topik)h+='<p class="empty"><b>Pertemuan '+n+'</b>'+(se.tanggal?' · '+fmtDate(se.tanggal):'')+(se.topik?' · '+esc(se.topik):'')+'</p>';
-  if(!ME){
-    return h+'<div class="mine"><div><b>Masuk untuk mengisi absen</b><span class="s">Pilih nomor absen Anda terlebih dahulu.</span></div><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>';
-  }
-  if(!canWrite)h+='<p class="empty">Akun ini hanya bisa melihat. Minta pengelola memberi akses Kontributor untuk mengisi absen.</p>';
-  const bk=se.bukti&&se.bukti[ME];
-  h+='<div class="tcard"><div><b>Absen saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div>'+
-    '<div class="ast" role="group" aria-label="Status absen saya">'+
-    ['H','I','S','K'].map(s=>'<button type="button" class="sb big" data-act="st" data-no="'+ME+'" data-st="'+s+'" aria-label="'+LBL[s]+'" title="'+LBL[s]+'" aria-pressed="'+(mine===s)+'"'+(canWrite?'':' disabled')+'>'+(s==='K'?'K. Berjalan':LBL[s])+'</button>').join('')+'</div>';
-  if(AS&&canWrite){
-    h+='<div class="row2"><label class="btn sm pickfile">'+(bk&&bk.id?'Ganti bukti':'Kirim bukti absen')+'<input type="file" accept="image/*,application/pdf" data-file="bukti"></label>'+(bk&&bk.id?'<button type="button" class="btn sm" data-act="bukti-del">Hapus bukti</button>':'')+'</div>'+
-      (bk&&bk.id?'<div>'+fileHtml(bk)+'</div>':'<span class="s">Foto atau PDF, misalnya surat izin atau foto kehadiran. Lampirkan berkas sebelum memilih status Kelas Berjalan.</span>');
-  }else if(bk&&bk.id)h+='<div>'+fileHtml(bk)+'</div>';
-  else if(!AS)h+='<span class="s">Kirim berkas belum tersedia untuk akun ini.</span>';
-  h+='</div>';
+  if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
+  const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):'Belum mengisi';
+  h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+(bk&&bk.id?'<div><b class="s">Bukti absensi</b>'+fileHtml(bk)+'</div>':'<span class="s">Tidak ada bukti yang dilampirkan pada pertemuan ini.</span>')+'</div>';
   const a=stats(ME).by[c.k]||{h:0,t:0};
   h+='<p class="sum"><span>Hadir '+a.h+' dari '+a.t+' pertemuan terisi</span></p>';
   return h;
 }
-
 function absenAdmin(c){
   const n=D.pert,se=S.se[c.k+'_'+PAD(n)]||null,p=(se&&se.present)||{},bk=(se&&se.bukti)||{};
   const cnt={H:0,I:0,S:0,A:0,K:0};
   for(let i=1;i<=N;i++){if(cnt[p[i]]!==undefined)cnt[p[i]]++;}
   const rec=cnt.H+cnt.I+cnt.S+cnt.A+cnt.K;
   let h=pertPicker(c,'adm');
-  const w=canWrite;
-  if(w){
-    h+='<div class="meta"><div class="field"><label for="ab-tgl">Tanggal</label><input id="ab-tgl" type="date" value="'+esc(se&&se.tanggal||'')+'"></div>'+
-       '<div class="field"><label for="ab-top">Topik pertemuan '+n+'</label><input id="ab-top" type="text" maxlength="120" value="'+esc(se&&se.topik||'')+'" placeholder="Contoh: Pengantar dan kontrak kuliah"></div></div>';
-  }else if(se&&(se.tanggal||se.topik)){
-    h+='<p class="empty"><b>Pertemuan '+n+'</b>'+(se.tanggal?' · '+fmtDate(se.tanggal):'')+(se.topik?' · '+esc(se.topik):'')+'</p>';
-  }
+  if(se&&(se.tanggal||se.topik))h+='<p class="empty"><b>Pertemuan '+n+'</b>'+(se.tanggal?' · '+fmtDate(se.tanggal):'')+(se.topik?' · '+esc(se.topik):'')+'</p>';
   h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
-  if(w)h+='<div class="row2"><button type="button" class="btn sm" data-act="allpresent">Tandai semua hadir</button></div>';
-  if(ME&&AS&&w){const mb=bk[ME];h+='<div class="tcard"><div><b>Bukti absen saya · Pertemuan '+n+'</b></div><div class="row2"><label class="btn sm pickfile">'+(mb&&mb.id?'Ganti bukti':'Kirim bukti absen')+'<input type="file" accept="image/*,application/pdf" data-file="bukti"></label>'+(mb&&mb.id?'<button type="button" class="btn sm" data-act="bukti-del">Hapus bukti</button>':'')+'</div>'+(mb&&mb.id?'<div>'+fileHtml(mb)+'</div>':'<span class="s">Foto atau PDF, misalnya surat izin atau foto kehadiran.</span>')+'</div>';}
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
-    h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span>'+
-      '<span class="ast" role="group" aria-label="Status absen '+esc(nameOf(i))+'">'+
-      ['H','I','S','A','K'].map(s=>'<button type="button" class="sb" data-act="st" data-no="'+i+'" data-st="'+s+'" aria-pressed="'+(p[i]===s)+'" title="'+LBL[s]+'" aria-label="'+LBL[s]+'"'+(w?'':' disabled')+'>'+(s==='K'?'KB':s)+'</button>').join('')+'</span></li>';
+    const status=p[i]?(LBL[p[i]]||p[i]):'Belum diisi';
+    h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span></li>';
   }
   return h+'</ol>';
 }
 
-/* Absensi otomatis mengikuti tipe ruang: Ruangan = hadir langsung, Platform = konfirmasi forum. */
-const isPlatformCourse=c=>!!S.pl[c.k];
+/* Tombol absensi pada jadwal menjadi satu-satunya pintu pengisian absensi. */
+function scheduleAttendanceState(c,now){
+  now=now||new Date();
+  if(!onDay(c,HARI_ALL[now.getDay()]))return 'future';
+  const r=jamRange(c);if(!r)return 'open';
+  const t=now.getHours()*60+now.getMinutes();
+  return t<r.s?'future':t>=r.e?'passed':'open';
+}
 function absenBtn(c){
-  if(!(ME||adm())||!inSession(c))return '';
-  if(ME){
-    const n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
-    if(status)return '<div class="tcard attendance-done" role="status" aria-live="polite" style="margin:0;padding:10px 12px"><b><span aria-hidden="true">&#10003; </span>Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
-  }
-  return isPlatformCourse(c)?'<button type="button" class="btn sm pri" data-act="forum-options" data-k="'+esc(c.k)+'">Buka Forum Diskusi Mentari</button>':ME?'<button type="button" class="btn sm pri" data-act="auto-attend" data-k="'+esc(c.k)+'">Isi absen</button>':'';
+  if(!ME)return '';
+  const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
+  if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
+  if(state==='future')return '<button type="button" class="btn sm" disabled>Absen belum dibuka</button>';
+  if(state==='passed')return '<button type="button" class="btn sm" disabled>Absen sudah lewat</button>';
+  return '<button type="button" class="btn sm pri" data-act="schedule-attendance" data-k="'+esc(c.k)+'">Isi absen</button>';
 }
 async function saveScheduleAttendance(k){
   const n=defaultPert(k),id=k+'_'+PAD(n);
@@ -1399,6 +1390,7 @@ document.addEventListener('click',async e=>{
       renderCourses();break;
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
+    case 'schedule-attendance':{const c=S.co[d.k];if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dengan akses absensi.');break;}if(!c||scheduleAttendanceState(c)!=='open'){toast('Waktu pengisian absensi belum tersedia atau sudah lewat.');break;}openD('attendance',d.k,'absen',defaultPert(d.k));break;}
     case 'open-student':openD('student',+d.no);loadHasil(true);break;
     case 'open-pit':openD('pit');loadHasil(true);break;
     case 'hub-task-tab':D.taskTab=d.tab==='group'?'group':'individual';renderDialog(true);break;
