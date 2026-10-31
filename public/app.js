@@ -166,7 +166,7 @@ function renderStudents(){
     const s=stu(n),showMeta=true;
     let meta='';
     if(showMeta){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);meta='<span class="smeta"><span>Kehadiran '+(p==null?'—':p+'%')+'</span><span>Tugas '+t.a+'/'+t.b+'</span></span>';}
-    h+='<li><button type="button" class="scard'+(s?'':' skel')+'" data-act="open-student" data-no="'+n+'"><span class="sph">'+photo('s'+PAD(n))+'<span class="sno">'+n+'</span>'+fb(n)+'</span>'+
+    h+='<li><button type="button" class="scard'+(s?'':' skel')+(Number(ME)===n?' me-highlight':'')+'" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+'><span class="sph">'+photo('s'+PAD(n))+'<span class="sno">'+n+'</span>'+fb(n)+'</span>'+
       '<span class="snm"><span class="f">'+(s?esc(s.depan):'&nbsp;')+'</span><b>'+(s?esc(s.belakang):'&nbsp;')+'</b></span>'+meta+'</button></li>';
   }
   $('sgrid').innerHTML=h;
