@@ -468,7 +468,7 @@ let HS=null,HS_GROUP=null,hsTimer=null;
 function loadHasil(now){
   if(!(ME||adm())||!AUTH||!AUTH.hasil)return;
   clearTimeout(hsTimer);
-  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;HS_GROUP=r&&r.groupTugas||null;if(D&&(D.kind==='hasil'||D.kind==='group-hasil'||D.kind==='student'||D.kind==='pit'))renderDialog(true);}catch(e){/* tetap pakai data lokal */}},now?0:400);
+  hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;HS_GROUP=r&&r.groupTugas||null;if(D&&(D.kind==='hasil'||D.kind==='group-hasil'||D.kind==='student'||D.kind==='pit'))renderDialog(true);if(STUDENT_SUBTAB==='constructor'&&CONSTRUCTOR_SUBTAB==='standings')renderConstructor();}catch(e){/* tetap pakai data lokal */}},now?0:400);
 }
 function fmtDT(ms){try{return new Intl.DateTimeFormat('id-ID',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(e){return '';}}
 function fmtGap(ms){
@@ -1393,7 +1393,7 @@ document.addEventListener('click',async e=>{
       if(!judul){toast('Isi judul tugas dulu.');break;}
       if($('tn-link').value.trim()&&!okUrl($('tn-link').value.trim())){toast('Tautan kerjakan harus diawali http:// atau https://');break;}
       const ok=await run(()=>db.collection('tugas').add({k:D.key,judul:judul.slice(0,120),tenggat:$('tn-tenggat').value||'',deskripsi:$('tn-desk').value.trim().slice(0,1000),link:$('tn-link').value.trim(),mode:$('tn-mode').value==='group'?'group':'individual',subs:{},groupSubs:{},dibuat:Date.now()}),'Tugas disimpan');
-      if(ok){['tn-judul','tn-tenggat','tn-desk','tn-link'].forEach(k=>{delete DR[k];});D.newOpen=false;renderDialog(true);}
+      if(ok){['tn-judul','tn-tenggat','tn-mode','tn-desk','tn-link'].forEach(k=>{delete DR[k];});D.newOpen=false;renderDialog(true);}
       break;
     }
     case 'tdel':D.confirmDel=d.id;renderDialog(true);break;
