@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const N=32,PERT=16,LBL={H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa'};
+const N=32,PERT=16,LBL={H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa',K:'Kelas Berjalan'};
 const $=id=>document.getElementById(id);
 const PAD=n=>String(n).padStart(2,'0');
 const ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
@@ -131,7 +131,7 @@ function stats(no){
     if(!(se.rec===true||Object.values(p).some(Boolean)))return;
     const b=by[se.k]||(by[se.k]={h:0,t:0});
     b.t++;tot.t++;
-    if(p[no]==='H'){b.h++;tot.h++;}
+    if(p[no]==='H'||p[no]==='K'){b.h++;tot.h++;}
   });
   return{by:by,tot:tot};
 }
@@ -283,7 +283,7 @@ function sektorRaw(){
     const p=se.present||{};
     if(!(se.rec===true||Object.values(p).some(Boolean)))return;
     const c=out[se.k]||(out[se.k]={t:0,h:{}});
-    c.t++;Object.keys(p).forEach(n=>{if(p[n]==='H')c.h[n]=(c.h[n]||0)+1;});
+    c.t++;Object.keys(p).forEach(n=>{if(p[n]==='H'||p[n]==='K')c.h[n]=(c.h[n]||0)+1;});
   });
   return out;
 }
@@ -716,10 +716,10 @@ function absenStudent(c){
   const bk=se.bukti&&se.bukti[ME];
   h+='<div class="tcard"><div><b>Absen saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div>'+
     '<div class="ast" role="group" aria-label="Status absen saya">'+
-    ['H','I','S'].map(s=>'<button type="button" class="sb big" data-act="st" data-no="'+ME+'" data-st="'+s+'" aria-pressed="'+(mine===s)+'"'+(canWrite?'':' disabled')+'>'+LBL[s]+'</button>').join('')+'</div>';
+    ['H','I','S','K'].map(s=>'<button type="button" class="sb big" data-act="st" data-no="'+ME+'" data-st="'+s+'" aria-label="'+LBL[s]+'" title="'+LBL[s]+'" aria-pressed="'+(mine===s)+'"'+(canWrite&&(s!=='K'||(bk&&bk.id))?'':' disabled')+'>'+(s==='K'?'K. Berjalan':LBL[s])+'</button>').join('')+'</div>';
   if(AS&&canWrite){
     h+='<div class="row2"><label class="btn sm pickfile">'+(bk&&bk.id?'Ganti bukti':'Kirim bukti absen')+'<input type="file" accept="image/*,application/pdf" data-file="bukti"></label>'+(bk&&bk.id?'<button type="button" class="btn sm" data-act="bukti-del">Hapus bukti</button>':'')+'</div>'+
-      (bk&&bk.id?'<div>'+fileHtml(bk)+'</div>':'<span class="s">Foto atau PDF, misalnya surat izin atau foto kehadiran.</span>');
+      (bk&&bk.id?'<div>'+fileHtml(bk)+'</div>':'<span class="s">Foto atau PDF, misalnya surat izin atau foto kehadiran. Lampirkan berkas sebelum memilih status Kelas Berjalan.</span>');
   }else if(bk&&bk.id)h+='<div>'+fileHtml(bk)+'</div>';
   else if(!AS)h+='<span class="s">Kirim berkas belum tersedia untuk akun ini.</span>';
   h+='</div>';
@@ -730,9 +730,9 @@ function absenStudent(c){
 
 function absenAdmin(c){
   const n=D.pert,se=S.se[c.k+'_'+PAD(n)]||null,p=(se&&se.present)||{},bk=(se&&se.bukti)||{};
-  const cnt={H:0,I:0,S:0,A:0};
+  const cnt={H:0,I:0,S:0,A:0,K:0};
   for(let i=1;i<=N;i++){if(cnt[p[i]]!==undefined)cnt[p[i]]++;}
-  const rec=cnt.H+cnt.I+cnt.S+cnt.A;
+  const rec=cnt.H+cnt.I+cnt.S+cnt.A+cnt.K;
   let h=pertPicker(c,'adm');
   const w=canWrite;
   if(w){
@@ -741,14 +741,14 @@ function absenAdmin(c){
   }else if(se&&(se.tanggal||se.topik)){
     h+='<p class="empty"><b>Pertemuan '+n+'</b>'+(se.tanggal?' · '+fmtDate(se.tanggal):'')+(se.topik?' · '+esc(se.topik):'')+'</p>';
   }
-  h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
+  h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
   if(w)h+='<div class="row2"><button type="button" class="btn sm" data-act="allpresent">Tandai semua hadir</button></div>';
   if(ME&&AS&&w){const mb=bk[ME];h+='<div class="tcard"><div><b>Bukti absen saya · Pertemuan '+n+'</b></div><div class="row2"><label class="btn sm pickfile">'+(mb&&mb.id?'Ganti bukti':'Kirim bukti absen')+'<input type="file" accept="image/*,application/pdf" data-file="bukti"></label>'+(mb&&mb.id?'<button type="button" class="btn sm" data-act="bukti-del">Hapus bukti</button>':'')+'</div>'+(mb&&mb.id?'<div>'+fileHtml(mb)+'</div>':'<span class="s">Foto atau PDF, misalnya surat izin atau foto kehadiran.</span>')+'</div>';}
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
     h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span>'+
       '<span class="ast" role="group" aria-label="Status absen '+esc(nameOf(i))+'">'+
-      ['H','I','S','A'].map(s=>'<button type="button" class="sb" data-act="st" data-no="'+i+'" data-st="'+s+'" aria-pressed="'+(p[i]===s)+'" title="'+LBL[s]+'" aria-label="'+LBL[s]+'"'+(w?'':' disabled')+'>'+s+'</button>').join('')+'</span></li>';
+      ['H','I','S','A','K'].map(s=>'<button type="button" class="sb" data-act="st" data-no="'+i+'" data-st="'+s+'" aria-pressed="'+(p[i]===s)+'" title="'+LBL[s]+'" aria-label="'+LBL[s]+'"'+(w&&(s!=='K'||(bk[i]&&bk[i].id))?'':' disabled')+'>'+(s==='K'?'KB':s)+'</button>').join('')+'</span></li>';
   }
   return h+'</ol>';
 }
@@ -1180,8 +1180,9 @@ document.addEventListener('click',async e=>{
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
-      const no=+d.no,c=D.key,cur=((S.se[c+'_'+PAD(D.pert)]||{}).present||{})[no]||'';
+      const no=+d.no,c=D.key,session=S.se[c+'_'+PAD(D.pert)]||{},cur=(session.present||{})[no]||'';
       if(!adm()&&no!==ME)break;
+      if(d.st==='K'&&!(session.bukti&&session.bukti[no]&&session.bukti[no].id)){toast('Lampirkan file bukti terlebih dahulu untuk memilih Kelas Berjalan.');break;}
       await run(()=>writeSession(c,D.pert,{present:{[no]:cur===d.st?'':d.st}}));
       break;
     }
