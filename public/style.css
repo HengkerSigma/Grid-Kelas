@@ -765,3 +765,9 @@ button.is-busy{cursor:wait;opacity:.65}
 @media(prefers-reduced-motion:reduce){
   .tile-hub.task-alert,.schedule-panel.attendance-alert{animation:none;box-shadow:0 0 0 1px rgba(225,6,0,.24),inset 0 0 12px rgba(225,6,0,.05)}
 }
+
+/* Schedule actions: keep attendance and history controls side by side. */
+.schedule-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;}
+.schedule-actions .btn{white-space:nowrap;}
+.tabs .tab{position:relative;z-index:3;cursor:pointer;pointer-events:auto;}
+@media(max-width:600px){.schedule-actions{justify-content:flex-start;margin-top:8px}.schedule-actions .btn{font-size:.78rem;padding:6px 9px}}
