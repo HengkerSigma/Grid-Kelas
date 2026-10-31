@@ -50,10 +50,17 @@
 
   <section class="view" id="v-mahasiswa" hidden>
     <div class="inner gut">
-      <h2 class="title">Line-Up</h2>
-      <p class="lede">Temukan 32 mahasiswa kelas baru menurut nomor absen. Pilih kartu untuk melihat profil atau mengganti foto.</p>
-      <p class="note" id="snote" hidden></p>
-      <ul class="sgrid" id="sgrid" aria-busy="true"></ul>
+      <div class="student-subtabs" role="tablist" aria-label="Bagian mahasiswa">
+        <button type="button" class="student-subtab" data-act="student-subtab" data-tab="line-up" role="tab" aria-selected="true">LINE-UP</button>
+        <span class="course-subtab-sep" aria-hidden="true">-</span>
+        <button type="button" class="student-subtab" data-act="student-subtab" data-tab="constructor" role="tab" aria-selected="false">CONSTRUCTOR</button>
+      </div>
+      <div id="lineUpPanel">
+        <p class="lede">Temukan 32 mahasiswa kelas baru menurut nomor absen. Pilih kartu untuk melihat profil atau mengganti foto.</p>
+        <p class="note" id="snote" hidden></p>
+        <ul class="sgrid" id="sgrid" aria-busy="true"></ul>
+      </div>
+      <div id="constructorPanel" hidden></div>
     </div>
   </section>
 
