@@ -554,3 +554,11 @@ button.is-busy{cursor:wait;opacity:.65}
   .arow .sb{width:36px;height:34px;flex:none}
 }
 .sb[aria-pressed="true"][data-st="K"]{background:#168b78;border-color:#168b78;color:#fff;opacity:1}
+
+
+/* Keep attendance status buttons inside the personal attendance card on narrow screens. */
+@media(max-width:640px){
+  .tcard>.ast{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;min-width:0}
+  .tcard>.ast .sb.big{box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding-inline:8px;white-space:normal}
+  .tcard{min-width:0;max-width:100%;box-sizing:border-box}
+}
