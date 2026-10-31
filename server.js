@@ -42,7 +42,8 @@ const STATIC = {
   '/index.html': ['public/index.html', 'text/html; charset=utf-8'],
   '/style.css': ['public/style.css', 'text/css; charset=utf-8'],
   '/app.js': ['public/app.js', 'text/javascript; charset=utf-8'],
-  '/db.js': ['public/db.js', 'text/javascript; charset=utf-8']
+  '/db.js': ['public/db.js', 'text/javascript; charset=utf-8'],
+  '/diagnostic.js': ['public/diagnostic.js', 'text/javascript; charset=utf-8']
 };
 const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: " + SUPA_ORIGIN + "; script-src 'self'; connect-src 'self' " + SUPA_ORIGIN + "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
