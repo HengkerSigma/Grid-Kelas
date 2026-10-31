@@ -501,8 +501,27 @@ function renderTourHelp(){
   if(!b){
     b=document.createElement('button');b.id='gkTourHelp';b.type='button';b.className='gk-tour-help';
     b.setAttribute('aria-label','Buka tutorial Grid Kelas');b.title='Buka tutorial Grid Kelas';b.textContent='?';
-    b.addEventListener('click',()=>{if(GRID_TOUR_STARTED)return;launchGridClassTour(true);});
-    document.body.appendChild(b);
+    const openTour=e=>{
+      if(e){e.preventDefault();e.stopPropagation();}
+      if(GRID_TOUR_STARTED)return;
+      b.disabled=true;b.textContent='…';
+      Promise.resolve(launchGridClassTour(true)).then(ok=>{
+        b.disabled=false;b.textContent='?';
+        if(!ok){
+          let note=document.getElementById('gkTourHelpNotice');
+          if(!note){note=document.createElement('div');note.id='gkTourHelpNotice';note.className='gk-tour-help-notice';document.documentElement.appendChild(note);}
+          note.textContent='Tutorial belum terbuka. Periksa koneksi/CDN, lalu coba lagi.';
+          clearTimeout(note._hideTimer);note._hideTimer=setTimeout(()=>note.remove(),5000);
+        }
+      }).catch(()=>{
+        b.disabled=false;b.textContent='?';
+      });
+    };
+    b.addEventListener('pointerdown',openTour,true);
+    b.addEventListener('click',openTour,true);
+    document.documentElement.appendChild(b);
+  }else if(b.parentElement!==document.documentElement){
+    document.documentElement.appendChild(b);
   }
 }
 function showTourPrompt(){
