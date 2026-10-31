@@ -274,7 +274,7 @@ function renderConstructor(){
   const mine=ME!=null?S.ak[PAD(ME)]||{}:{};
   const isAdmin=adm();
   let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
-  if(CONSTRUCTOR_SUBTAB==='standings'){const tasks=taskList().filter(t=>t.mode==='group');if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';tasks.forEach(t=>{const r=groupTowerData(t.id);h+='<article class="tcard constructor-standing"><div class="row2" style="justify-content:space-between"><div><span class="s">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip">'+(r?r.done.length:0)+'/'+constructorGroups().length+' selesai</span></div>'+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+groupTowerHtml(r)+'</article>';});host.innerHTML=h;return;}\n  if(isAdmin)h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
+  if(CONSTRUCTOR_SUBTAB==='standings'){const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';tasks.forEach(t=>{const r=groupTowerData(t.id);h+='<article class="tcard constructor-standing"><div class="row2" style="justify-content:space-between"><div><span class="s">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip">'+(r?r.done.length:0)+'/'+constructorGroups().length+' selesai</span></div>'+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+groupTowerHtml(r)+'</article>';});host.innerHTML=h;return;}\n  if(isAdmin)h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
   if(!groups.length){h+='<div class="constructor-empty">Belum ada kelompok yang dibuat oleh pengelola.</div>';host.innerHTML=h;return;}
   groups.forEach((g,index)=>{
     const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
@@ -1284,13 +1284,13 @@ document.addEventListener('click',async e=>{
       const k=d.k;await run(()=>saveScheduleAttendance(k),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
     case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
-    case 'constructor-subtab':{CONSTRUCTOR_SUBTAB=d.tab==='standings'?'standings':'list';renderConstructor();break;}
+    case 'constructor-subtab':{CONSTRUCTOR_SUBTAB=d.tab==='standings'?'standings':'list';if(CONSTRUCTOR_SUBTAB==='standings')loadHasil(true);renderConstructor();break;}
     case 'student-subtab':{
       STUDENT_SUBTAB=d.tab==='constructor'?'constructor':'line-up';
       document.querySelectorAll('.student-subtab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===STUDENT_SUBTAB)));
       $('lineUpPanel').hidden=STUDENT_SUBTAB!=='line-up';
       $('constructorPanel').hidden=STUDENT_SUBTAB!=='constructor';
-      if(STUDENT_SUBTAB==='constructor')renderConstructor();
+      if(STUDENT_SUBTAB==='constructor'){renderConstructor();if(CONSTRUCTOR_SUBTAB==='standings')loadHasil(true);}
       break;
     }
     case 'constructor-create':{
