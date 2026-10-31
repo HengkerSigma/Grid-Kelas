@@ -383,7 +383,7 @@ function pick(o, keys) {
   keys.forEach((k) => { if (o[k] !== undefined) r[k] = o[k]; });
   return r;
 }
-function view(p, data, sess) {
+async function view(p, data, sess) {
   const parts = p.split('/'), root = parts[0];
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
@@ -414,8 +414,22 @@ function view(p, data, sess) {
   }
   if (root === 'tugas') {
     if (admin) return data;
-    const out = Object.assign({}, data, { subs: {} });
+    const out = Object.assign({}, data, { subs: {}, groupSubs: {} });
     if (me && isObj(data.subs) && data.subs[me]) out.subs[me] = data.subs[me];
+    if (sess && data.mode === 'group') {
+      const acc = await getDoc('akun/' + pad(sess.no));
+      const groups = await listCol('constructors');
+      const own = groups.find((row) => {
+        const g = row.data || {};
+        return (Array.isArray(g.members) && g.members.map(Number).includes(sess.no)) || (acc && acc.teamPrincipal === row.key.slice('constructors/'.length));
+      });
+      if (own) {
+        const gid = own.key.slice('constructors/'.length), sub = isObj(data.groupSubs) ? data.groupSubs[gid] : null;
+        if (sub && typeof sub.at === 'number') {
+          out.groupSubs[gid] = acc && acc.teamPrincipal === gid ? sub : { at: sub.at };
+        }
+      }
+    }
     return out;
   }
   if (root === 'berkas') {
@@ -605,7 +619,8 @@ async function decide(method, p, body, sess, existing) {
       const deskripsi = String(body.deskripsi || '').slice(0, 1000);
       const link = String(body.link || '').trim();
       if (link && (link.length > 500 || !isHttpUrl(link))) return ERR_BAD('Tautan kerjakan harus diawali http:// atau https://.');
-      return { data: { k: k, judul: judul, tenggat: tenggat, deskripsi: deskripsi, link: link, subs: existing && isObj(existing.subs) ? existing.subs : {}, dibuat: existing && existing.dibuat ? existing.dibuat : Date.now() } };
+      const mode = body.mode === 'group' ? 'group' : 'individual';
+      return { data: { k: k, judul: judul, tenggat: tenggat, deskripsi: deskripsi, link: link, mode: mode, subs: existing && isObj(existing.subs) ? existing.subs : {}, groupSubs: existing && isObj(existing.groupSubs) ? existing.groupSubs : {}, dibuat: existing && existing.dibuat ? existing.dibuat : Date.now() } };
     }
     if (method === 'PATCH') {
       if (!existing) return ERR_MISSING;
@@ -613,17 +628,36 @@ async function decide(method, p, body, sess, existing) {
         if (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0) return ERR_BAD('Tenggat sudah lewat. Pengumpulan ditutup.');
         const me = String(sess.no);
         if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me])) return ERR_FORBID;
+        if (existing.mode === 'group') return ERR_FORBID;
         const s = body.subs[me];
         const tautan = String(s.tautan || '').trim().slice(0, 500);
         const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET);
         const catatan = String(s.catatan || '').slice(0, 500);
-        // Dua cara mengumpulkan: unggah berkas langsung, atau tautan https (Google Drive, Dropbox, GitHub, dll.).
         if (berkas === undefined) return ERR_BAD('Berkas tidak valid. Unggah ulang berkasnya.');
         if (tautan && !(/^https:\/\//i.test(tautan) && isHttpUrl(tautan))) return ERR_BAD('Tautan harus diawali https://');
         if (!tautan && !berkas) return ERR_BAD('Unggah berkas atau isi tautan tugas.');
         const out = clone(existing);
         if (!isObj(out.subs)) out.subs = {};
         out.subs[me] = { tautan: tautan, catatan: catatan, berkas: berkas, at: Date.now() };
+        return { data: out };
+      }
+      if (onlyKeys(body, ['groupSubs'])) {
+        if (existing.mode !== 'group') return ERR_FORBID;
+        if (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0) return ERR_BAD('Tenggat sudah lewat. Pengumpulan ditutup.');
+        if (!isObj(body.groupSubs) || Object.keys(body.groupSubs).length !== 1) return ERR_FORBID;
+        const gid = Object.keys(body.groupSubs)[0], s = body.groupSubs[gid];
+        if (!/^[A-Za-z0-9_-]{1,40}$/.test(gid) || !isObj(s)) return ERR_FORBID;
+        const group = await getDoc('constructors/' + gid), acc = await getDoc('akun/' + pad(sess.no));
+        if (!group || !acc || acc.teamPrincipal !== gid) return ERR_FORBID;
+        const tautan = String(s.tautan || '').trim().slice(0, 500);
+        const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET);
+        const catatan = String(s.catatan || '').slice(0, 500);
+        if (berkas === undefined) return ERR_BAD('Berkas tidak valid. Unggah ulang berkasnya.');
+        if (tautan && !(/^https:\/\//i.test(tautan) && isHttpUrl(tautan))) return ERR_BAD('Tautan harus diawali https://');
+        if (!tautan && !berkas) return ERR_BAD('Unggah berkas atau isi tautan tugas.');
+        const out = clone(existing);
+        if (!isObj(out.groupSubs)) out.groupSubs = {};
+        out.groupSubs[gid] = { tautan: tautan, catatan: catatan, berkas: berkas, at: Date.now(), by: sess.no };
         return { data: out };
       }
       if (!admin) return ERR_FORBID;
@@ -863,7 +897,7 @@ const server = http.createServer(async (req, res) => {
       // Hanya waktu pengumpulan per mahasiswa per tugas (bukan tautan, berkas, atau catatan), untuk podium dan time tower.
       const s = await getSession(req);
       if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
-      const out = {};
+      const out = {}, groupOut = {};
       (await listCol('tugas')).forEach((row) => {
         const d = row.data;
         if (!isObj(d) || taskExpired(d)) return;
@@ -872,9 +906,17 @@ const server = http.createServer(async (req, res) => {
           const at = d.subs[no] && d.subs[no].at;
           if (/^\d{1,2}$/.test(no) && typeof at === 'number') m[no] = at;
         });
-        out[row.key.slice('tugas/'.length)] = m;
+        const taskId = row.key.slice('tugas/'.length);
+        out[taskId] = m;
+        if (isObj(d.groupSubs)) {
+          groupOut[taskId] = {};
+          Object.keys(d.groupSubs).forEach((gid) => {
+            const at = d.groupSubs[gid] && d.groupSubs[gid].at;
+            if (typeof at === 'number') groupOut[taskId][gid] = at;
+          });
+        }
       });
-      return json(res, 200, { tugas: out });
+      return json(res, 200, { tugas: out, groupTugas: groupOut });
     }
 
     if (pathname.startsWith('/api/c/')) {
@@ -886,7 +928,7 @@ const server = http.createServer(async (req, res) => {
         let rows = await listCol(cp);
         if (cp === 'tugas') rows = await dropExpired(rows);
         rows.forEach((row) => {
-          const v = view(row.key, row.data, sess);
+          const v = await view(row.key, row.data, sess);
           if (v !== null) docs.push({ id: row.key.slice(cp.length + 1), data: v });
         });
         docs.sort((a, b) => (a.id < b.id ? -1 : 1));
@@ -907,7 +949,7 @@ const server = http.createServer(async (req, res) => {
       const docData = await getDoc(dp);
       if (method === 'GET' && dp.startsWith('tugas/') && taskExpired(docData)) { await purgeTask(dp, docData); return json(res, 200, { exists: false }); }
       if (method === 'GET') {
-        const v = docData !== null ? view(dp, docData, sess) : null;
+        const v = docData !== null ? await view(dp, docData, sess) : null;
         return json(res, 200, v === null ? { exists: false } : { exists: true, data: v });
       }
       if (method === 'PUT' || method === 'PATCH') {
