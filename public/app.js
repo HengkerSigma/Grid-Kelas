@@ -1244,8 +1244,8 @@ document.addEventListener('click',async e=>{
       const ok=await run(async()=>{
         await db.doc('constructors/'+id).update({name:name.value.trim().slice(0,80),members:members});
         if(principalSelect){
-          if(principalValue)await upsertAkun(principalValue,{teamPrincipal:id});
           if(currentPrincipal&&currentPrincipal!==principalValue)await upsertAkun(currentPrincipal,{teamPrincipal:null});
+          if(principalValue)await upsertAkun(principalValue,{teamPrincipal:id});
         }
       },'Isi kelompok disimpan');
       if(ok){CONSTRUCTOR_EDIT_ID=null;renderConstructor();}
