@@ -56,7 +56,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{}};
-let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',defaultConstructorSeedPromise=null;
+let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -316,6 +316,9 @@ function renderConstructor(){
   if(isAdmin)h+='<button type="button" class="btn pri" data-act="constructor-create" data-course="'+esc(c.k)+'">+ Tambah Constructor</button>';
   h+='</div>';
   if(isAdmin&&CONSTRUCTOR_CREATE_COURSE===c.k)h+='<div class="row2 constructor-create"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama Constructor"><button type="button" class="btn pri" data-act="constructor-create-save" data-course="'+esc(c.k)+'">Simpan</button><button type="button" class="btn" data-act="constructor-create-cancel">Batal</button></div>';
+  const courseOpen=!!CONSTRUCTOR_COURSE_OPEN[c.k];
+  h+='<div class="constructor-list-toolbar"><span class="s">'+(groups.length?'Daftar '+groups.length+' Constructor':'Belum ada Constructor')+'</span><button type="button" class="btn sm" data-act="constructor-course-toggle" data-course="'+esc(c.k)+'" aria-expanded="'+courseOpen+'">'+(courseOpen?'Tutup daftar':'Lihat selengkapnya')+'</button></div>';
+  if(courseOpen){
   if(!groups.length)h+='<p class="constructor-empty">Belum ada Constructor untuk mata kuliah ini.</p>';
   groups.forEach((g,index)=>{
    const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
@@ -337,14 +340,9 @@ function renderConstructor(){
    }
    h+='</article>';
   });
+  }
   h+='</section>';
  });
- const legacy=constructorGroups().filter(g=>!g.courseCode);
- if(isAdmin&&legacy.length){
-  h+='<section class="panel constructor-course"><h3 class="ph3">Constructor lama · belum memiliki mata kuliah</h3><p class="s">Pilih mata kuliah untuk memindahkan data Constructor lama ke struktur baru.</p>';
-  legacy.forEach(g=>{h+='<div class="row2"><b>'+esc(g.name||g.id)+'</b><select data-legacy-course="'+esc(g.id)+'"><option value="">Pilih mata kuliah</option>'+courses.map(c=>'<option value="'+esc(c.k)+'">'+esc(c.nama)+'</option>').join('')+'</select><button type="button" class="btn sm pri" data-act="constructor-migrate" data-id="'+esc(g.id)+'">Pindahkan</button></div>';});
-  h+='</section>';
- }
  host.innerHTML=h;
 }
 
@@ -1336,7 +1334,8 @@ document.addEventListener('click',async e=>{
       if(STUDENT_SUBTAB==='constructor'){renderConstructor();if(CONSTRUCTOR_SUBTAB==='standings')loadHasil(true);}
       break;
     }
-    case 'constructor-create':{if(!adm())break;CONSTRUCTOR_CREATE_COURSE=d.course;renderConstructor();break;}
+    case 'constructor-course-toggle':{CONSTRUCTOR_COURSE_OPEN[d.course]=!CONSTRUCTOR_COURSE_OPEN[d.course];renderConstructor();break;}
+    case 'constructor-create':{if(!adm())break;CONSTRUCTOR_CREATE_COURSE=d.course;CONSTRUCTOR_COURSE_OPEN[d.course]=true;renderConstructor();break;}
     case 'constructor-create-cancel':CONSTRUCTOR_CREATE_COURSE=null;renderConstructor();break;
     case 'constructor-create-save':{
       if(!adm())break;const courseCode=d.course,name=($('constructor-new-name')&&$('constructor-new-name').value||'').trim();
@@ -1344,12 +1343,6 @@ document.addEventListener('click',async e=>{
       if(!name){toast('Isi nama Constructor terlebih dahulu.');break;}
       const ok=await run(()=>db.collection('constructors').add({courseCode:courseCode,name:name.slice(0,80),members:[],principal:null,createdAt:Date.now()}),'Constructor dibuat');
       if(ok){CONSTRUCTOR_CREATE_COURSE=null;renderConstructor();}break;
-    }
-    case 'constructor-migrate':{
-      if(!adm())break;const id=d.id,courseCode=document.querySelector('[data-legacy-course="'+id+'"]')?.value;
-      if(!courseList().some(c=>c.k===courseCode)){toast('Pilih mata kuliah terlebih dahulu.');break;}
-      const principal=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===id)||null;
-      const ok=await run(()=>db.doc('constructors/'+id).update({courseCode:courseCode,principal:principal}),'Constructor dipindahkan ke mata kuliah');if(ok)renderConstructor();break;
     }
     case 'constructor-edit':CONSTRUCTOR_EDIT_ID=d.id;renderConstructor();break;
     case 'constructor-edit-cancel':CONSTRUCTOR_EDIT_ID=null;renderConstructor();break;
