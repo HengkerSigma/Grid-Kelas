@@ -150,7 +150,7 @@ function renderStrip(){
   let h='';
   for(let n=1;n<=N;n++){
     const s=stu(n);
-    h+='<button type="button" class="rs'+(ME===n?' me-highlight':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(ME===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'</span></button>';
+    h+='<button type="button" class="rs'+(Number(ME)===n?' me-highlight':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'</span></button>';
   }
   const r=$('rail'),x=r.scrollLeft;
   r.innerHTML=h;r.scrollLeft=x;
@@ -337,7 +337,7 @@ function renderConstructor(){
    const canEdit=isAdmin||isTeamPrincipal,editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
    const colorId=CONSTRUCTOR_COLORS.some(c=>c.id===g.color)?g.color:CONSTRUCTOR_COLORS[index%CONSTRUCTOR_COLORS.length].id;
    h+='<article class="constructor-card" style="--tc:'+constructorColor(colorId)+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+displayMembers.length+' anggota</span></div><div class="constructor-members">';
-   h+=displayMembers.length?displayMembers.map(n=>'<div class="constructor-member'+(ME===n?' me-highlight':'')+'"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
+   h+=displayMembers.length?displayMembers.map(n=>'<div class="constructor-member'+(Number(ME)===n?' me-highlight':'')+'"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
    h+='</div>';
    if(canEdit&&!editing)h+='<div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-edit" data-id="'+esc(g.id)+'">Atur kelompok</button>'+(isAdmin?'<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>':'')+'</div>';
    if(editing){
@@ -346,7 +346,7 @@ function renderConstructor(){
      for(let n=1;n<=N;n++)if(n===principalNo||!occupiedInCourse.has(n))h+='<option value="'+n+'"'+(n===principalNo?' selected':'')+'>'+n+'. '+esc(nameOf(n))+'</option>';
      h+='</select></label>';}
     h+='<label class="constructor-field">Nama Constructor<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'"></label><label class="constructor-field">Warna kartu Constructor<select data-constructor-color="'+esc(g.id)+'">'+CONSTRUCTOR_COLORS.map(c=>'<option value="'+c.id+'"'+(c.id===colorId?' selected':'')+'>'+c.name+'</option>').join('')+'</select></label><p class="s">Pilih mahasiswa yang menjadi anggota kelompok ini.</p><div class="constructor-members edit">';
-    for(let n=1;n<=N;n++)if(n!==principalNo&&(members.includes(n)||!occupiedInCourse.has(n)))h+='<label class="constructor-member'+(ME===n?' me-highlight':'')+'"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
+    for(let n=1;n<=N;n++)if(n!==principalNo&&(members.includes(n)||!occupiedInCourse.has(n)))h+='<label class="constructor-member'+(Number(ME)===n?' me-highlight':'')+'"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
     h+='</div><div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-save" data-id="'+esc(g.id)+'">Simpan perubahan</button><button type="button" class="btn" data-act="constructor-edit-cancel" data-id="'+esc(g.id)+'">Batal</button>'+(isAdmin?'<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>':'')+'</div></div>';
    }
    h+='</article>';
@@ -455,7 +455,7 @@ function homeTiles(no){
   const pitD=pit.b?(pp.length?pp.join(' · '):'Semua tugas individu sudah dikumpulkan'):'Belum ada tugas individu';
   const flags=(pit.open.length||pit.dnf.length)?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+(pit.dnf.length?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+pit.dnf.length+'</span>':'')+'</span>':'';
   return '<div class="tiles">'+
-    '<button type="button" class="tile tilebtn tile-hub" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">IDV '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' CON</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · '+(groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai':'Belum ada tugas Constructor untuk kelompokmu')+'</div>'+flags+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
+    '<button type="button" class="tile tilebtn tile-hub" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">Individu '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' Constructor</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · '+(groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai':'Belum ada tugas Constructor untuk kelompokmu')+'</div>'+flags+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
     '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
