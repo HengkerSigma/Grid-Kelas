@@ -564,3 +564,32 @@ button.is-busy{cursor:wait;opacity:.65}
   .tcard>.ast .sb.big{box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding-inline:8px;white-space:normal}
   .tcard{min-width:0;max-width:100%;box-sizing:border-box}
 }
+
+
+/* Mahasiswa: sub-tab Line-Up dan Constructor */
+.student-subtabs{display:flex;align-items:baseline;gap:clamp(8px,2vw,18px);margin:0 0 26px;}
+.student-subtab{appearance:none;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--muted,#a5a5b3);font-family:var(--f-disp);font-weight:800;text-transform:uppercase;font-size:clamp(1.6rem,5.2vw,3.2rem);line-height:1.08;letter-spacing:-.01em;padding:0 0 7px;cursor:pointer;transition:color .2s,border-color .2s;white-space:nowrap;}
+.student-subtab:hover{color:var(--text,#fff);}
+.student-subtab[aria-selected="true"]{color:var(--text,#fff);border-bottom-color:#e10600;}
+.constructor-create{margin-bottom:14px}
+.constructor-create .row2{align-items:center}
+.constructor-create input{flex:1;min-width:0}
+.constructor-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px;min-width:0}
+.constructor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+.constructor-kicker{display:block;color:var(--accent,#e10600);font-size:.68rem;font-weight:800;letter-spacing:.16em;margin-bottom:6px}
+.constructor-head h3{margin:0;font-family:var(--f-disp);font-size:clamp(1.15rem,3vw,1.55rem);overflow-wrap:anywhere}
+.constructor-name{width:min(100%,420px);font-family:var(--f-disp);font-weight:800;font-size:clamp(1.1rem,3vw,1.5rem);padding:8px 10px}
+.constructor-principal{font-size:.75rem;color:var(--muted);letter-spacing:.08em;margin:7px 0 0}
+.constructor-count{flex:none;border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:.75rem;color:var(--muted)}
+.constructor-members{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:8px}
+.constructor-member{display:flex;align-items:center;gap:10px;min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2,rgba(255,255,255,.025))}
+.constructor-member input{accent-color:var(--accent);flex:none}
+.constructor-avatar{width:36px;height:36px;border-radius:50%;overflow:hidden;flex:none;background:var(--surface);border:1px solid var(--line)}
+.constructor-avatar img{width:100%;height:100%;object-fit:cover}
+.constructor-member>span:last-child{min-width:0;display:grid;gap:2px}
+.constructor-member b{font-size:.84rem;overflow-wrap:anywhere}
+.constructor-member small{font-size:.7rem;color:var(--muted)}
+.constructor-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.constructor-empty{padding:28px 16px;text-align:center;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
+.tp-select{min-width:120px;max-width:180px}
+@media(max-width:600px){.student-subtabs{gap:7px;margin-bottom:18px}.student-subtab{font-size:clamp(1.25rem,6vw,2rem);padding-bottom:5px}.constructor-card{padding:13px}.constructor-head{gap:8px}.constructor-count{font-size:.68rem}.constructor-create .row2{align-items:stretch;flex-direction:column}.constructor-create .btn{width:100%}}
