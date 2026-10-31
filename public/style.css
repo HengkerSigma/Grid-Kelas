@@ -691,3 +691,44 @@ button.is-busy{cursor:wait;opacity:.65}
 @media(max-width:600px){
   .tile-hub .hub-task-value{font-size:clamp(.66rem,3.1vw,.82rem);letter-spacing:-.05em}
 }
+
+
+/* Make the current student's Line-Up card as visible as their header and Constructor highlights. */
+.sgrid .scard.me-highlight,
+.sgrid .scard.me-highlight:hover,
+.sgrid .scard.me-highlight:focus-visible{
+  position:relative;
+  border-color:#ff514b!important;
+  background:linear-gradient(160deg,rgba(225,6,0,.22),rgba(225,6,0,.08) 58%,var(--surface))!important;
+  box-shadow:0 0 0 2px rgba(225,6,0,.58),0 0 22px 5px rgba(225,6,0,.42),inset 0 0 16px rgba(225,6,0,.16)!important;
+}
+.sgrid .scard.me-highlight .sph{
+  box-shadow:inset 0 0 0 2px #ff514b, inset 0 0 24px rgba(225,6,0,.24);
+}
+.sgrid .scard.me-highlight .sno{
+  background:#e10600;
+  box-shadow:0 0 12px rgba(225,6,0,.65);
+}
+.sgrid .scard.me-highlight .snm,
+.sgrid .scard.me-highlight .smeta{
+  color:#fff;
+}
+.sgrid .scard.me-highlight .snm .f{
+  color:#ffaaa6;
+}
+.sgrid .scard.me-highlight .snm b{
+  color:#fff;
+  text-shadow:0 0 9px rgba(225,6,0,.72);
+}
+
+/* Let the Hub Tugas count scale with the available card width. */
+.tile-hub{container-type:inline-size}
+.tile-hub .hub-task-value{
+  font-size:clamp(.88rem,3.8cqi,1.15rem);
+  line-height:1.2;
+  letter-spacing:-.035em;
+  font-weight:800;
+}
+@media(max-width:600px){
+  .tile-hub .hub-task-value{font-size:clamp(.9rem,4.2cqi,1.12rem);letter-spacing:-.035em}
+}
