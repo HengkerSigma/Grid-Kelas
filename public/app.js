@@ -56,8 +56,8 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{}};
-let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list';
-const loaded={st:false,co:false};
+let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',defaultConstructorSeedPromise=null;
+const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
 
@@ -281,9 +281,27 @@ function groupTowerHtml(r){
   r.rest.forEach((g,i)=>{const principal=Number(g.principal)||null;h+='<tr><td class="num"><b>P'+(r.done.length+i+1)+'</b></td><td><b>'+esc(g.name||g.id)+'</b></td><td>'+esc(principal?nameOf(principal):'—')+'</td><td class="num"><span class="dnfb">'+missing+'</span></td><td class="num"><span class="dnfb">'+missing+'</span></td><td class="num"><span class="dnfb">'+missing+'</span></td></tr>';});
   return h+'</tbody></table></div>';
 }
+async function ensureDefaultConstructors(){
+ if(!adm()||!db||!loaded.co||!loaded.cs||defaultConstructorSeedPromise)return;
+ defaultConstructorSeedPromise=(async()=>{
+  for(const c of courseList()){
+   let count=constructorGroups(c.k).length;
+   for(let slot=1;slot<=6&&count<6;slot++){
+    const id='DEF_'+c.k+'_'+PAD(slot),ref=db.doc('constructors/'+id);
+    if(S.cs[id]&&S.cs[id].courseCode===c.k)continue;
+    const snap=await ref.get();
+    if(snap.exists)continue;
+    await ref.set({courseCode:c.k,name:'Constructor '+slot,members:[],principal:null,createdAt:Date.now(),isDefault:true});
+    count++;
+   }
+  }
+ })().catch(e=>{console.error('Gagal membuat Constructor default:',e);}).finally(()=>{defaultConstructorSeedPromise=null;});
+ await defaultConstructorSeedPromise;
+}
 function renderConstructor(){
  const host=$('constructorPanel');if(!host)return;host.className='constructor-grid';
  const courses=courseList(),isAdmin=adm();
+ if(isAdmin&&loaded.co&&loaded.cs)ensureDefaultConstructors();
  let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
  if(CONSTRUCTOR_SUBTAB==='standings'){
   const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
@@ -302,7 +320,7 @@ function renderConstructor(){
   groups.forEach((g,index)=>{
    const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
    const principalNo=Number(g.principal)||null,displayMembers=principalNo?[principalNo,...members.filter(n=>n!==principalNo)]:members;
-   const canEdit=isAdmin||(ME!=null&&principalNo===ME),editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
+   const canEdit=isAdmin||(ME!=null&&(principalNo===ME||(Array.isArray(g.members)&&g.members.map(Number).includes(Number(ME))))),editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
    const colorId=CONSTRUCTOR_COLORS.some(c=>c.id===g.color)?g.color:CONSTRUCTOR_COLORS[index%CONSTRUCTOR_COLORS.length].id;
    h+='<article class="constructor-card" style="--tc:'+constructorColor(colorId)+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+displayMembers.length+' anggota</span></div><div class="constructor-members">';
    h+=displayMembers.length?displayMembers.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
@@ -1337,7 +1355,7 @@ document.addEventListener('click',async e=>{
     case 'constructor-edit-cancel':CONSTRUCTOR_EDIT_ID=null;renderConstructor();break;
     case 'constructor-save':{
       const id=d.id,group=S.cs[id];
-      if(!group||!(adm()||Number(group.principal)===Number(ME)))break;
+      if(!group||!(adm()||Number(group.principal)===Number(ME)||(Array.isArray(group.members)&&group.members.map(Number).includes(Number(ME)))))break;
       const name=document.querySelector('[data-constructor-name="'+id+'"]');
       const selectedMembers=Array.from(document.querySelectorAll('[data-constructor-member="'+id+'"]:checked')).map(x=>Number(x.value));
       if(!name||!name.value.trim()){toast('Nama kelompok tidak boleh kosong.');break;}
