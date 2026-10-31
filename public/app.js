@@ -233,12 +233,13 @@ function renderConstructor(){
   groups.forEach((g,index)=>{
     const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
     const principalNo=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===g.id)||null;
+    const displayMembers=principalNo?[principalNo,...members.filter(n=>n!==principalNo)]:members;
     const canEdit=isAdmin||(ME!=null&&mine.teamPrincipal===g.id);
     const editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
     const tones=['#e10600','#087e8b','#6546a5','#b66a12','#26734d','#8b365c'];
-    h+='<article class="constructor-card" style="--tc:'+tones[index%tones.length]+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+members.length+' anggota</span></div>';
+    h+='<article class="constructor-card" style="--tc:'+tones[index%tones.length]+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+displayMembers.length+' anggota</span></div>';
     h+='<div class="constructor-members">';
-    h+=members.length?members.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
+    h+=displayMembers.length?displayMembers.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
     h+='</div>';
     if(canEdit&&!editing)h+='<div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-edit" data-id="'+esc(g.id)+'">Atur kelompok</button>'+(isAdmin?'<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>':'')+'</div>';
     if(editing){
@@ -1236,11 +1237,13 @@ document.addEventListener('click',async e=>{
       const id=d.id,group=S.cs[id],mine=ME!=null?S.ak[PAD(ME)]||{}:{};
       if(!group||!(adm()||mine.teamPrincipal===id))break;
       const name=document.querySelector('[data-constructor-name="'+id+'"]');
-      const members=Array.from(document.querySelectorAll('[data-constructor-member="'+id+'"]:checked')).map(x=>Number(x.value));
+      const selectedMembers=Array.from(document.querySelectorAll('[data-constructor-member="'+id+'"]:checked')).map(x=>Number(x.value));
       if(!name||!name.value.trim()){toast('Nama kelompok tidak boleh kosong.');break;}
       const principalSelect=document.querySelector('[data-constructor-principal="'+id+'"]');
       const principalValue=principalSelect?Number(principalSelect.value)||null:undefined;
       const currentPrincipal=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===id)||null;
+      const nextPrincipal=principalSelect?principalValue:currentPrincipal;
+      const members=nextPrincipal?[nextPrincipal,...selectedMembers.filter(n=>n!==nextPrincipal)]:selectedMembers;
       const ok=await run(async()=>{
         await db.doc('constructors/'+id).update({name:name.value.trim().slice(0,80),members:members});
         if(principalSelect){
