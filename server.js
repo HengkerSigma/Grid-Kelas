@@ -393,8 +393,11 @@ function view(p, data, sess) {
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
   if (root === 'akun') {
     const out = { no: data.no, admin: data.admin === true };
-    if (admin) { out.nim = data.nim; out.resetReq = data.resetReq || null; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
-    else if (sess && sess.no === data.no) { out.nim = data.nim; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
+    // NIM boleh dilihat oleh seluruh mahasiswa yang sudah login.
+    // Data sensitif akun tetap hanya untuk pemilik akun dan admin.
+    if (sess) out.nim = data.nim;
+    if (admin) { out.resetReq = data.resetReq || null; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
+    else if (sess && sess.no === data.no) { out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
     return out;
   }
   if (root === 'sessions') {
