@@ -161,12 +161,14 @@ function renderStudents(){
   else if(loaded.st&&!Object.keys(S.st).length){note.hidden=false;note.textContent='Belum ada data mahasiswa.';}
   else note.hidden=true;
   let h='';
+  const sx=sektorData();
   for(let n=1;n<=N;n++){
     const s=stu(n),showMeta=true;
     let meta='';
     if(showMeta){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);meta='<span class="smeta"><span>Kehadiran '+(p==null?'—':p+'%')+'</span><span>Tugas '+t.a+'/'+t.b+'</span></span>';}
+    const sector=sx.t?sxStrip(sx.byNo[n],sx.cl):'';
     h+='<li><button type="button" class="scard'+(s?'':' skel')+'" data-act="open-student" data-no="'+n+'"><span class="sph">'+photo('s'+PAD(n))+'<span class="sno">'+n+'</span>'+fb(n)+'</span>'+
-      '<span class="snm"><span class="f">'+(s?esc(s.depan):'&nbsp;')+'</span><b>'+(s?esc(s.belakang):'&nbsp;')+'</b></span>'+meta+'</button></li>';
+      '<span class="snm"><span class="f">'+(s?esc(s.depan):'&nbsp;')+'</span><b>'+(s?esc(s.belakang):'&nbsp;')+'</b></span>'+meta+sector+'</button></li>';
   }
   $('sgrid').innerHTML=h;
   $('sgrid').setAttribute('aria-busy',String(!loaded.st));
