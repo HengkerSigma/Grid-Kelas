@@ -144,6 +144,8 @@ td .lnk:hover{text-decoration-color:var(--accent)}
 .snm .f{display:block;font-size:.98rem;color:var(--muted)}
 .snm b{display:block;font-family:var(--f-disp);font-weight:700;font-size:.95rem;text-transform:uppercase;letter-spacing:.01em}
 .smeta{display:flex;flex-wrap:wrap;gap:4px 12px;padding:0 14px 14px;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-4px}
+.scard>.sxm{width:auto;align-self:stretch;margin:0 14px 13px;gap:3px;min-width:0}
+.scard>.sxm .sxc{height:7px;min-width:0}
 .scard.skel{min-height:200px;background:var(--surface);color:var(--muted)}
 
 /* course grid */
