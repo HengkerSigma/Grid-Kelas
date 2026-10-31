@@ -218,7 +218,7 @@ function renderCourses(){
     h+='<li class="course" style="--tc:'+colr(c.warna)+'">'+
       '<div class="ctop"><h3>'+esc(c.nama)+'</h3><span class="badge" aria-hidden="true">'+esc(c.k)+'</span></div>'+
       '<ul class="dosen">'+dosenHtml(c)+'</ul>'+
-      '<p class="jadwal">'+esc(c.sks)+' SKS · '+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p><p class="s course-caption">Cek detail perkuliahan, absensi, dan tugas mata kuliah ini.</p>'+
+      '<p class="jadwal">'+esc(c.sks)+' SKS · '+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+
       '<button type="button" class="pic" data-act="open-course" data-k="'+esc(c.k)+'" aria-label="Buka absen dan tugas '+esc(c.nama)+'">'+
       (logo&&okImg(logo.data)?'<img class="logo" src="'+logo.data+'" alt="">':'<span class="ph" aria-hidden="true">'+esc(c.k)+'</span>')+
       (ak?'<span class="aktif">'+ak+' tugas aktif</span>':'')+
@@ -663,7 +663,7 @@ function superLicensePanel(){
       '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+(PEND.ser?esc(PEND.ser.name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
       '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button>'+
       (superLicenseDriveUrl?'<a class="btn" href="'+esc(superLicenseDriveUrl)+'" target="_blank" rel="noopener noreferrer">Simpan ke Google Drive <span aria-hidden="true">&#8599;</span></a>':'')+'</div>'+
-      (superLicenseDriveUrl?'<span class="s">Buka folder Google Drive, lalu unggah sertifikat Anda di sana.</span>':'<span class="s">Folder Google Drive belum disiapkan oleh pengelola.</span>')+'</div>';
+      (superLicenseDriveUrl?'<span class="s">Buka folder Google Drive, lalu upload sertifikatmu di sana.</span>':'<span class="s">Folder Google Drive belum disiapkan oleh pengelola.</span>')+'</div>';
   }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan sertifikat pribadi.</p>';
   if(!mine.length)return h+'<p class="empty">Belum ada sertifikat.</p></div>';
   h+='<ul>';
