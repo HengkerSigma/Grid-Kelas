@@ -921,7 +921,7 @@ function studentAchievementsTab(no){
   h+='<h3 class="ph3">Early Bird</h3>';
   h+=earlyBird.length?'<ul class="achievement-list">'+earlyBird.map(x=>'<li><span class="achievement-icon gold">★</span><span><b>'+esc(cname(x.t.k))+' · '+esc(x.t.judul)+'</b><small>P1 · '+fmtTime(x.at)+'</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih Early Bird. Jadilah yang pertama mengumpulkan tugas.</p>';
   h+='<h3 class="ph3" style="margin-top:22px">Challenger</h3>';
-  h+=challenger.length?'<ul class="achievement-list">'+challenger.map(x=>'<li><span class="achievement-icon purple">◆</span><span><b>'+esc(cname(x.t.k))+' · '+esc(x.t.judul)+'</b><small>P'+x.pos+' · '+fmtTime(x.at)+'</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih Challenger. Selesaikan tugas di posisi P2 atau P3.</p>';
+  h+=challenger.length?'<ul class="achievement-list">'+challenger.map(x=>'<li><span class="achievement-icon '+(x.pos===2?'silver':'bronze')+'">◆</span><span><b>'+esc(cname(x.t.k))+' · '+esc(x.t.judul)+'</b><small>P'+x.pos+' · '+fmtTime(x.at)+'</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih Challenger. Selesaikan tugas di posisi P2 atau P3.</p>';
   h+='<h3 class="ph3" style="margin-top:22px">Pole Position</h3>';
   h+=pole.length?'<ul class="achievement-list">'+pole.map(course=>'<li><span class="achievement-icon purple">◆</span><span><b>'+esc(course.nama)+'</b><small>Sektor ungu · 5 besar absensi</small></span></li>').join('')+'</ul>':'<p class="empty">Belum meraih Pole Position. Raih sektor ungu di mata kuliah untuk mendapatkannya.</p>';
   return h;
