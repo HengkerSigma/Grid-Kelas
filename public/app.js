@@ -490,7 +490,7 @@ function loadGridDriver(){
         spot.style.width=Math.min(window.innerWidth-16,rect.width+pad*2)+'px';
         spot.style.height=Math.min(window.innerHeight-16,rect.height+pad*2)+'px';
         const p=step.popover||{};
-        pop.innerHTML='<div class="gk-native-tour-kicker">GRID KELAS · ROOKIE LAP</div><div class="gk-native-tour-count">'+(index+1)+' / '+steps.length+'</div><h3></h3><p></p><div class="gk-native-tour-actions"><button type="button" data-tour="close">Tutup</button><span></span><button type="button" data-tour="prev">Kembali</button><button type="button" data-tour="next"></button></div>';
+        pop.innerHTML='<div class="gk-native-tour-kicker">GRID KELAS · ROOKIE LAP</div><div class="gk-native-tour-count">'+(index+1)+' / '+steps.length+'</div><h3></h3><p></p><div class="gk-native-tour-hint">↗ COBA KLIK FITUR YANG DISOROT — TUTORIAL TETAP TERBUKA</div><div class="gk-native-tour-actions"><button type="button" data-tour="close">Tutup</button><span></span><button type="button" data-tour="prev">Kembali</button><button type="button" data-tour="next"></button></div>';
         pop.querySelector('h3').textContent=p.title||'';pop.querySelector('p').textContent=p.description||'';
         pop.querySelector('[data-tour="prev"]').disabled=index===0;
         pop.querySelector('[data-tour="next"]').textContent=index===steps.length-1?'Selesai':'Lanjutkan';
@@ -530,7 +530,7 @@ function renderTourHelp(){
         if(!ok){
           let note=document.getElementById('gkTourHelpNotice');
           if(!note){note=document.createElement('div');note.id='gkTourHelpNotice';note.className='gk-tour-help-notice';document.documentElement.appendChild(note);}
-          note.textContent='Tutorial belum terbuka. Periksa koneksi/CDN, lalu coba lagi.';
+          note.textContent='Tutorial belum terbuka. Muat ulang halaman, lalu coba lagi.';
           clearTimeout(note._hideTimer);note._hideTimer=setTimeout(()=>note.remove(),5000);
         }
       }).catch(()=>{
