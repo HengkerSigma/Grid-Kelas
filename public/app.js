@@ -53,7 +53,7 @@ const VIEWS=['beranda','mahasiswa','mata-kuliah','pengelola'];
 
 let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='loading';
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
-let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
+let ownerMode=false,view='beranda',annDel=null,ANN_EDIT=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{}};
 let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',defaultConstructorSeedPromise=null;
@@ -756,10 +756,11 @@ function renderAdmin(){
     '<div class="tile'+(nReq?' warn':'')+'"><div class="v">'+nReq+'</div><div class="l">Minta reset password</div></div>'+
     '<div class="tile"><div class="v">'+(pct(totH,totT)==null?'—':pct(totH,totT)+'%')+'</div><div class="l">Kehadiran kelas</div></div></div>';
   const anns=Object.keys(S.an).map(id=>Object.assign({id:id},S.an[id])).sort((a,b)=>(b.at||0)-(a.at||0));
+  const annEdit=ANN_EDIT&&S.an[ANN_EDIT]?Object.assign({id:ANN_EDIT},S.an[ANN_EDIT]):null;
   let al='';
   anns.forEach(x=>{
     al+='<div class="ann"><div class="row2" style="justify-content:space-between;flex-wrap:nowrap"><b>'+esc(x.judul)+'</b>'+
-      (annDel===x.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="ann-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ann-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="ann-del" data-id="'+esc(x.id)+'">Hapus</button>')+'</div>'+
+      (annDel===x.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="ann-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ann-del-no">Batal</button></span>':'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm" data-act="ann-edit" data-id="'+esc(x.id)+'">Edit</button><button type="button" class="btn sm" data-act="ann-del" data-id="'+esc(x.id)+'">Hapus</button></span>')+'</div>'+
       (x.isi?'<p>'+esc(x.isi)+'</p>':'')+'<span class="s">'+fmtTime(x.at)+(x.k?' · '+esc(cname(x.k)):' · Semua mata kuliah')+'</span></div>';
   });
   const updates=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).sort((a,b)=>a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
@@ -767,10 +768,10 @@ function renderAdmin(){
   const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+(u.attendance_url?'<a href="'+esc(u.attendance_url)+'" target="_blank" rel="noopener">Absensi</a>':'—')+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Tugas</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');
   h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Satu baris untuk setiap pertemuan. Data disimpan pada tabel Supabase <code>course_updates</code>.</p><div class="cu-form"><div class="field"><label>Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(edit&&edit.course_code===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div><div class="field"><label>Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" value="'+(edit?edit.meeting_number:1)+'"></div><div class="field"><label>Link absensi</label><input id="cu-attendance" type="url" placeholder="https://..." value="'+esc(edit&&edit.attendance_url||'')+'"></div><div class="field"><label>Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" value="'+esc(edit&&edit.task_title||'')+'"></div><div class="field"><label>Link tugas / materi</label><input id="cu-task" type="url" placeholder="https://..." value="'+esc(edit&&edit.task_url||'')+'"></div><div class="field"><label>Link pengumpulan</label><input id="cu-submit" type="url" placeholder="https://..." value="'+esc(edit&&edit.submission_url||'')+'"></div><div class="field"><label>Tenggat pengumpulan (opsional)</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div><div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Absensi</th><th>Tugas</th><th>Link tugas</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="7" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div></div>';
   h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="stack">'+
-    '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
-    '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(dv('an-isi',''))+'</textarea></div>'+
-    '<div class="field"><label for="an-k">Perihal</label><select id="an-k" data-dr="an-k"><option value="general"'+(dv('an-k','general')==='general'?' selected':'')+'>General</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(dv('an-k','general')===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
-    '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">Kirim pengumuman</button></div></div>'+
+    '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(annEdit?annEdit.judul:dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
+    '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(annEdit?annEdit.isi:dv('an-isi',''))+'</textarea></div>'+
+    '<div class="field"><label for="an-k">Perihal</label><select id="an-k" data-dr="an-k"><option value="general"'+((annEdit?annEdit.k:dv('an-k','general'))==='general'?' selected':'')+'>General</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((annEdit?annEdit.k:dv('an-k','general'))===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
+    '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">'+(annEdit?'Simpan perubahan':'Kirim pengumuman')+'</button>'+(annEdit?'<button type="button" class="btn" data-act="ann-edit-cancel">Batal edit</button>':'')+'</div></div>'+
     (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
   let tk='';
   tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
@@ -1537,8 +1538,10 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const judul=$('an-judul').value.trim();
       if(!judul){toast('Isi judul pengumuman dulu.');break;}
-      const ok=await run(()=>db.collection('pengumuman').add({judul:judul.slice(0,120),isi:$('an-isi').value.trim().slice(0,1000),k:($('an-k').value||'general'),at:Date.now()}),'Pengumuman terkirim');
-      if(ok){['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});$('an-judul').value='';$('an-isi').value='';$('an-k').value='';}
+      const body={judul:judul.slice(0,120),isi:$('an-isi').value.trim().slice(0,1000),k:($('an-k').value||'general')};
+      const editingId=ANN_EDIT;
+      const ok=await run(()=>editingId?db.doc('pengumuman/'+editingId).update(body):db.collection('pengumuman').add(Object.assign({},body,{at:Date.now()})),editingId?'Pengumuman diperbarui':'Pengumuman terkirim');
+      if(ok){ANN_EDIT=null;['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});renderAdmin();}
       break;
     }
     case 'cu-save':{
@@ -1647,6 +1650,17 @@ document.addEventListener('click',async e=>{
       await run(()=>db.doc('tugas/'+d.id).delete(),'Tugas dihapus');
       tkDel=null;renderAdmin();
       break;
+    }
+    case 'ann-edit':{
+      if(!adm()||!S.an[d.id])break;
+      ANN_EDIT=d.id;annDel=null;
+      ['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});
+      renderAdmin();
+      $('admin').scrollIntoView({behavior:'smooth',block:'start'});
+      break;
+    }
+    case 'ann-edit-cancel':{
+      ANN_EDIT=null;['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});renderAdmin();break;
     }
     case 'ann-del':annDel=d.id;renderAdmin();break;
     case 'ann-del-no':annDel=null;renderAdmin();break;
