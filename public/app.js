@@ -838,7 +838,7 @@ function renderDialog(force){
 function scheduleAttendanceDlg(){
   const c=S.co[D.key];
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
-  return '<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">'+esc(c.k)+' · ABSENSI</div><h2 id="dtitle">Isi Absen · '+esc(c.nama)+'</h2><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p></div><div class="db">'+absenStudent(c)+'</div>';
+  return '<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">'+esc(c.k)+' · ABSENSI</div><h2 id="dtitle">Isi Absen · '+esc(c.nama)+'</h2><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p></div><div class="db">'+absenStudent(c,true)+'</div>';
 }
 function courseDlg(){
   const c=S.co[D.key];
@@ -868,9 +868,9 @@ function pertPicker(c,mode){
   return h+'</div></div>';
 }
 
-function absenStudent(c){
+function absenStudent(c,scheduleMode){
   const n=D.pert,se=S.se[c.k+'_'+PAD(n)]||{},p=se.present||{},mine=ME?(p[ME]||''):'';
-  let h=pertPicker(c,'mhs');
+  let h=scheduleMode?'':pertPicker(c,'mhs');
   if(se.tanggal||se.topik)h+='<p class="empty"><b>Pertemuan '+n+'</b>'+(se.tanggal?' · '+fmtDate(se.tanggal):'')+(se.topik?' · '+esc(se.topik):'')+'</p>';
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
   const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):'Belum mengisi';
@@ -1400,6 +1400,7 @@ document.addEventListener('click',async e=>{
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
+      if(D.kind==='attendance'&&(!ME||scheduleAttendanceState(S.co[D.key])!=='open')){toast('Waktu pengisian absensi sudah ditutup.');break;}
       const no=+d.no,c=D.key,session=S.se[c+'_'+PAD(D.pert)]||{},cur=(session.present||{})[no]||'';
       if(!adm()&&no!==ME)break;
       if(d.st==='K'&&!(session.bukti&&session.bukti[no]&&session.bukti[no].id)){alert('Berkas bukti belum dikirim. Silakan unggah foto atau PDF bukti absensi terlebih dahulu sebelum memilih status Kelas Berjalan.');break;}
