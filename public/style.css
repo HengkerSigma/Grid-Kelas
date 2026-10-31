@@ -732,3 +732,35 @@ button.is-busy{cursor:wait;opacity:.65}
 @media(max-width:600px){
   .tile-hub .hub-task-value{font-size:clamp(.9rem,4.2cqi,1.12rem);letter-spacing:-.035em}
 }
+
+
+/* Subtle action pulse: only active while the student has pending work. */
+@keyframes action-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(225,6,0,0),inset 0 0 0 rgba(225,6,0,0)}
+  50%{box-shadow:0 0 0 2px rgba(225,6,0,.28),0 0 17px 2px rgba(225,6,0,.18),inset 0 0 18px rgba(225,6,0,.055)}
+}
+.tile-hub.task-alert{
+  border-color:rgba(225,6,0,.72)!important;
+  animation:action-pulse 3.2s ease-in-out infinite;
+}
+.tile-hub.task-alert .l::after{
+  content:" · PERLU TINDAKAN";
+  color:#ff6b65;
+  font-size:.62em;
+  letter-spacing:.07em;
+  vertical-align:middle;
+}
+.schedule-panel.attendance-alert{
+  border-color:rgba(225,6,0,.62);
+  animation:action-pulse 3.2s ease-in-out infinite;
+}
+.schedule-panel.attendance-alert .ph3::after{
+  content:"  • ABSEN TERSEDIA";
+  color:#ff6b65;
+  font-size:.62em;
+  letter-spacing:.06em;
+  white-space:nowrap;
+}
+@media(prefers-reduced-motion:reduce){
+  .tile-hub.task-alert,.schedule-panel.attendance-alert{animation:none;box-shadow:0 0 0 1px rgba(225,6,0,.24),inset 0 0 12px rgba(225,6,0,.05)}
+}
