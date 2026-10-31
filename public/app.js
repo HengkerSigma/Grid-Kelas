@@ -323,6 +323,15 @@ function renderConstructor(){
   groups.forEach((g,index)=>{
    const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
    const principalNo=Number(g.principal)||null,displayMembers=principalNo?[principalNo,...members.filter(n=>n!==principalNo)]:members;
+   // Mahasiswa yang sudah tergabung di Constructor lain pada mata kuliah ini tidak ditampilkan.
+   // Anggota kelompok yang sedang diedit tetap dipertahankan agar pilihan lama tidak hilang.
+   const occupiedInCourse=new Set();
+   groups.forEach(other=>{
+    if(other.id===g.id)return;
+    const op=Number(other.principal)||null;
+    if(op)occupiedInCourse.add(op);
+    (Array.isArray(other.members)?other.members:[]).forEach(x=>{const n=Number(x);if(Number.isInteger(n)&&n>=1&&n<=N)occupiedInCourse.add(n);});
+   });
    const canEdit=isAdmin||(ME!=null&&(principalNo===ME||(Array.isArray(g.members)&&g.members.map(Number).includes(Number(ME))))),editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
    const colorId=CONSTRUCTOR_COLORS.some(c=>c.id===g.color)?g.color:CONSTRUCTOR_COLORS[index%CONSTRUCTOR_COLORS.length].id;
    h+='<article class="constructor-card" style="--tc:'+constructorColor(colorId)+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+displayMembers.length+' anggota</span></div><div class="constructor-members">';
@@ -332,10 +341,10 @@ function renderConstructor(){
    if(editing){
     h+='<div class="constructor-editor">';
     if(isAdmin){h+='<label class="constructor-field">Team Principal<select data-constructor-principal="'+esc(g.id)+'"><option value="">Belum ditetapkan</option>';
-     for(let n=1;n<=N;n++)h+='<option value="'+n+'"'+(n===principalNo?' selected':'')+'>'+n+'. '+esc(nameOf(n))+'</option>';
+     for(let n=1;n<=N;n++)if(n===principalNo||!occupiedInCourse.has(n))h+='<option value="'+n+'"'+(n===principalNo?' selected':'')+'>'+n+'. '+esc(nameOf(n))+'</option>';
      h+='</select></label>';}
     h+='<label class="constructor-field">Nama Constructor<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'"></label><label class="constructor-field">Warna kartu Constructor<select data-constructor-color="'+esc(g.id)+'">'+CONSTRUCTOR_COLORS.map(c=>'<option value="'+c.id+'"'+(c.id===colorId?' selected':'')+'>'+c.name+'</option>').join('')+'</select></label><p class="s">Pilih mahasiswa yang menjadi anggota kelompok ini.</p><div class="constructor-members edit">';
-    for(let n=1;n<=N;n++)if(n!==principalNo)h+='<label class="constructor-member"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
+    for(let n=1;n<=N;n++)if(n!==principalNo&&(members.includes(n)||!occupiedInCourse.has(n)))h+='<label class="constructor-member"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
     h+='</div><div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-save" data-id="'+esc(g.id)+'">Simpan perubahan</button><button type="button" class="btn" data-act="constructor-edit-cancel" data-id="'+esc(g.id)+'">Batal</button>'+(isAdmin?'<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>':'')+'</div></div>';
    }
    h+='</article>';
