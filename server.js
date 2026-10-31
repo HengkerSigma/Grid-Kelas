@@ -927,10 +927,10 @@ const server = http.createServer(async (req, res) => {
         const docs = [];
         let rows = await listCol(cp);
         if (cp === 'tugas') rows = await dropExpired(rows);
-        rows.forEach((row) => {
+        for (const row of rows) {
           const v = await view(row.key, row.data, sess);
           if (v !== null) docs.push({ id: row.key.slice(cp.length + 1), data: v });
-        });
+        }
         docs.sort((a, b) => (a.id < b.id ? -1 : 1));
         return json(res, 200, { docs: docs });
       }
