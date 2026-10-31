@@ -253,7 +253,7 @@ function renderConstructor(){
         h+='</select></label>';
       }
       h+='<label class="constructor-field">Nama kelompok<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'"></label><p class="s">Pilih mahasiswa yang menjadi anggota kelompok ini.</p><div class="constructor-members edit">';
-      for(let n=1;n<=N;n++)h+='<label class="constructor-member"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
+      for(let n=1;n<=N;n++)if(n!==principalNo)h+='<label class="constructor-member"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
       h+='</div><div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-save" data-id="'+esc(g.id)+'">Simpan perubahan</button><button type="button" class="btn" data-act="constructor-edit-cancel" data-id="'+esc(g.id)+'">Batal</button>';
       if(isAdmin)h+='<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>';
       h+='</div></div>';
@@ -1518,6 +1518,15 @@ document.addEventListener('change',async e=>{
     return;
   }
   if(t.dataset&&t.dataset.nim&&adm()){await run(()=>upsertAkun(+t.dataset.nim,{nim:t.value.trim()}),'NIM disimpan');return;}
+  if(t.matches&&t.matches('select[data-constructor-principal]')){
+    const id=t.dataset.constructorPrincipal,selected=Number(t.value)||null;
+    document.querySelectorAll('[data-constructor-member="'+id+'"]').forEach(input=>{
+      const label=input.closest('label');
+      if(label)label.hidden=selected===Number(input.value);
+      if(selected===Number(input.value))input.checked=false;
+    });
+    return;
+  }
   if(t.dataset&&t.dataset.tpNo&&adm()){
     const no=+t.dataset.tpNo,id=t.value||null;
     await run(()=>upsertAkun(no,{teamPrincipal:id}),'Role Team Principal diperbarui');return;
