@@ -600,7 +600,8 @@ button.is-busy{cursor:wait;opacity:.65}
 /* Constructor groups: responsive card grid inspired by Grand Prix course cards. */
 .constructor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:24px;align-items:stretch}
 .constructor-grid>.constructor-create,.constructor-grid>.constructor-empty{grid-column:1/-1}
-.constructor-grid>.constructor-card{box-sizing:border-box;margin:0;min-width:0;padding:20px;border:1px solid color-mix(in srgb,var(--tc) 55%,transparent);border-radius:14px;overflow:hidden;color:#fff;background:linear-gradient(155deg,color-mix(in srgb,var(--tc) 32%,#08080c) 0%,color-mix(in srgb,var(--tc) 68%,#08080c) 58%,var(--tc) 100%);box-shadow:0 12px 28px rgba(0,0,0,.16)}
+.constructor-grid>.constructor-course{grid-column:1/-1;min-width:0}
+.constructor-grid .constructor-card{box-sizing:border-box;margin:0;min-width:0;padding:20px;border:1px solid color-mix(in srgb,var(--tc) 55%,transparent);border-radius:14px;overflow:hidden;color:#fff;background:linear-gradient(155deg,color-mix(in srgb,var(--tc) 32%,#08080c) 0%,color-mix(in srgb,var(--tc) 68%,#08080c) 58%,var(--tc) 100%);box-shadow:0 12px 28px rgba(0,0,0,.16)}
 .constructor-grid .constructor-kicker{color:#fff;opacity:.78}
 .constructor-grid .constructor-principal,.constructor-grid .constructor-count{color:rgba(255,255,255,.82)}
 .constructor-grid .constructor-count{border-color:rgba(255,255,255,.28);background:rgba(0,0,0,.16)}
