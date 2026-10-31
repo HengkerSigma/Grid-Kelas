@@ -418,16 +418,15 @@ async function view(p, data, sess) {
     const out = Object.assign({}, data, { subs: {}, groupSubs: {} });
     if (me && isObj(data.subs) && data.subs[me]) out.subs[me] = data.subs[me];
     if (sess && data.mode === 'group') {
-      const acc = await getDoc('akun/' + pad(sess.no));
       const groups = await listCol('constructors');
       const own = groups.find((row) => {
         const g = row.data || {};
-        return (Array.isArray(g.members) && g.members.map(Number).includes(sess.no)) || (acc && acc.teamPrincipal === row.key.slice('constructors/'.length));
+        return g.courseCode === data.k && ((Array.isArray(g.members) && g.members.map(Number).includes(sess.no)) || Number(g.principal) === Number(sess.no));
       });
       if (own) {
         const gid = own.key.slice('constructors/'.length), sub = isObj(data.groupSubs) ? data.groupSubs[gid] : null;
         if (sub && typeof sub.at === 'number') {
-          out.groupSubs[gid] = acc && acc.teamPrincipal === gid ? sub : { at: sub.at };
+          out.groupSubs[gid] = Number((own.data || {}).principal) === Number(sess.no) ? sub : { at: sub.at };
         }
       }
     }
@@ -648,8 +647,8 @@ async function decide(method, p, body, sess, existing) {
         if (!isObj(body.groupSubs) || Object.keys(body.groupSubs).length !== 1) return ERR_FORBID;
         const gid = Object.keys(body.groupSubs)[0], s = body.groupSubs[gid];
         if (!/^[A-Za-z0-9_-]{1,40}$/.test(gid) || !isObj(s)) return ERR_FORBID;
-        const group = await getDoc('constructors/' + gid), acc = await getDoc('akun/' + pad(sess.no));
-        if (!group || !acc || acc.teamPrincipal !== gid) return ERR_FORBID;
+        const group = await getDoc('constructors/' + gid);
+        if (!group || group.courseCode !== existing.k || Number(group.principal) !== Number(sess.no)) return ERR_FORBID;
         const tautan = String(s.tautan || '').trim().slice(0, 500);
         const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET);
         const catatan = String(s.catatan || '').slice(0, 500);
@@ -676,29 +675,37 @@ async function decide(method, p, body, sess, existing) {
     if (parts.length !== 2 || !/^[A-Za-z0-9_-]{1,40}$/.test(id)) return ERR_FORBID;
     if (method === 'DELETE') {
       if (!admin) return ERR_FORBID;
-      const accounts = await Promise.all(Array.from({length:32},(_,i)=>getDoc('akun/'+pad(i+1))));
-      if (accounts.some(a=>a&&a.teamPrincipal===id)) return ERR_BAD('Cabut atau pindahkan role Team Principal sebelum menghapus kelompok.');
+      if (Number(existing && existing.principal)) return ERR_BAD('Cabut role Team Principal sebelum menghapus kelompok.');
       return { del: true };
     }
     if (method === 'POST' || method === 'PUT') {
       if (!admin) return ERR_FORBID;
       const name=String(body.name||'').trim();
+      const courseCode=String(body.courseCode||'');
       const members=Array.isArray(body.members)?body.members:[];
-      if (!name || name.length>80 || members.length>32 || members.some(n=>!Number.isInteger(n)||n<1||n>32) || new Set(members).size!==members.length) return ERR_BAD('Nama kelompok atau daftar anggota tidak valid.');
-      return { data:{name:name,members:members,createdAt:existing&&existing.createdAt||Date.now()} };
+      if (!name || name.length>80 || !/^[A-Za-z0-9_-]{1,40}$/.test(courseCode) || !(await getDoc('courses/'+courseCode)) || members.length>32 || members.some(n=>!Number.isInteger(n)||n<1||n>32) || new Set(members).size!==members.length) return ERR_BAD('Nama Constructor, mata kuliah, atau daftar anggota tidak valid.');
+      const others=await listCol('constructors');
+      if(others.some(row=>{const g=row.data||{};return g.courseCode===courseCode&&((Array.isArray(g.members)&&g.members.some(n=>members.includes(Number(n))))||(members.includes(Number(g.principal))&&Number(g.principal)>0));}))return ERR_BAD('Mahasiswa sudah terdaftar di Constructor lain pada mata kuliah ini.');
+      return { data:{courseCode:courseCode,name:name,members:members,principal:null,createdAt:existing&&existing.createdAt||Date.now()} };
     }
     if (method === 'PATCH') {
       if (!existing) return ERR_MISSING;
-      const acc=admin?null:await getDoc('akun/'+pad(sess.no));
-      if (!admin && !(acc&&acc.teamPrincipal===id)) return ERR_FORBID;
-      if (!onlyKeys(body,['name','members','color'])) return ERR_FORBID;
+      if (!admin && Number(existing.principal)!==Number(sess.no)) return ERR_FORBID;
+      if (!onlyKeys(body,['name','members','color','principal','courseCode'])) return ERR_FORBID;
+      if (!admin && (body.principal!==undefined || body.courseCode!==undefined)) return ERR_FORBID;
       const name=String(body.name===undefined?existing.name||'':body.name).trim();
       const members=body.members===undefined?(Array.isArray(existing.members)?existing.members:[]):body.members;
       const colors=['red','blue','cyan','orange','yellow','green','purple','pink','silver','black'];
       const color=body.color===undefined?existing.color:body.color;
+      const courseCode=body.courseCode===undefined?existing.courseCode:String(body.courseCode);
+      const principal=body.principal===undefined?existing.principal:(body.principal===null?null:Number(body.principal));
       if (!name || name.length>80 || !Array.isArray(members) || members.length>32 || members.some(n=>!Number.isInteger(n)||n<1||n>32) || new Set(members).size!==members.length) return ERR_BAD('Nama kelompok atau daftar anggota tidak valid.');
       if (color!==undefined && !colors.includes(color)) return ERR_BAD('Pilihan warna Constructor tidak valid.');
-      return { data:Object.assign({},existing,{name:name,members:members,color:color,updatedAt:Date.now()}) };
+      if (!/^[A-Za-z0-9_-]{1,40}$/.test(String(courseCode||'')) || !(await getDoc('courses/'+courseCode))) return ERR_BAD('Mata kuliah Constructor tidak valid.');
+      if (principal!==undefined && principal!==null && (!Number.isInteger(principal)||principal<1||principal>32)) return ERR_BAD('Team Principal tidak valid.');
+      const others=await listCol('constructors');
+      if(others.some(row=>row.key!=='constructors/'+id&&((row.data||{}).courseCode===courseCode)&&(((Array.isArray((row.data||{}).members)?(row.data||{}).members:[]).concat(Number((row.data||{}).principal)||[])).some(n=>members.concat(Number(principal)||[]).includes(Number(n))))))return ERR_BAD('Mahasiswa sudah terdaftar di Constructor lain pada mata kuliah ini.');
+      return { data:Object.assign({},existing,{courseCode:courseCode,name:name,members:members,color:color,principal:principal,updatedAt:Date.now()}) };
     }
     return ERR_FORBID;
   }
