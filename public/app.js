@@ -462,12 +462,41 @@ function homeTiles(no){
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
 
-/* ---------- Grid Class Rookie Lap · tutorial pengguna baru ---------- */
+/* ---------- Grid Class Rookie Lap · tutorial pengguna ---------- */
 var GRID_TOUR_STARTED=false;
+function tourKey(){return 'gk_tour_v1_'+ME;}
+function tourDone(){try{return localStorage.getItem(tourKey())==='done';}catch(e){return false;}}
+function renderTourHelp(){
+  let b=document.getElementById('gkTourHelp');
+  if(!ME||!tourDone()){if(b)b.remove();return;}
+  if(!b){
+    b=document.createElement('button');b.id='gkTourHelp';b.type='button';b.className='gk-tour-help';
+    b.setAttribute('aria-label','Buka tutorial Grid Kelas');b.title='Buka tutorial Grid Kelas';b.textContent='?';
+    b.addEventListener('click',()=>{GRID_TOUR_STARTED=false;launchGridClassTour(true);});
+    document.body.appendChild(b);
+  }
+}
+function showTourPrompt(){
+  if(!ME||tourDone()||document.getElementById('gkTourPrompt')){renderTourHelp();return;}
+  const wrap=document.createElement('div');wrap.id='gkTourPrompt';wrap.className='gk-tour-prompt';
+  wrap.innerHTML='<section class="gk-tour-card" role="dialog" aria-modal="true" aria-labelledby="gkTourTitle"><div class="gk-tour-kicker">GRID KELAS · ROOKIE BRIEFING</div><div class="gk-tour-mark" aria-hidden="true">?</div><h2 id="gkTourTitle">Perlu Tutorial?</h2><p>Kenali fitur Grid Kelas sebelum memulai. Ikuti briefing singkat untuk melihat navigasi, tugas, absensi, mata kuliah, dan fitur lainnya.</p><div class="gk-tour-actions"><button type="button" class="gk-tour-skip">Skip</button><button type="button" class="gk-tour-start">Tutorial <span aria-hidden="true">›</span></button></div><small>BRIEFING WAJIB? TIDAK · KAMU BISA MEMBUKANYA LAGI KAPAN SAJA</small></section>';
+  document.body.appendChild(wrap);
+  wrap.querySelector('.gk-tour-skip').addEventListener('click',()=>{
+    try{localStorage.setItem(tourKey(),'done');}catch(e){}
+    wrap.remove();renderTourHelp();
+  });
+  wrap.querySelector('.gk-tour-start').addEventListener('click',()=>{
+    wrap.remove();launchGridClassTour(false);
+  });
+}
 function startGridClassTour(){
+  if(!ME)return;
+  if(tourDone()){renderTourHelp();return;}
+  showTourPrompt();
+}
+function launchGridClassTour(force){
   if(GRID_TOUR_STARTED||!ME||!window.driver||!window.driver.js||typeof window.driver.js.driver!=='function')return;
-  let seen=false;try{seen=localStorage.getItem('gk_tour_v1_'+ME)==='done';}catch(e){}
-  if(seen)return;
+  if(!force&&tourDone()){renderTourHelp();return;}
   const d=window.driver.js.driver({
     animate:true,showProgress:true,showButtons:['previous','next','close'],
     nextBtnText:'Lanjutkan',prevBtnText:'Kembali',doneBtnText:'Mulai balapan',
@@ -493,7 +522,7 @@ function startGridClassTour(){
       {element:'#home #superLicensePanel',popover:{title:'10 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
       {element:'#home #classArchivePanel',popover:{title:'11 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}}
     ],
-    onDestroyed:()=>{try{localStorage.setItem('gk_tour_v1_'+ME,'done');}catch(e){}}
+    onDestroyed:()=>{try{localStorage.setItem(tourKey(),'done');}catch(e){}GRID_TOUR_STARTED=false;renderTourHelp();}
   });
   GRID_TOUR_STARTED=true;
   d.drive();
