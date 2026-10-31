@@ -462,6 +462,13 @@ async function decide(method, p, body, sess, existing) {
       else if (k === 'archiveEdit' && typeof v === 'boolean') base.archiveEdit = v;
       else if (k === 'teamPrincipal' && (v === null || (typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v)))) {
         if (v !== null && !(await getDoc('constructors/' + v))) return ERR_BAD('Kelompok untuk Team Principal tidak ditemukan.');
+        if (v !== null) {
+          for (let n=1;n<=32;n++) {
+            if (n===Number(id)) continue;
+            const other=await getDoc('akun/'+pad(n));
+            if (other&&other.teamPrincipal===v) return ERR_BAD('Kelompok ini sudah memiliki Team Principal. Cabut role sebelumnya terlebih dahulu.');
+          }
+        }
         base.teamPrincipal = v;
       }
       else if (k === 'resetReq' && (v === null || typeof v === 'number')) base.resetReq = v;
