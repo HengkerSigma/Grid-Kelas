@@ -543,9 +543,12 @@ async function decide(method, p, body, sess, existing) {
         const b = Object.assign(clone(existing), pick(body, ['tanggal', 'topik']));
         if (isObj(body.present)) b.present = Object.assign({}, b.present, body.present);
         if (isObj(body.bukti)) b.bukti = Object.assign({}, b.bukti, body.bukti);
+        if (Object.keys(isObj(b.present)?b.present:{}).some((no)=>b.present[no]==='K'&&!(b.bukti&&b.bukti[no]&&b.bukti[no].id))) return ERR_BAD('Kelas Berjalan memerlukan file bukti mahasiswa tersebut.');
         return { data: b };
       }
-      return { data: { k: m[1], n: Number(m[2]), tanggal: String(body.tanggal || ''), topik: String(body.topik || '').slice(0, 120), present: isObj(body.present) ? body.present : {}, bukti: isObj(body.bukti) ? body.bukti : {} } };
+      const created = { k: m[1], n: Number(m[2]), tanggal: String(body.tanggal || ''), topik: String(body.topik || '').slice(0, 120), present: isObj(body.present) ? body.present : {}, bukti: isObj(body.bukti) ? body.bukti : {} };
+      if (Object.keys(created.present).some((no)=>created.present[no]==='K'&&!(created.bukti[no]&&created.bukti[no].id))) return ERR_BAD('Kelas Berjalan memerlukan file bukti mahasiswa tersebut.');
+      return { data: created };
     }
     const me = String(sess.no);
     if (method === 'PUT' && existing) return ERR_FORBID;
@@ -558,7 +561,7 @@ async function decide(method, p, body, sess, existing) {
       if (!isObj(body.present) || !onlyKeys(body.present, [me])) return ERR_FORBID;
       const v = body.present[me];
       if (v !== undefined) {
-        if (!(v === '' || v === 'H' || v === 'I' || v === 'S')) return ERR_BAD('Status absen tidak valid.');
+        if (!(v === '' || v === 'H' || v === 'I' || v === 'S' || v === 'K')) return ERR_BAD('Status absen tidak valid.');
         out.present[me] = v;
       }
     }
@@ -570,6 +573,7 @@ async function decide(method, p, body, sess, existing) {
         out.bukti[me] = f;
       }
     }
+    if (out.present[me] === 'K' && !(out.bukti[me] && /^[0-9a-f]{32}$/.test(out.bukti[me].id || ''))) return ERR_BAD('Lampirkan file bukti terlebih dahulu untuk memilih Kelas Berjalan.');
     return { data: out };
   }
 
@@ -807,7 +811,7 @@ const server = http.createServer(async (req, res) => {
         if (!isObj(d) || !isObj(d.present) || !Object.values(d.present).some(Boolean)) return;
         const c = out[d.k] || (out[d.k] = { t: 0, h: {} });
         c.t++;
-        Object.keys(d.present).forEach((no) => { if (d.present[no] === 'H') c.h[no] = (c.h[no] || 0) + 1; });
+        Object.keys(d.present).forEach((no) => { if (d.present[no] === 'H' || d.present[no] === 'K') c.h[no] = (c.h[no] || 0) + 1; });
       });
       return json(res, 200, { courses: out });
     }
