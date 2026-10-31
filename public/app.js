@@ -464,39 +464,65 @@ function homeTiles(no){
 
 /* ---------- Grid Class Rookie Lap · tutorial pengguna ---------- */
 var GRID_TOUR_STARTED=false;
+var GRID_DRIVER_PROMISE=null;
 function tourKey(){return 'gk_tour_v1_'+ME;}
 function tourDone(){try{return localStorage.getItem(tourKey())==='done';}catch(e){return false;}}
+function loadGridDriver(){
+  if(window.driver&&window.driver.js&&typeof window.driver.js.driver==='function')return Promise.resolve(true);
+  if(GRID_DRIVER_PROMISE)return GRID_DRIVER_PROMISE;
+  GRID_DRIVER_PROMISE=new Promise((resolve)=>{
+    let script=document.querySelector('script[data-grid-driver]');
+    if(!script){
+      script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/driver.js@1.3.5/dist/driver.js.iife.js';script.async=true;script.dataset.gridDriver='1';document.head.appendChild(script);
+    }
+    let settled=false;
+    const finish=ok=>{if(settled)return;settled=true;resolve(!!(ok&&window.driver&&window.driver.js&&typeof window.driver.js.driver==='function'));};
+    script.addEventListener('load',()=>finish(true),{once:true});
+    script.addEventListener('error',()=>finish(false),{once:true});
+    setTimeout(()=>finish(false),10000);
+  }).then(ok=>{GRID_DRIVER_PROMISE=null;return ok;});
+  return GRID_DRIVER_PROMISE;
+}
 function renderTourHelp(){
   let b=document.getElementById('gkTourHelp');
-  if(!ME||!tourDone()){if(b)b.remove();return;}
+  if(!ME){if(b)b.remove();return;}
   if(!b){
     b=document.createElement('button');b.id='gkTourHelp';b.type='button';b.className='gk-tour-help';
     b.setAttribute('aria-label','Buka tutorial Grid Kelas');b.title='Buka tutorial Grid Kelas';b.textContent='?';
-    b.addEventListener('click',()=>{GRID_TOUR_STARTED=false;launchGridClassTour(true);});
+    b.addEventListener('click',()=>{if(GRID_TOUR_STARTED)return;launchGridClassTour(true);});
     document.body.appendChild(b);
   }
 }
 function showTourPrompt(){
   if(!ME||tourDone()||document.getElementById('gkTourPrompt')){renderTourHelp();return;}
+  renderTourHelp();
   const wrap=document.createElement('div');wrap.id='gkTourPrompt';wrap.className='gk-tour-prompt';
-  wrap.innerHTML='<section class="gk-tour-card" role="dialog" aria-modal="true" aria-labelledby="gkTourTitle"><div class="gk-tour-kicker">GRID KELAS · ROOKIE BRIEFING</div><div class="gk-tour-mark" aria-hidden="true">?</div><h2 id="gkTourTitle">Perlu Tutorial?</h2><p>Kenali fitur Grid Kelas sebelum memulai. Ikuti briefing singkat untuk melihat navigasi, tugas, absensi, mata kuliah, dan fitur lainnya.</p><div class="gk-tour-actions"><button type="button" class="gk-tour-skip">Skip</button><button type="button" class="gk-tour-start">Tutorial <span aria-hidden="true">›</span></button></div><small>BRIEFING WAJIB? TIDAK · KAMU BISA MEMBUKANYA LAGI KAPAN SAJA</small></section>';
+  wrap.innerHTML='<section class="gk-tour-card" role="dialog" aria-modal="true" aria-labelledby="gkTourTitle"><div class="gk-tour-kicker">GRID KELAS · ROOKIE BRIEFING</div><div class="gk-tour-mark" aria-hidden="true">?</div><h2 id="gkTourTitle">Perlu Tutorial?</h2><p>Kenali fitur Grid Kelas sebelum memulai. Ikuti briefing singkat untuk melihat navigasi, tugas, absensi, mata kuliah, dan fitur lainnya.</p><div class="gk-tour-error" role="alert" hidden></div><div class="gk-tour-actions"><button type="button" class="gk-tour-skip">Skip</button><button type="button" class="gk-tour-start">Tutorial <span aria-hidden="true">›</span></button></div><small>BRIEFING WAJIB? TIDAK · KAMU BISA MEMBUKANYA LAGI KAPAN SAJA</small></section>';
   document.body.appendChild(wrap);
   wrap.querySelector('.gk-tour-skip').addEventListener('click',()=>{
     try{localStorage.setItem(tourKey(),'done');}catch(e){}
     wrap.remove();renderTourHelp();
   });
-  wrap.querySelector('.gk-tour-start').addEventListener('click',()=>{
-    wrap.remove();launchGridClassTour(false);
+  wrap.querySelector('.gk-tour-start').addEventListener('click',async()=>{
+    const btn=wrap.querySelector('.gk-tour-start'),err=wrap.querySelector('.gk-tour-error');
+    btn.disabled=true;btn.textContent='MEMUAT TUTORIAL...';err.hidden=true;
+    const ok=await launchGridClassTour(false);
+    if(ok)wrap.remove();
+    else{btn.disabled=false;btn.innerHTML='Coba Lagi <span aria-hidden="true">›</span>';err.hidden=false;err.textContent='Tutorial belum dapat dimuat. Periksa koneksi internet atau pemblokir CDN, lalu coba lagi.';}
   });
 }
 function startGridClassTour(){
   if(!ME)return;
-  if(tourDone()){renderTourHelp();return;}
+  renderTourHelp();
+  if(tourDone())return;
   showTourPrompt();
 }
-function launchGridClassTour(force){
-  if(GRID_TOUR_STARTED||!ME||!window.driver||!window.driver.js||typeof window.driver.js.driver!=='function')return;
-  if(!force&&tourDone()){renderTourHelp();return;}
+async function launchGridClassTour(force){
+  if(GRID_TOUR_STARTED||!ME)return false;
+  if(!force&&tourDone()){renderTourHelp();return false;}
+  const loaded=await loadGridDriver();
+  if(!loaded)return false;
+  if(GRID_TOUR_STARTED)return false;
   const d=window.driver.js.driver({
     animate:true,showProgress:true,showButtons:['previous','next','close'],
     nextBtnText:'Lanjutkan',prevBtnText:'Kembali',doneBtnText:'Mulai balapan',
@@ -522,10 +548,12 @@ function launchGridClassTour(force){
       {element:'#home #superLicensePanel',popover:{title:'10 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
       {element:'#home #classArchivePanel',popover:{title:'11 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}}
     ],
+
     onDestroyed:()=>{try{localStorage.setItem(tourKey(),'done');}catch(e){}GRID_TOUR_STARTED=false;renderTourHelp();}
   });
   GRID_TOUR_STARTED=true;
   d.drive();
+  return true;
 }
 
 function dlgHead(kind,title,sub,col){
