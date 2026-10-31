@@ -691,11 +691,14 @@ async function decide(method, p, body, sess, existing) {
       if (!existing) return ERR_MISSING;
       const acc=admin?null:await getDoc('akun/'+pad(sess.no));
       if (!admin && !(acc&&acc.teamPrincipal===id)) return ERR_FORBID;
-      if (!onlyKeys(body,['name','members'])) return ERR_FORBID;
+      if (!onlyKeys(body,['name','members','color'])) return ERR_FORBID;
       const name=String(body.name===undefined?existing.name||'':body.name).trim();
       const members=body.members===undefined?(Array.isArray(existing.members)?existing.members:[]):body.members;
+      const colors=['red','blue','cyan','orange','yellow','green','purple','pink','silver','black'];
+      const color=body.color===undefined?existing.color:body.color;
       if (!name || name.length>80 || !Array.isArray(members) || members.length>32 || members.some(n=>!Number.isInteger(n)||n<1||n>32) || new Set(members).size!==members.length) return ERR_BAD('Nama kelompok atau daftar anggota tidak valid.');
-      return { data:Object.assign({},existing,{name:name,members:members,updatedAt:Date.now()}) };
+      if (color!==undefined && !colors.includes(color)) return ERR_BAD('Pilihan warna Constructor tidak valid.');
+      return { data:Object.assign({},existing,{name:name,members:members,color:color,updatedAt:Date.now()}) };
     }
     return ERR_FORBID;
   }
