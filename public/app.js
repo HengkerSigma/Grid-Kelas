@@ -218,7 +218,7 @@ function renderCourses(){
     h+='<li class="course" style="--tc:'+colr(c.warna)+'">'+
       '<div class="ctop"><h3>'+esc(c.nama)+'</h3><span class="badge" aria-hidden="true">'+esc(c.k)+'</span></div>'+
       '<ul class="dosen">'+dosenHtml(c)+'</ul>'+
-      '<p class="jadwal">'+esc(c.sks)+' SKS · '+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+
+      '<p class="jadwal">'+esc(c.sks)+' SKS · '+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p><p class="s course-caption">Cek detail perkuliahan, absensi, dan tugas mata kuliah ini.</p>'+
       '<button type="button" class="pic" data-act="open-course" data-k="'+esc(c.k)+'" aria-label="Buka absen dan tugas '+esc(c.nama)+'">'+
       (logo&&okImg(logo.data)?'<img class="logo" src="'+logo.data+'" alt="">':'<span class="ph" aria-hidden="true">'+esc(c.k)+'</span>')+
       (ak?'<span class="aktif">'+ak+' tugas aktif</span>':'')+
@@ -627,7 +627,7 @@ function renderHome(force){
     Object.values(S.se).forEach(se=>{if(se.tanggal&&se.tanggal<=td&&!(se.present&&se.present[ME]))missing.push(se);});
     missing.sort((a2,b2)=>(a2.tanggal||'').localeCompare(b2.tanggal||''));
     const s0=stu(ME),ak=S.ak[PAD(ME)];
-    $('homeLede').textContent='Cek kabar kelas, tugas, dan absensi kamu di sini.';
+    $('homeLede').textContent='Cek jadwal, tugas, dan kabar terbaru kelasmu di sini.';
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname">Halo, '+esc(s0&&s0.depan?s0.depan:'Mahasiswa')+(isAd(ME)?' '+FLAG:'')+'</div></div></div>';
     if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password Anda masih password bawaan. Ganti sekarang agar akun lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
     h+=homeTiles(ME);
@@ -642,10 +642,10 @@ function renderHome(force){
     const act=tasks.filter(t=>!t.tenggat||t.tenggat>=td);
     let li='';
     act.slice(0,6).forEach(t=>{li+='<li class="it"><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</span></div></li>';});
-    h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+teamRadioPanel(anns)+'</div></div>';
+    h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3><p class="s">Daftar tugas yang masih berjalan dan perlu dipantau.</p>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+teamRadioPanel(anns)+'</div></div>';
     h+='<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }else{
-    $('homeLede').textContent='Lihat info kelas dan pengumuman terbaru.';
+    $('homeLede').textContent='Lihat info kelas dan update terbaru. Yuk, cek dulu sebelum mulai!';
     h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+teamRadioPanel(anns)+'<div style="margin-top:14px">'+classArchivePanel()+'</div>';
   }
   $('home').innerHTML=h;
@@ -654,7 +654,7 @@ function superLicensePanel(){
   const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
     .filter(x=>x.no===ME&&x.jenis==='ser').sort((a,b)=>(b.at||0)-(a.at||0));
   let h='<div class="panel"><h3 class="ph3">Super License</h3>'+
-    '<p class="s" style="margin-bottom:12px">Simpan sertifikat pribadi di sini, atau unggah sendiri ke folder Google Drive kelas.</p>';
+    '<p class="s" style="margin-bottom:12px">Kumpulkan sertifikat pentingmu di satu tempat. Biar gampang dicari kapan pun dibutuhkan.</p>';
   if(ME&&AS){
     h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama sertifikat</label>'+
       '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="Contoh: Sertifikat Workshop Web"></div>'+
@@ -681,7 +681,7 @@ function classArchivePanel(){
   const canEdit=adm()||(ME!=null&&S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true);
   const rows=Object.keys(S.ca).map(id=>Object.assign({id:id},S.ca[id])).sort((a,b)=>(b.at||0)-(a.at||0));
   let h='<div class="panel"><div class="row2" style="justify-content:space-between;align-items:center"><div><h3 class="ph3">Class Archive</h3>'+
-    '<p class="s">Galeri dokumentasi kelas yang dapat dilihat semua pengunjung.</p></div><span class="chip">'+rows.length+' foto</span></div>';
+    '<p class="s">Tempat menyimpan momen dan keseruan kegiatan kelas. Lihat-lihat atau tambahkan foto kalau punya izin.</p></div><span class="chip">'+rows.length+' foto</span></div>';
   if(canEdit&&ME&&AS){
     h+='<div class="stack" style="margin:12px 0 16px"><div class="field"><label for="archive-judul">Judul dokumentasi</label>'+
       '<input id="archive-judul" data-dr="archive-judul" type="text" maxlength="100" value="'+esc(dv('archive-judul',''))+'" placeholder="Contoh: Praktikum instalasi listrik"></div>'+
@@ -707,12 +707,12 @@ function schedPanel(sched,dayN){
   let li='';
   sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
   const needsAttendance=!!ME&&sched.some(c=>inSession(c)&&!(S.se[c.k+'_'+PAD(defaultPert(c.k))]&&S.se[c.k+'_'+PAD(defaultPert(c.k))].present&&S.se[c.k+'_'+PAD(defaultPert(c.k))].present[ME]));
-  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Tidak ada kuliah hari ini.</p>')+'</div>';
+  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah hari ini, selamat bersantai.':'Tidak ada kuliah hari ini.')+'</p>')+'</div>';
 }
 function annPanel(anns){
   let a='';
   anns.forEach(x=>{a+='<div class="ann"><b>'+esc(x.judul)+'</b>'+(x.isi?'<p>'+esc(x.isi)+'</p>':'')+'<span class="s">'+fmtTime(x.at)+(x.k?' · '+esc(cname(x.k)):'')+'</span></div>';});
-  return '<div class="panel"><h3 class="ph3">Pengumuman</h3>'+(a||'<p class="empty">Belum ada pengumuman.</p>')+'</div>';
+  return '<div class="panel"><h3 class="ph3">Pengumuman</h3><p class="s">Info penting kelas, langsung dari Team Radio.</p>'+(a||'<p class="empty">Belum ada pengumuman.</p>')+'</div>';
 }
 
 /* Team Radio: pengumuman kelas ditampilkan satu per satu seperti transmisi radio tim F1. */
@@ -768,7 +768,7 @@ function renderAdmin(){
   const edit=CU_EDIT&&S.cu[CU_EDIT]?Object.assign({id:CU_EDIT},S.cu[CU_EDIT]):null;
   const linkedTask=edit&&edit.task_title?Object.values(S.tu).find(t=>t.k===edit.course_code&&t.judul===edit.task_title):null;
   const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+(u.attendance_url?'<a href="'+esc(u.attendance_url)+'" target="_blank" rel="noopener">Absensi</a>':'—')+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Materi/soal</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');
-  h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Satu formulir untuk mengatur informasi pertemuan, absensi, dan tugas. Informasi pertemuan disimpan di <code>course_updates</code>; tugas yang diisi juga diterbitkan ke tab Tugas mahasiswa.</p>'+
+  h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Atur semuanya sekaligus di sini: info pertemuan, link absensi, materi, sampai tugas dan tenggatnya. Setelah disimpan, update akan muncul di halaman mahasiswa.</p>'+
     '<div class="cu-form"><div class="field"><label for="cu-course">Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((edit?edit.course_code:cl[0]&&cl[0].k)===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="field"><label for="cu-meeting">Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" value="'+(edit?edit.meeting_number:1)+'"></div>'+
     '<div class="field"><label for="cu-attendance">Link absensi</label><input id="cu-attendance" type="url" placeholder="https://..." value="'+esc(edit&&edit.attendance_url||'')+'"></div>'+
@@ -792,7 +792,7 @@ function renderAdmin(){
     tk+='<li class="it"><div><b>'+esc(t.judul)+(lk?' <span class="dnfb">DNF</span>':'')+'</b><span class="s">'+esc(cname(t.k))+' · '+dueText(t)+' · '+cnt+'/'+N+' terkumpul'+'</span></div>'+
       (tkDel===t.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="tk-del-yes" data-id="'+esc(t.id)+'">Hapus</button><button type="button" class="btn sm" data-act="tk-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="tk-del" data-id="'+esc(t.id)+'">Hapus</button>')+'</li>';
   });
-  h+='<div class="stack"><div class="panel" id="task-panel"><h3 class="ph3">Kelola tugas</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin-bottom:10px">Tugas yang melewati tenggat otomatis masuk ke tab History dan Time Tower tetap tersedia di arsip. Data tugas tidak dihapus otomatis.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
+  h+='<div class="stack"><div class="panel" id="task-panel"><h3 class="ph3">Kelola tugas</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin-bottom:10px">Pantau tugas yang sudah dibuat dan hapus kalau memang sudah tidak diperlukan. Tugas yang lewat tenggat tetap tersimpan di History.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
   // akun
   let ar='';
   for(let n=1;n<=N;n++){
@@ -803,13 +803,13 @@ function renderAdmin(){
       ''+
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
-  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Ubah NIM langsung di kolomnya. Reset mengembalikan password ke password bawaan. Admin bisa mengelola kelas lewat tab ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
-  h+='<div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
+  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Atur NIM, akses admin, izin Class Archive, dan reset password langsung dari daftar ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
+  h+='<div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><p class="s">Lihat ringkasan absensi dan tugas dari tiap mata kuliah.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   const cs={},cd={};Object.values(S.be).forEach(x=>{if(x.jenis==='ser')cs[x.no]=(cs[x.no]||0)+1;else if(x.jenis==='dok')cd[x.no]=(cd[x.no]||0)+1;});
   let rows='';
   for(let n=1;n<=N;n++){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);rows+='<tr><td class="num">'+n+'</td><td><button type="button" class="lnk" data-act="open-student" data-no="'+n+'">'+esc(nameOf(n))+'</button></td><td class="num">'+(p==null?'—':p+'%')+'</td><td class="num">'+t.a+'/'+t.b+'</td><td class="num">'+(t.b-t.a)+'</td><td class="num">'+(cs[n]||0)+'</td><td class="num">'+(cd[n]||0)+'</td></tr>';}
-  h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th class="num">Belum</th><th class="num">Sertifikat</th><th class="num">Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+  h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><p class="s">Cek progres tiap mahasiswa, mulai dari kehadiran sampai dokumen yang sudah terkumpul.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th class="num">Belum</th><th class="num">Sertifikat</th><th class="num">Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
   $('admin').innerHTML=h;
 
 }
