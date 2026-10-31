@@ -56,7 +56,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{}};
-let CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up';
+let CONSTRUCTOR_EDIT_ID=null,CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up';
 const loaded={st:false,co:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0;
@@ -228,31 +228,34 @@ function renderConstructor(){
   const mine=ME!=null?S.ak[PAD(ME)]||{}:{};
   const isAdmin=adm();
   let h='';
-  if(isAdmin){
-    h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
-  }
-  if(!groups.length){
-    h+='<div class="constructor-empty">Belum ada kelompok yang dibuat oleh pengelola.</div>';
-    host.innerHTML=h;return;
-  }
-  groups.forEach(g=>{
+  if(isAdmin)h+='<div class="panel constructor-create"><h3 class="ph3">Buat kelompok</h3><div class="row2"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama kelompok, contoh: Scuderia Alpha"><button type="button" class="btn pri" data-act="constructor-create">Tambah kelompok</button></div></div>';
+  if(!groups.length){h+='<div class="constructor-empty">Belum ada kelompok yang dibuat oleh pengelola.</div>';host.innerHTML=h;return;}
+  groups.forEach((g,index)=>{
     const members=Array.isArray(g.members)?g.members.map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=N):[];
-    const principal=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===g.id)||null;
+    const principalNo=Object.keys(S.ak).map(Number).find(no=>(S.ak[PAD(no)]||{}).teamPrincipal===g.id)||null;
     const canEdit=isAdmin||(ME!=null&&mine.teamPrincipal===g.id);
+    const editing=CONSTRUCTOR_EDIT_ID===g.id&&canEdit;
     const tones=['#e10600','#087e8b','#6546a5','#b66a12','#26734d','#8b365c'];
-    h+='<article class="constructor-card" style="--tc:'+tones[groups.indexOf(g)%tones.length]+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span>';
-    h+=canEdit?'<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'" aria-label="Nama kelompok">':'<h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3>';
-    h+='<p class="constructor-principal">'+(principal?'TEAM PRINCIPAL · '+esc(nameOf(principal)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+members.length+' anggota</span></div>';
-    if(canEdit){
-      h+='<p class="s">Pilih mahasiswa yang menjadi anggota kelompok ini.</p><div class="constructor-members edit">';
+    h+='<article class="constructor-card" style="--tc:'+tones[index%tones.length]+'"><div class="constructor-head"><div><span class="constructor-kicker">CONSTRUCTOR</span><h3>'+esc(g.name||'Kelompok tanpa nama')+'</h3><p class="constructor-principal">'+(principalNo?'TEAM PRINCIPAL · '+esc(nameOf(principalNo)):'TEAM PRINCIPAL · Belum ditetapkan')+'</p></div><span class="constructor-count">'+members.length+' anggota</span></div>';
+    h+='<div class="constructor-members">';
+    h+=members.length?members.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
+    h+='</div>';
+    if(canEdit&&!editing)h+='<div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-edit" data-id="'+esc(g.id)+'">Atur kelompok</button>'+(isAdmin?'<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>':'')+'</div>';
+    if(editing){
+      h+='<div class="constructor-editor">';
+      if(isAdmin){
+        h+='<label class="constructor-field">Team Principal<select data-constructor-principal="'+esc(g.id)+'"><option value="">Belum ditetapkan</option>';
+        for(let n=1;n<=N;n++){
+          const assigned=(S.ak[PAD(n)]||{}).teamPrincipal;
+          if(!assigned||assigned===g.id||n===principalNo)h+='<option value="'+n+'"'+(n===principalNo?' selected':'')+'>'+n+'. '+esc(nameOf(n))+'</option>';
+        }
+        h+='</select></label>';
+      }
+      h+='<label class="constructor-field">Nama kelompok<input class="constructor-name" data-constructor-name="'+esc(g.id)+'" maxlength="80" value="'+esc(g.name||'')+'"></label><p class="s">Pilih mahasiswa yang menjadi anggota kelompok ini.</p><div class="constructor-members edit">';
       for(let n=1;n<=N;n++)h+='<label class="constructor-member"><input type="checkbox" data-constructor-member="'+esc(g.id)+'" value="'+n+'"'+(members.includes(n)?' checked':'')+'><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></label>';
-      h+='</div><div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-save" data-id="'+esc(g.id)+'">Simpan kelompok</button>';
+      h+='</div><div class="constructor-actions"><button type="button" class="btn pri" data-act="constructor-save" data-id="'+esc(g.id)+'">Simpan perubahan</button><button type="button" class="btn" data-act="constructor-edit-cancel" data-id="'+esc(g.id)+'">Batal</button>';
       if(isAdmin)h+='<button type="button" class="btn" data-act="constructor-delete" data-id="'+esc(g.id)+'">Hapus kelompok</button>';
-      h+='</div>';
-    }else{
-      h+='<div class="constructor-members">';
-      h+=members.length?members.map(n=>'<div class="constructor-member"><span class="constructor-avatar">'+photo('s'+PAD(n))+'</span><span><b>'+n+'. '+esc(nameOf(n))+'</b><small>'+esc((stu(n)||{}).kode||'')+'</small></span></div>').join(''):'<p class="empty">Belum ada anggota kelompok.</p>';
-      h+='</div>';
+      h+='</div></div>';
     }
     h+='</article>';
   });
@@ -1227,13 +1230,24 @@ document.addEventListener('click',async e=>{
       if(ok)$('constructor-new-name').value='';
       break;
     }
+    case 'constructor-edit':CONSTRUCTOR_EDIT_ID=d.id;renderConstructor();break;
+    case 'constructor-edit-cancel':CONSTRUCTOR_EDIT_ID=null;renderConstructor();break;
     case 'constructor-save':{
       const id=d.id,group=S.cs[id],mine=ME!=null?S.ak[PAD(ME)]||{}:{};
       if(!group||!(adm()||mine.teamPrincipal===id))break;
       const name=document.querySelector('[data-constructor-name="'+id+'"]');
       const members=Array.from(document.querySelectorAll('[data-constructor-member="'+id+'"]:checked')).map(x=>Number(x.value));
       if(!name||!name.value.trim()){toast('Nama kelompok tidak boleh kosong.');break;}
-      await run(()=>db.doc('constructors/'+id).update({name:name.value.trim().slice(0,80),members:members}),'Isi kelompok disimpan');
+      const principalSelect=document.querySelector('[data-constructor-principal="'+id+'"]');
+      const principalValue=principalSelect?Number(principalSelect.value)||null:undefined;
+      const ok=await run(async()=>{
+        await db.doc('constructors/'+id).update({name:name.value.trim().slice(0,80),members:members});
+        if(principalSelect){
+          if(principalValue)await upsertAkun(principalValue,{teamPrincipal:id});
+          if(principalNoForGroup(id)&&principalNoForGroup(id)!==principalValue)await upsertAkun(principalNoForGroup(id),{teamPrincipal:null});
+        }
+      },'Isi kelompok disimpan');
+      if(ok){CONSTRUCTOR_EDIT_ID=null;renderConstructor();}
       break;
     }
     case 'constructor-delete':{
