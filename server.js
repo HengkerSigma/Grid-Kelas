@@ -690,7 +690,7 @@ async function decide(method, p, body, sess, existing) {
     }
     if (method === 'PATCH') {
       if (!existing) return ERR_MISSING;
-      if (!admin && Number(existing.principal)!==Number(sess.no)) return ERR_FORBID;
+      if (!admin && Number(existing.principal)!==Number(sess.no) && !(Array.isArray(existing.members) && existing.members.map(Number).includes(Number(sess.no)))) return ERR_FORBID;
       if (!onlyKeys(body,['name','members','color','principal','courseCode'])) return ERR_FORBID;
       if (!admin && (body.principal!==undefined || body.courseCode!==undefined)) return ERR_FORBID;
       const name=String(body.name===undefined?existing.name||'':body.name).trim();
