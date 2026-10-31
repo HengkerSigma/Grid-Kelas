@@ -595,3 +595,19 @@ button.is-busy{cursor:wait;opacity:.65}
 .constructor-empty{padding:28px 16px;text-align:center;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
 .tp-select{min-width:120px;max-width:180px}
 @media(max-width:600px){.student-subtabs{gap:7px;margin-bottom:18px}.student-subtab{font-size:clamp(1.25rem,6vw,2rem);padding-bottom:5px}.constructor-card{padding:13px}.constructor-head{gap:8px}.constructor-count{font-size:.68rem}.constructor-create .row2{align-items:stretch;flex-direction:column}.constructor-create .btn{width:100%}}
+
+
+/* Constructor groups: responsive card grid inspired by Grand Prix course cards. */
+.constructor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:24px;align-items:stretch}
+.constructor-grid>.constructor-create,.constructor-grid>.constructor-empty{grid-column:1/-1}
+.constructor-grid>.constructor-card{box-sizing:border-box;margin:0;min-width:0;padding:20px;border:1px solid color-mix(in srgb,var(--tc) 55%,transparent);border-radius:14px;overflow:hidden;color:#fff;background:linear-gradient(155deg,color-mix(in srgb,var(--tc) 32%,#08080c) 0%,color-mix(in srgb,var(--tc) 68%,#08080c) 58%,var(--tc) 100%);box-shadow:0 12px 28px rgba(0,0,0,.16)}
+.constructor-grid .constructor-kicker{color:#fff;opacity:.78}
+.constructor-grid .constructor-principal,.constructor-grid .constructor-count{color:rgba(255,255,255,.82)}
+.constructor-grid .constructor-count{border-color:rgba(255,255,255,.28);background:rgba(0,0,0,.16)}
+.constructor-grid .constructor-member{background:rgba(0,0,0,.22);border-color:rgba(255,255,255,.18);color:#fff}
+.constructor-grid .constructor-member small,.constructor-grid .s{color:rgba(255,255,255,.72)}
+.constructor-grid .constructor-name{max-width:100%;color:#fff;background:rgba(0,0,0,.22);border-color:rgba(255,255,255,.28)}
+.constructor-grid .constructor-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.constructor-grid .constructor-actions .btn{border-color:rgba(255,255,255,.35)}
+.constructor-grid .constructor-empty{border-color:var(--line);color:var(--muted)}
+@media(max-width:600px){.constructor-grid{grid-template-columns:minmax(0,1fr);gap:16px}.constructor-grid>.constructor-card{padding:15px}.constructor-grid .constructor-head{align-items:flex-start}}
