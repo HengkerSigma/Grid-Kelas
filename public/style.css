@@ -85,6 +85,14 @@ ul,ol{margin:0;padding:0;list-style:none}
 .sav img,.dav img,.aav img,.sph img,.gav img{width:100%;height:100%;object-fit:cover;-webkit-user-drag:none}
 .rs:hover .sav,.rs[aria-current="true"] .sav{border-color:var(--accent)}
 .rl{font-size:.85rem;font-weight:700;letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* Personal highlight: current student's own identity across roster and Constructor lists. */
+.me-highlight{position:relative;border-color:color-mix(in srgb,var(--accent) 78%,#fff)!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent),0 0 12px color-mix(in srgb,var(--accent) 38%,transparent),inset 0 0 12px color-mix(in srgb,var(--accent) 10%,transparent);}
+.rs.me-highlight .sav{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 42%,transparent),0 0 14px color-mix(in srgb,var(--accent) 58%,transparent);}
+.rs.me-highlight .rl,.pod.me .pnm{color:var(--accent);text-shadow:0 0 8px color-mix(in srgb,var(--accent) 48%,transparent);}
+.constructor-member.me-highlight{background:color-mix(in srgb,var(--accent) 13%,var(--surface-2));}
+.constructor-member.me-highlight b{color:var(--accent);text-shadow:0 0 9px color-mix(in srgb,var(--accent) 45%,transparent);}
+.constructor-member.me-highlight .constructor-avatar{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent),0 0 12px color-mix(in srgb,var(--accent) 55%,transparent);}
+.constructor-member.me-highlight input{accent-color:var(--accent);}
 
 /* views */
 .view{padding-block:48px 12px}
