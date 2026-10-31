@@ -588,7 +588,7 @@ function renderAdmin(){
   let totH=0,totT=0;
   const perC=cl.map(c=>{
     let terisi=0,h=0,cells=0;
-    Object.values(S.se).forEach(se=>{if(se.k!==c.k)return;const p=se.present||{};if(!Object.values(p).some(Boolean))return;terisi++;for(let i=1;i<=N;i++){if(p[i]==='H')h++;}});
+    Object.values(S.se).forEach(se=>{if(se.k!==c.k)return;const p=se.present||{};if(!Object.values(p).some(Boolean))return;terisi++;for(let i=1;i<=N;i++){if(p[i]==='H'||p[i]==='K')h++;}});
     cells=terisi*N;totH+=h;totT+=cells;
     const tk=tasks.filter(t=>t.k===c.k);let subs=0;tk.forEach(t=>{subs+=Object.keys(t.subs||{}).length;});
     return{c:c,terisi:terisi,pa:pct(h,cells),nt:tk.length,pp:pct(subs,tk.length*N)};
