@@ -771,3 +771,46 @@ button.is-busy{cursor:wait;opacity:.65}
 .schedule-actions .btn{white-space:nowrap;}
 .tabs .tab{position:relative;z-index:3;cursor:pointer;pointer-events:auto;}
 @media(max-width:600px){.schedule-actions{justify-content:flex-start;margin-top:8px}.schedule-actions .btn{font-size:.78rem;padding:6px 9px}}
+
+
+/* Grid Kelas · Driver.js Rookie Lap */
+.gk-race-tour{
+  --driver-popover-bg: #10141d;
+  --driver-popover-text-color: #f4f5f7;
+  --driver-popover-title-color: #fff;
+  --driver-popover-description-color: #c6cbd3;
+  --driver-popover-border: 1px solid rgba(255,255,255,.13);
+  --driver-popover-border-radius: 12px;
+  --driver-popover-width: min(360px, calc(100vw - 32px));
+  --driver-popover-padding: 18px;
+  --driver-popover-arrow-size: 9px;
+  --driver-button-background: #e10600;
+  --driver-button-color: #fff;
+  --driver-button-border-radius: 5px;
+  font-family: 'Titillium Web',sans-serif;
+  border-top: 3px solid #e10600;
+  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+}
+.gk-race-tour .driver-popover-title{
+  font-family:'Unbounded',sans-serif;
+  font-size:12px;
+  letter-spacing:.045em;
+  line-height:1.5;
+}
+.gk-race-tour .driver-popover-description{font-size:14px;line-height:1.55}
+.gk-race-tour .driver-popover-progress-text{
+  color:#e10600;font-weight:700;font-size:11px;letter-spacing:.08em;
+}
+.gk-race-tour .driver-popover-navigation-btns button{
+  font-family:'Titillium Web',sans-serif;font-weight:700;text-transform:uppercase;
+  letter-spacing:.04em;font-size:11px;
+}
+.gk-race-tour .driver-popover-prev-btn{
+  color:#f4f5f7!important;background:#272d38!important;border:1px solid #414957!important;
+}
+.gk-race-tour .driver-popover-next-btn{background:#e10600!important;color:#fff!important;border:1px solid #e10600!important}
+.gk-race-tour .driver-popover-close-btn{color:#c6cbd3}
+@media(max-width:600px){
+  .gk-race-tour{--driver-popover-width:calc(100vw - 28px);--driver-popover-padding:15px}
+  .gk-race-tour .driver-popover-description{font-size:13px}
+}
