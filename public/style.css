@@ -584,8 +584,10 @@ button.is-busy{cursor:wait;opacity:.65}
 .constructor-members{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:8px}
 .constructor-member{display:flex;align-items:center;gap:10px;min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2,rgba(255,255,255,.025))}
 .constructor-member input{accent-color:var(--accent);flex:none}
-.constructor-avatar{width:36px;height:36px;border-radius:50%;overflow:hidden;flex:none;background:var(--surface);border:1px solid var(--line)}
+.constructor-avatar{position:relative;width:36px;height:36px;border-radius:50%;overflow:hidden;flex:none;background:var(--surface);border:1px solid var(--line)}
 .constructor-avatar img{width:100%;height:100%;object-fit:cover}
+/* Keep the global default-avatar SVG contained inside Constructor member avatars. */
+.constructor-avatar>.sil{position:absolute;left:14%;bottom:0;width:72%;height:auto;max-width:100%;}
 .constructor-member>span:last-child{min-width:0;display:grid;gap:2px}
 .constructor-member b{font-size:.84rem;overflow-wrap:anywhere}
 .constructor-member small{font-size:.7rem;color:var(--muted)}
