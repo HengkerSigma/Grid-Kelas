@@ -453,7 +453,25 @@ async function view(p, data, sess) {
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
   if (root === 'students' || root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
-  if (root === 'course_updates') return sess ? data : null;
+  if (root === 'course_updates') {
+    if (!sess) return null;
+    if (admin) return data;
+    const out = Object.assign({}, data, { task_submissions: {}, task_group_submissions: {} });
+    const me = String(sess.no);
+    if (isObj(data.task_submissions) && data.task_submissions[me]) out.task_submissions[me] = data.task_submissions[me];
+    if (data.task_mode === 'group') {
+      const groups = await listCol('constructors');
+      const own = groups.find((row) => {
+        const g = row.data || {};
+        return g.courseCode === data.course_code && ((Array.isArray(g.members) && g.members.map(Number).includes(sess.no)) || Number(g.principal) === Number(sess.no));
+      });
+      if (own) {
+        const gid = own.key.slice('constructors/'.length), sub = isObj(data.task_group_submissions) ? data.task_group_submissions[gid] : null;
+        if (sub && typeof sub.at === 'number') out.task_group_submissions[gid] = Number((own.data || {}).principal) === Number(sess.no) ? sub : { at: sub.at };
+      }
+    }
+    return out;
+  }
   if (root === 'drives') return sess ? data : null; // folder Drive: hanya untuk yang sudah masuk
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
   if (root === 'akun') {
@@ -847,6 +865,7 @@ async function commitInner(res, p, d) {
   } else await setDoc(p, d.data);
   if (d.resetNo) dropSessions(d.resetNo);
   broadcast(p);
+  if (p.startsWith('course_updates/')) broadcast('tugas');
   return json(res, 200, { ok: true });
 }
 
