@@ -353,6 +353,9 @@ h2 .flag,.gname .flag{width:.85em;height:.85em;vertical-align:-.1em}
 .sx th:nth-child(-n+2),.sx td:nth-child(-n+2){position:sticky;z-index:1;background:var(--surface)}
 .sx th:first-child,.sx td:first-child{left:0;min-width:2.6rem}
 .sx th:nth-child(2),.sx td:nth-child(2){left:2.6rem}
+/* In the Attendance Sector, let every column move horizontally inside its scroll region. */
+.sector-table-scroll .sx th:nth-child(-n+2){left:auto;z-index:2}
+.sector-table-scroll .sx td:nth-child(-n+2){left:auto;z-index:auto}
 .sx th{z-index:2}.sx th:nth-child(-n+2){z-index:3}
 @media (max-width:640px){.sx th,.sx td{padding:6px 5px}.sx .sxn{min-width:6.5rem;font-size:.88rem}.sxc.big{min-width:2.8rem;padding:3px 5px;font-size:.78rem}}
 
