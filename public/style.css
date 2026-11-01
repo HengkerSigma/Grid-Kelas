@@ -872,3 +872,14 @@ button.is-busy{cursor:wait;opacity:.65}
 /* Mobile cue for the horizontally scrollable Pit Wall navigation. */
 @keyframes gk-pitwall-swipe{0%,100%{filter:none}35%{filter:drop-shadow(0 2px 8px rgba(225,6,0,.35))}55%{filter:none}}
 @media(max-width:600px){.nav.gk-pitwall-swipe{animation:gk-pitwall-swipe 1.2s ease-in-out 2}}
+
+/* Course recap export */
+.export-tools{display:grid;gap:10px;padding:14px;margin:0 0 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.export-tools-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.export-tools-head b{font-family:var(--f-disp);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+.export-tools-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.export-scope{display:grid;gap:5px;font-size:.78rem;font-weight:600;min-width:190px}
+.export-scope select{width:100%;min-height:38px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font:inherit}
+.export-formats{display:flex;gap:7px;flex-wrap:wrap}
+.export-note{margin:0}
+@media(max-width:600px){.export-tools{padding:11px}.export-tools-controls{align-items:stretch;flex-direction:column}.export-scope{min-width:0}.export-formats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.export-formats .btn{justify-content:center}}
