@@ -95,10 +95,21 @@ function loadingLabel(msg){
 function showLoading(msg){
   const el=$('globalLoading');if(!el)return;
   $('loadingText').textContent=loadingLabel(msg);
-  el.hidden=false;el.setAttribute('aria-busy','true');
+  el.hidden=false;
+  if(!el.open){
+    if(!el.dataset.preventCancel){
+      el.addEventListener('cancel',e=>e.preventDefault());
+      el.dataset.preventCancel='true';
+    }
+    if(typeof el.showModal==='function')el.showModal();
+    else el.setAttribute('open','');
+  }
+  el.setAttribute('aria-busy','true');
 }
 function hideLoading(){
   const el=$('globalLoading');if(!el)return;
+  if(el.open&&typeof el.close==='function')el.close();
+  else el.removeAttribute('open');
   el.hidden=true;el.setAttribute('aria-busy','false');
 }
 async function run(fn,okMsg){
