@@ -476,7 +476,7 @@ function homeTiles(no){
 /* ---------- Grid Class Rookie Lap · tutorial pengguna ---------- */
 var GRID_TOUR_STARTED=false;
 var GRID_DRIVER_PROMISE=null;
-function tourKey(){return 'gk_tour_v1_'+ME;}
+function tourKey(){return 'gk_tour_v2_'+ME;}
 function tourDone(){try{return localStorage.getItem(tourKey())==='done';}catch(e){return false;}}
 function loadGridDriver(){
   if(!window.driver)window.driver={};
@@ -621,25 +621,41 @@ async function launchGridClassTour(force){
     steps:[
       {element:'.nav',popover:{title:'01 · PIT WALL NAVIGATION',description:'Ini pusat navigasi Grid Kelas. Di layar mobile, geser menu ke samping untuk melihat seluruh bagian: Beranda, Mahasiswa, Mata Kuliah, dan Pengelola.',side:'bottom',align:'center'},
        onNextClick:()=>{setView('mahasiswa',true);setTimeout(()=>d.moveNext(),120);}},
-      {element:'#v-mahasiswa .student-subtabs',popover:{title:'02 · LINE-UP',description:'Tab LINE-UP menampilkan kartu seluruh mahasiswa. Pilih kartu untuk membuka profil, melihat kehadiran, hasil tugas, dan achievement. Tab CONSTRUCTOR berisi tim kelompok kelas.',side:'bottom',align:'start'},
-       onNextClick:()=>{const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="constructor"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
-      {element:'#constructorPanel',popover:{title:'03 · CONSTRUCTOR GARAGE',description:'Di sini kamu bisa melihat daftar tim Constructor, anggota tim, Team Principal, serta klasemen berdasarkan progres pengumpulan tugas kelompok.',side:'top',align:'center'},
+      {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
+       onNextClick:()=>{const b=document.querySelector('#v-mahasiswa #sgrid .scard.me-highlight');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
+      {element:'#dlg #sgrid .scard.me-highlight',popover:{title:'03 · YOUR DRIVER CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
+       onNextClick:()=>{const b=document.querySelector('#dlg #sgrid .scard.me-highlight');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
+      {element:'#dlg .student-overview',popover:{title:'04 · DRIVER TELEMETRY',description:'Ringkasan ini menampilkan persentase kehadiran, jumlah tugas yang sudah dikumpulkan, dan jumlah pencapaian Early Bird.',side:'top',align:'center'},
+       onNextClick:()=>{const b=document.querySelector('#dlg [data-course-tab="hasil"]');if(b)b.click();setTimeout(()=>d.moveNext(),140);}},
+      {element:'#dlg [data-course-tab="hasil"]',popover:{title:'05 · RACE RESULTS',description:'Tab Hasil menampilkan riwayat pengumpulan tugas beserta posisi atau peringkat yang kamu raih.',side:'bottom',align:'center'},
+       onNextClick:()=>{const b=document.querySelector('#dlg [data-course-tab="achievement"]');if(b)b.click();setTimeout(()=>d.moveNext(),140);}},
+      {element:'#dlg [data-course-tab="achievement"]',popover:{title:'06 · ACHIEVEMENTS',description:'Lihat pencapaian Early Bird, Challenger, dan Pole Position yang berhasil kamu raih selama perkuliahan.',side:'bottom',align:'center'},
+       onNextClick:()=>{if(dlg.open)dlg.close();setView('mahasiswa',true);CONSTRUCTOR_SUBTAB='list';const first=courseList()[0];if(first)CONSTRUCTOR_COURSE_OPEN[first.k]=true;const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="constructor"]');if(b)b.click();setTimeout(()=>d.moveNext(),160);}},
+      {element:'#constructorPanel .constructor-subtabs',popover:{title:'07 · CONSTRUCTOR GARAGE',description:'Bagian paling atas Constructor Garage berisi navigasi daftar tim dan klasemen. Daftar Constructor disusun per mata kuliah; anggota dan Team Principal tampil di dalam kartu tim.',side:'bottom',align:'start'},
+       onNextClick:()=>{const first=document.querySelector('#constructorPanel .constructor-course');if(first)first.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>d.moveNext(),180);}},
+      {element:'#constructorPanel .constructor-course',popover:{title:'08 · CONSTRUCTOR LINE-UP',description:'Ini area awal daftar Constructor. Buka daftar untuk melihat anggota, Team Principal, dan pengaturan tim yang menjadi tanggung jawabmu.',side:'top',align:'center'},
        onNextClick:()=>{setView('mata-kuliah',true);setTimeout(()=>d.moveNext(),120);}},
-      {element:'#v-mata-kuliah .course-subtabs',popover:{title:'04 · GRAND PRIX & HISTORY',description:'GRAND PRIX berisi kartu mata kuliah aktif. HISTORY menyimpan tugas yang sudah melewati tenggat. Pilih tab untuk mengganti tampilan.',side:'bottom',align:'start'},
+      {element:'#v-mata-kuliah .course-subtabs',popover:{title:'09 · GRAND PRIX & HISTORY',description:'GRAND PRIX berisi kartu mata kuliah aktif. HISTORY menyimpan tugas yang sudah melewati tenggat. Pilih tab untuk mengganti tampilan.',side:'bottom',align:'start'},
        onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="grand-prix"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
-      {element:'#cgrid .course',popover:{title:'05 · GRAND PRIX',description:'Setiap kartu mewakili satu mata kuliah. Buka kartu untuk melihat informasi perkuliahan, absensi, materi, dan tugas yang terhubung dengan mata kuliah tersebut.',side:'top',align:'center'},
+      {element:'#cgrid .course',popover:{title:'10 · GRAND PRIX',description:'Setiap kartu mewakili satu mata kuliah. Buka kartu untuk melihat informasi perkuliahan, absensi, materi, dan tugas yang terhubung dengan mata kuliah tersebut.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="history"]');if(b)b.click();setTimeout(()=>d.moveNext(),160);}},
-      {element:'#cgrid',popover:{title:'06 · HISTORY & TIME TOWER',description:'Di HISTORY, tugas yang sudah melewati tenggat tersimpan sebagai arsip. Tekan tombol Time Tower pada tugas untuk melihat rekap pengumpulan dan posisi setiap mahasiswa atau Constructor.',side:'top',align:'center'},
+      {element:'#cgrid .history-item .tcard',popover:{title:'11 · HISTORY & TIME TOWER',description:'HISTORY menyimpan tugas yang sudah melewati tenggat. Setiap kartu arsip dibatasi oleh kotak yang sama dengan kontennya. Tekan Time Tower untuk melihat rekap pengumpulan dan posisi mahasiswa atau Constructor.',side:'top',align:'center'},
        onNextClick:()=>{setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
-      {element:'#home .tiles',popover:{title:'07 · TELEMETRY HUB',description:'Hub Tugas merangkum tugas individu dan Constructor yang perlu kamu selesaikan. Sektor Absensi menunjukkan progres kehadiran dan posisi sektormu di kelas.',side:'bottom',align:'center'},
+      {element:'#home .tiles',popover:{title:'12 · TELEMETRY HUB',description:'Hub Tugas merangkum tugas individu dan Constructor. Sektor Absensi menunjukkan progres kehadiran dan posisi sektormu di kelas.',side:'bottom',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#home [data-act="open-pit"]');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
-      {element:'#dlg [data-act="hub-task-tab"][data-tab="group"]',popover:{title:'08 · PIT LANE TUGAS',description:'Pilih PADDOCK CONSTRUCTOR untuk melihat tugas kelompok. Setelah tab dipilih, sorotan akan tetap mengikuti tombolnya meskipun isi dialog diperbarui.',side:'top',align:'center'},
+      {element:'#dlg [data-act="hub-task-tab"][data-tab="individual"]',popover:{title:'13 · PIT LANE · PIT TUGAS',description:'PIT TUGAS adalah jalur pengumpulan individu. Di sini kamu bisa melihat tugas yang perlu dikerjakan, yang sudah terkumpul, dan tugas yang berstatus DNF.',side:'top',align:'center'},
+       onNextClick:()=>{const b=document.querySelector('#dlg [data-act="hub-task-tab"][data-tab="group"]');if(b)b.click();setTimeout(()=>d.moveNext(),150);}},
+      {element:'#dlg [data-act="hub-task-tab"][data-tab="group"]',popover:{title:'14 · PADDOCK CONSTRUCTOR',description:'PADDOCK CONSTRUCTOR merangkum tugas kelompok dari Constructor tempatmu terdaftar. Team Principal bertanggung jawab mengirim pengumpulan untuk tim.',side:'top',align:'center'},
+       onNextClick:()=>{if(dlg.open)dlg.close();setView('beranda',true);setTimeout(()=>d.moveNext(),140);}},
+      {element:'#home [data-act="open-sektor"]',popover:{title:'15 · SECTOR CLASSIFICATION',description:'Sektor Absensi memperlihatkan persentase kehadiran, peringkat kelas, dan warna sektor berdasarkan posisi kehadiranmu.',side:'top',align:'center'},
+       onNextClick:()=>{const b=document.querySelector('#home [data-act="open-sektor"]');if(b)b.click();setTimeout(()=>d.moveNext(),160);}},
+      {element:'#dlg .sector-overview',popover:{title:'16 · ABSENCE SECTOR',description:'Di tampilan sektor, bandingkan posisi dan progres absensi setiap mahasiswa. Warna sektor membantu membaca peringkat kehadiran.',side:'top',align:'center'},
        onNextClick:()=>{if(dlg.open)dlg.close();setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
-      {element:'#home .schedule-panel',popover:{title:'09 · SCHEDULE',description:'Jadwal hari ini menampilkan kelas dan jam perkuliahan. Gunakan tombol Isi Absen saat sesi dibuka, atau buka riwayat absensi untuk mengecek catatan sebelumnya.',side:'top',align:'center'}},
-      {element:'#home .team-radio',popover:{title:'10 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'}},
-      {element:'#home #superLicensePanel',popover:{title:'11 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
-      {element:'#home #classArchivePanel',popover:{title:'12 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}},
-      {element:'#gkTourHelp',popover:{title:'13 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Kalau suatu saat lupa letak fitur atau cara menggunakan Grid Kelas, tekan tombol ini untuk membuka tutorial lagi.',side:'top',align:'center'}}
+      {element:'#home .schedule-panel',popover:{title:'17 · SCHEDULE',description:'Jadwal hari ini menampilkan kelas dan jam perkuliahan. Gunakan tombol Isi Absen saat sesi dibuka, atau buka riwayat absensi untuk mengecek catatan sebelumnya.',side:'top',align:'center'}},
+      {element:'#home .team-radio',popover:{title:'18 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'}},
+      {element:'#home #superLicensePanel',popover:{title:'19 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
+      {element:'#home #classArchivePanel',popover:{title:'20 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}},
+      {element:'#gkTourHelp',popover:{title:'21 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Kalau suatu saat lupa letak fitur atau cara menggunakan Grid Kelas, tekan tombol ini untuk membuka tutorial lagi.',side:'top',align:'center'}}
     ],
 
     onDestroyed:()=>{try{localStorage.setItem(tourKey(),'done');}catch(e){}GRID_TOUR_STARTED=false;renderTourHelp();}
@@ -789,6 +805,7 @@ function sektorDlg(){
   const sx=sektorData(),me=sx.byNo[ME],miss=missingOf(ME);
   let h=dlgHead('SEKTOR ABSENSI',sx.t?'Anda peringkat '+me.rank+' dari '+N+' · '+Math.round(me.p*100)+'%':'Belum ada absensi tercatat','Setiap mata kuliah adalah satu sektor. Diurutkan menurut kehadiran keseluruhan.','#7b2ff7');
   h+='<div class="db"><ul class="pleg"><li><i class="sxc p"></i>Sektor ungu · 5 teratas</li><li><i class="sxc g"></i>Sektor hijau · 10 berikutnya</li><li><i class="sxc y"></i>Sektor kuning · sisanya</li></ul>';
+  h+='<div class="sector-overview">';
   if(sx.t){
     h+='<div class="tblw"><table class="sx"><thead><tr><th class="num">#</th><th>Mahasiswa</th><th class="num">Total</th>'+sx.cl.map(k=>'<th class="num" title="'+esc(cname(k))+'">'+esc(k)+'</th>').join('')+'</tr></thead><tbody>';
     sx.rows.forEach(r=>{
@@ -797,6 +814,7 @@ function sektorDlg(){
     });
     h+='</tbody></table></div>';
   }else h+='<p class="empty">Belum ada pertemuan yang diisi absennya.</p>';
+  h+='</div>';
   h+='<h3 class="ph3" style="margin-top:6px">Absen belum diisi</h3>';
   h+=miss.length?'<ul class="plist">'+miss.slice(0,12).map(se=>'<li class="pit-it"><div><b>'+esc(cname(se.k))+' · Pertemuan '+se.n+'</b><span class="s">'+fmtDate(se.tanggal)+(se.topik?' · '+esc(se.topik):'')+'</span></div><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(se.k)+'" data-tab="absen" data-pert="'+se.n+'">Isi absen</button></li>').join('')+'</ul>':'<p class="empty">Tidak ada absen yang tertinggal.</p>';
   return h+'</div>';
@@ -1056,7 +1074,7 @@ function exportTools(segment){
     '<button type="button" class="btn sm" data-export-segment="'+segment+'" data-export-format="pdf">PDF</button></div></div>'+
     '<p class="s export-note">Pilih satu pertemuan atau seluruh pertemuan. Mahasiswa hanya dapat mengekspor datanya sendiri.</p></section>';
 }
-function exportCourseRecap(segment,format){
+function buildCourseRecap(segment,format){
   if(!D||D.kind!=='course'||!['absen','tugas'].includes(segment))return;
   const c=S.co[D.key];
   if(!c){toast('Mata kuliah tidak ditemukan.');return;}
@@ -1132,6 +1150,20 @@ function exportCourseRecap(segment,format){
     doc.save(filename+'.pdf');
   }
   toast('Rekap berhasil diunduh.');
+}
+
+async function exportCourseRecap(segment,format){
+  showLoading('Menyiapkan file rekap…');
+  try{
+    // Beri browser dua frame agar modal loading sempat tampil sebelum pembuatan file yang sinkron.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    buildCourseRecap(segment,format);
+  }catch(e){
+    console.error('Gagal mengekspor rekap:',e);
+    toast('Gagal membuat file rekap. Coba lagi.');
+  }finally{
+    hideLoading();
+  }
 }
 
 function courseDlg(){
