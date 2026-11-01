@@ -112,7 +112,9 @@ async function getDoc(p) {
     return courseFromRow(r.data);
   } else if (root === 'tugas') {
     const r = must(await supabase.from('course_updates').select('*').eq('task_id', id).maybeSingle());
-    return taskFromCourseUpdate(r.data);
+    if (r.data) return taskFromCourseUpdate(r.data);
+    const legacy = must(await supabase.from('app_data').select('content').eq('key', p).maybeSingle());
+    return legacy.data ? legacy.data.content : null;
   } else if (root === 'course_updates') {
     const r = must(await supabase.from('course_updates').select('*').eq('id', id).maybeSingle());
     return r.data || null;
@@ -135,13 +137,17 @@ async function setDoc(p, val) {
     else {
       const k = String(val.k || '').trim();
       const rows = must(await supabase.from('course_updates').select('id,meeting_number,task_id').eq('course_code', k));
-      const empty = (rows.data || []).find(x => !x.task_id);
+      const empty = (rows.data || []).find(x => !x.task_id && !x.task_title);
       let meeting = empty ? Number(empty.meeting_number) : 0;
       if (!meeting) {
         const occupied = new Set((rows.data || []).map(x => Number(x.meeting_number)));
         for (let n = 1; n <= PERT; n++) if (!occupied.has(n)) { meeting = n; break; }
       }
-      if (!meeting) throw new Error('Semua 16 pertemuan mata kuliah ini sudah memiliki pembaruan. Tidak bisa menempatkan tugas baru.');
+      if (!meeting) {
+        const legacy = must(await supabase.from('app_data').select('content').eq('key', p).maybeSingle());
+        if (legacy.data) { must(await supabase.from('app_data').upsert({ key: p, content: val })); return; }
+        throw new Error('Semua 16 pertemuan mata kuliah ini sudah memiliki pembaruan. Tidak bisa menempatkan tugas baru.');
+      }
       if (empty) must(await supabase.from('course_updates').update(Object.assign({ task_id: id }, cols)).eq('id', empty.id));
       else must(await supabase.from('course_updates').insert(Object.assign({ id: 'task-' + id, task_id: id,
         course_code: k, meeting_number: meeting, attendance_url: null, submission_url: null }, cols)));
@@ -161,9 +167,11 @@ async function deleteDoc(p) {
   if (root === 'courses') {
     must(await supabase.from('courses').delete().eq('k', id));
   } else if (root === 'tugas') {
-    must(await supabase.from('course_updates').update({ task_id: null, task_title: null, task_url: null,
+    const found = must(await supabase.from('course_updates').select('id').eq('task_id', id).maybeSingle());
+    if (found.data) must(await supabase.from('course_updates').update({ task_id: null, task_title: null, task_url: null,
       deadline: null, task_mode: 'individual', task_description: '', task_submissions: {},
-      task_group_submissions: {}, task_created_at: null }).eq('task_id', id));
+      task_group_submissions: {}, task_created_at: null }).eq('id', found.data.id));
+    else must(await supabase.from('app_data').delete().eq('key', p));
   } else if (root === 'course_updates') {
     must(await supabase.from('course_updates').delete().eq('id', id));
   } else {
@@ -204,7 +212,15 @@ async function listCol(cp) {
   }
   if (cp === 'tugas') {
     const r = must(await supabase.from('course_updates').select('*').not('task_id', 'is', null).order('course_code').order('meeting_number'));
-    (r.data || []).forEach((u) => { const task = taskFromCourseUpdate(u); if (task) out.push({ key: 'tugas/' + u.task_id, data: task }); });
+    const seen = new Set();
+    (r.data || []).forEach((u) => { const task = taskFromCourseUpdate(u); if (task) { seen.add(u.task_id); out.push({ key: 'tugas/' + u.task_id, data: task }); } });
+    // Fallback hanya untuk tugas lama yang belum bisa dipindahkan karena seluruh 16 slot pertemuan sudah terisi.
+    const legacy = must(await supabase.from('app_data').select('key,content').like('key', 'tugas/%'));
+    (legacy.data || []).forEach((row) => {
+      if (!row.key.startsWith('tugas/') || row.key.indexOf('/', 6) !== -1) return;
+      const id = row.key.slice(6);
+      if (!seen.has(id) && isObj(row.content)) out.push({ key: row.key, data: row.content });
+    });
     return out;
   }
   const r2 = must(await supabase.from('app_data').select('key,content').like('key', cp + '/%'));
@@ -974,21 +990,21 @@ const server = http.createServer(async (req, res) => {
       const s = await getSession(req);
       if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
       const out = {}, groupOut = {};
-      const taskRows = must(await supabase.from('course_updates').select('task_id,deadline,task_submissions,task_group_submissions').not('task_id', 'is', null));
-      (taskRows.data || []).forEach((row) => {
-        const d = { tenggat: row.deadline, subs: row.task_submissions, groupSubs: row.task_group_submissions };
-        if (taskExpired(d)) return;
+      (await listCol('tugas')).forEach((row) => {
+        const d = row.data;
+        if (!isObj(d) || taskExpired(d)) return;
         const m = {};
         Object.keys(isObj(d.subs) ? d.subs : {}).forEach((no) => {
           const at = d.subs[no] && d.subs[no].at;
           if (/^\d{1,2}$/.test(no) && typeof at === 'number') m[no] = at;
         });
-        out[row.task_id] = m;
+        const taskId = row.key.slice('tugas/'.length);
+        out[taskId] = m;
         if (isObj(d.groupSubs)) {
-          groupOut[row.task_id] = {};
+          groupOut[taskId] = {};
           Object.keys(d.groupSubs).forEach((gid) => {
             const at = d.groupSubs[gid] && d.groupSubs[gid].at;
-            if (typeof at === 'number') groupOut[row.task_id][gid] = at;
+            if (typeof at === 'number') groupOut[taskId][gid] = at;
           });
         }
       });
