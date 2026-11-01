@@ -184,7 +184,7 @@ async function deleteDoc(p) {
 }
 
 function taskFromCourseUpdate(row) {
-  if (!row || !row.task_title || !row.task_id) return null;
+  if (!row || !row.task_title) return null;
   return { k: row.course_code, judul: row.task_title, tenggat: row.deadline || '',
     deskripsi: row.task_description || '', link: row.task_url || '',
     mode: row.task_mode === 'group' ? 'group' : 'individual',
