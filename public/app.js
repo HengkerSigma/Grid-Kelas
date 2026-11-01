@@ -493,17 +493,29 @@ function sektorData(){
 }
 const SXNAME={p:'Sektor ungu',g:'Sektor hijau',y:'Sektor kuning'};
 function sxStrip(row,cl){return '<span class="sxm" aria-hidden="true">'+cl.map(k=>'<i class="sxc '+(row.cells[k].c||'n')+'"></i>').join('')+'</span>';}
+function tireSvg(type){
+  const colors={soft:'#e10600',medium:'#d6a300',hard:'#737b87'},c=colors[type]||colors.hard;
+  return '<svg class="tire-icon '+type+'" viewBox="0 0 32 32" role="img" aria-label="Ban '+type+'"><circle cx="16" cy="16" r="13" fill="'+c+'" stroke="currentColor" stroke-width="1.1"/><circle cx="16" cy="16" r="8.2" fill="#171a20" stroke="#c9cdd4" stroke-width="1"/><circle cx="16" cy="16" r="3.3" fill="'+c+'" stroke="#e8e9eb" stroke-width=".8"/><path d="M16 2.8v3.2M16 26v3.2M2.8 16H6M26 16h3.2M6.7 6.7 9 9M23 23l2.3 2.3M25.3 6.7 23 9M9 23l-2.3 2.3" stroke="#f4f5f7" stroke-width="1.2" stroke-linecap="round"/></svg>';
+}
+function constructorCompound(t){
+  const d=dayDiff(t&&t.tenggat);
+  return d!==null&&d<1?'soft':d!==null&&d<3?'medium':'hard';
+}
 function homeTiles(no){
   const pit=pitData(no),sx=sektorData(),r=sx.byNo[no],miss=missingOf(no);
-  const groupTasks=taskList().filter(t=>t.mode==='group');
+  const groupTasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group');
   const mineGroupTasks=groupTasks.map(t=>({t:t,g:myConstructor(no,t.k)})).filter(x=>x.g);
   const groupDone=mineGroupTasks.filter(x=>!!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at)).length;
-  const groupTotal=mineGroupTasks.length;
+  const groupDnf=mineGroupTasks.filter(x=>isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at)).length;
+  const groupOpen=mineGroupTasks.filter(x=>!isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
+  const groupTotal=mineGroupTasks.length,tires={soft:0,medium:0,hard:0};
+  groupOpen.forEach(x=>tires[constructorCompound(x.t)]++);
   const pp=[];if(pit.open.length)pp.push(pit.open.length+' belum dikumpulkan');if(pit.dnf.length)pp.push(pit.dnf.length+' DNF');
   const pitD=pit.b?(pp.length?pp.join(' · '):'Semua tugas individu sudah dikumpulkan'):'Belum ada tugas individu';
   const flags=(pit.open.length||pit.dnf.length)?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+(pit.dnf.length?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+pit.dnf.length+'</span>':'')+'</span>':'';
+  const paddock=(groupOpen.length||groupDnf)?'<span class="pflags paddock-tires">'+['soft','medium','hard'].filter(c=>tires[c]).map(c=>'<span class="pfl">'+tireSvg(c)+tires[c]+'</span>').join('')+(groupDnf?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+groupDnf+'</span>':'')+'</span>':'';
   return '<div class="tiles">'+
-    '<button type="button" class="tile tilebtn tile-hub'+((pit.open.length||groupDone<groupTotal)?' task-alert':'')+'" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">Individu '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' Constructor</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · '+(groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai':'Belum ada tugas Constructor untuk kelompokmu')+'</div>'+flags+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
+    '<button type="button" class="tile tilebtn tile-hub'+((pit.open.length||pit.dnf.length||groupOpen.length||groupDnf)?' task-alert':'')+'" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">Individu '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' Constructor</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · '+(groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai'+(groupDnf?' · '+groupDnf+' DNF':''):'Belum ada tugas Constructor untuk kelompokmu')+'</div>'+flags+paddock+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
     '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
@@ -781,8 +793,8 @@ function pitDlg(){
       const active=mineTasks.filter(x=>!isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
       const done=mineTasks.filter(x=>x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at);
       const late=mineTasks.filter(x=>isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
-      const renderGroup=(items,status)=>items.map(({t,g})=>{const sub=t.groupSubs&&t.groupSubs[g.id],principal=Number(g.principal)===Number(ME),flag=flagOf(t),itemClass=status==='active'?'f-'+flag:status;const marker=status==='done'?'<span class="pck">&#10003;</span>':status==='dnf'?'<span class="dnfb">DNF</span>':flagSvg(flag);return '<li class="pit-it '+itemClass+'">'+marker+'<div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?dueText(t):'Tanpa tenggat')+' · '+esc(g.name||'Constructor')+'</span><span class="s">'+(status==='done'?'Dikumpulkan '+fmtTime(sub.at):status==='dnf'?'Tenggat lewat':principal?'Siap dikumpulkan oleh Team Principal':'Menunggu Team Principal')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">'+(status==='done'?'Lihat':'Buka tugas')+'</button>'+(status==='done'?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Lihat hasil</button>':'')+'</span></li>';}).join('');
-      if(active.length||late.length)h+='<ul class="pleg"><li>'+flagSvg('r')+'Kurang dari 1 hari</li><li>'+flagSvg('y')+'Kurang dari 3 hari</li><li>'+flagSvg('g')+'3 hari atau lebih</li><li><span class="dnfb">DNF</span>Lewat tenggat, belum dikumpulkan</li></ul>';
+      const renderGroup=(items,status)=>items.map(({t,g})=>{const sub=t.groupSubs&&t.groupSubs[g.id],principal=Number(g.principal)===Number(ME),compound=constructorCompound(t),itemClass=status==='active'?'tire-'+compound:status;const marker=status==='done'?'<span class="pck">&#10003;</span>':status==='dnf'?'<span class="dnfb">DNF</span>':tireSvg(compound);return '<li class="pit-it '+itemClass+'">'+marker+'<div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?dueText(t):'Tanpa tenggat')+' · '+esc(g.name||'Constructor')+'</span><span class="s">'+(status==='done'?'Dikumpulkan '+fmtTime(sub.at):status==='dnf'?'Tenggat lewat':principal?'Siap dikumpulkan oleh Team Principal':'Menunggu Team Principal')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">'+(status==='done'?'Lihat':'Buka tugas')+'</button>'+(status==='done'?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Lihat hasil</button>':'')+'</span></li>';}).join('');
+      if(active.length||late.length)h+='<ul class="pleg tire-legend"><li>'+tireSvg('soft')+'Soft · kurang dari 1 hari</li><li>'+tireSvg('medium')+'Medium · 1–2 hari</li><li>'+tireSvg('hard')+'Hard · 3 hari atau lebih</li><li><span class="dnfb">DNF</span>Lewat tenggat, belum dikumpulkan</li></ul>';
       if(active.length)h+='<h3 class="ph3">Tugas aktif</h3><ul class="plist">'+renderGroup(active,'active')+'</ul>';
       if(done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+renderGroup(done,'done')+'</ul>';
       if(late.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+renderGroup(late,'dnf')+'</ul>';
