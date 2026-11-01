@@ -75,6 +75,7 @@ function formatDateTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone
 function fmtDate(s){if(!s)return '';const p=String(s).split('-');if(p.length!==3)return esc(s);try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric'}).format(new Date(Date.UTC(+p[0],+p[1]-1,+p[2],12)));}catch(e){return esc(s);}}
 function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms));}catch(e){return '';}}
 function meetingDate(n){const p=SEMESTER_ANCHOR_DATE.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]-(SEMESTER_ANCHOR_MEETING-Number(n))*7));return d.toISOString().slice(0,10);}
+function semesterMeetingNow(){const p=today().split('-').map(Number),a=SEMESTER_ANCHOR_DATE.split('-').map(Number),weeks=Math.floor((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(a[0],a[1]-1,a[2]))/604800000);return Math.max(1,Math.min(PERT,SEMESTER_ANCHOR_MEETING+weeks));}
 function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'Pasca-UTS';}
 function updateLiveClock(){const el=$('liveClock');if(!el)return;const now=new Date();el.dateTime=now.toISOString();el.textContent=new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now)+' WIB';}
 const photo=key=>{const m=S.md[key],src=m&&(m.url||m.data);return src&&((m.url&&/^https:\/\//.test(src))||okImg(src))?'<img src="'+esc(src)+'" alt="">':SIL;};
@@ -1042,7 +1043,7 @@ function tabsHtml(list){
 function defaultPert(k){
   let m=0;
   Object.values(S.se).forEach(se=>{if(se.k===k&&(se.tanggal||se.topik||se.rec===true||Object.values(se.present||{}).some(Boolean))&&se.n>m)m=se.n;});
-  return m||1;
+  return Math.max(m,semesterMeetingNow());
 }
 function openD(kind,key,tab,pert){
   D={kind:kind,key:key,tab:tab||(kind==='course'||kind==='attendance'?'absen':kind==='student'?'kehadiran':'main'),pert:(kind==='course'||kind==='attendance')?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
@@ -2133,7 +2134,7 @@ updateLiveClock();
 setInterval(updateLiveClock,1000);
 setInterval(()=>{if(D&&D.kind==='hasil')loadHasil(true);},20000); // time tower tetap segar selama dibuka
 let liveSig='';
-setInterval(()=>{const s=courseList().filter(c=>inSession(c)).map(c=>c.k).join();if(s!==liveSig){liveSig=s;refreshAll();}},30000);
+setInterval(()=>{const s=today()+'|'+courseList().filter(c=>inSession(c)).map(c=>c.k).join();if(s!==liveSig){liveSig=s;refreshAll();}},30000);
 
 (async function init(){
   const use=n=>(window.claude&&window.claude.use)?window.claude.use(n).catch(()=>null):Promise.resolve(null);
