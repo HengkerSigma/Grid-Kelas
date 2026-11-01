@@ -501,7 +501,7 @@ function loadGridDriver(){
           if(top<12||top+pop.offsetHeight>window.innerHeight-12)top=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.bottom+14));
           pop.style.top=top+'px';pop.style.left=Math.max(14,Math.min(window.innerWidth-w-14,r.left+(r.width-w)/2))+'px';
         };
-        layer.appendChild(spot);layer.appendChild(pop);document.body.appendChild(layer);place();
+        layer.appendChild(spot);layer.appendChild(pop);const tourHost=dlg&&dlg.open?dlg:document.body;tourHost.appendChild(layer);place();
         pop.querySelector('[data-tour="close"]').onclick=destroy;
         pop.querySelector('[data-tour="prev"]').onclick=()=>{index=Math.max(0,index-1);render();};
         pop.querySelector('[data-tour="next"]').onclick=()=>{
