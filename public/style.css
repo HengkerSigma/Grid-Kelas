@@ -937,10 +937,14 @@ button.is-busy{cursor:wait;opacity:.65}
 .password-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 
-/* Mobile: keep identity columns fixed; scroll only Total and course columns */
-.sector-table-scroll{width:100%;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+/* Constrain the sector dialog's grid children so the table cannot widen the dialog. */
+.sector-dialog-content{grid-template-columns:minmax(0,1fr);min-width:0;width:100%}
+.sector-dialog-content>*{min-width:0;max-width:100%}
+.sector-overview{width:100%;max-width:100%;min-width:0}
+.sector-table-scroll{display:block;width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;box-sizing:border-box;scrollbar-width:thin}
 .sector-table-scroll .sx{width:max-content;min-width:100%;table-layout:auto}
+.sector-table-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:640px){
-  .sector-table-scroll{display:block;box-sizing:border-box}
+  .sector-table-scroll{overflow-x:auto;touch-action:pan-x pan-y}
   .sector-table-scroll .sx{width:max-content;min-width:100%}
 }
