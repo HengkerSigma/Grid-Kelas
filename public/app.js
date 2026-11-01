@@ -716,7 +716,7 @@ function loadHasil(now){
   clearTimeout(hsTimer);
   hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;HS_GROUP=r&&r.groupTugas||null;if(D&&(D.kind==='hasil'||D.kind==='group-hasil'||D.kind==='student'||D.kind==='pit'))renderDialog(true);if(STUDENT_SUBTAB==='constructor'&&CONSTRUCTOR_SUBTAB==='standings')renderConstructor();}catch(e){/* tetap pakai data lokal */}},now?0:400);
 }
-function fmtDT(ms){try{return new Intl.DateTimeFormat('id-ID',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(e){return '';}}
+function fmtDT(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms));}catch(e){return '';}}
 function fmtGap(ms){
   const s=Math.max(0,Math.round(ms/1000)),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
   return '+'+(d?d+' hr ':'')+PAD(h)+':'+PAD(m)+':'+PAD(s%60);
