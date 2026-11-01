@@ -890,7 +890,7 @@ function sektorDlg(){
   h+='<div class="db sector-dialog-content"><ul class="pleg"><li><i class="sxc p"></i>Sektor ungu · 5 teratas</li><li><i class="sxc g"></i>Sektor hijau · 10 berikutnya</li><li><i class="sxc y"></i>Sektor kuning · sisanya</li></ul>';
   h+='<div class="sector-overview">';
   if(sx.t){
-    h+='<div class="tblw sector-table-scroll" tabindex="0" role="region" aria-label="Tabel sektor absensi. Geser ke samping untuk melihat kolom total dan mata kuliah."><table class="sx"><thead><tr><th class="num">#</th><th>Mahasiswa</th><th class="num">Total</th>'+sx.cl.map(k=>'<th class="num" title="'+esc(cname(k))+'">'+esc(k)+'</th>').join('')+'</tr></thead><tbody>';
+    h+='<div class="tblw sector-table-scroll" tabindex="0" role="region" aria-label="Tabel sektor absensi. Geser ke samping untuk melihat semua kolom, termasuk absen dan nama mahasiswa."><table class="sx"><thead><tr><th class="num">#</th><th>Mahasiswa</th><th class="num">Total</th>'+sx.cl.map(k=>'<th class="num" title="'+esc(cname(k))+'">'+esc(k)+'</th>').join('')+'</tr></thead><tbody>';
     sx.rows.forEach(r=>{
       h+='<tr'+(r.no===ME?' class="sxme"':'')+'><td class="num">'+r.rank+'</td><td class="sxn"><b>'+r.no+'</b> '+esc(nameOf(r.no))+'</td><td class="num"><b>'+Math.round(r.p*100)+'%</b></td>'+
         sx.cl.map(k=>{const c=r.cells[k];return '<td class="num">'+(c.c?'<span class="sxc '+c.c+' big" title="'+SXNAME[c.c]+' · peringkat '+c.rk+' di '+esc(k)+'"><span class="sxsr">'+SXNAME[c.c]+', </span>'+c.p+'%</span>':'<span class="sxc n big">—</span>')+'</td>';}).join('')+'</tr>';
