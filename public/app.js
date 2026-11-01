@@ -1031,6 +1031,98 @@ function scheduleAttendanceDlg(){
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
   return '<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">'+esc(c.k)+' · ABSENSI</div><h2 id="dtitle">Isi Absen · '+esc(c.nama)+'</h2><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p></div><div class="db">'+absenStudent(c,true)+'</div>';
 }
+function exportTools(segment){
+  if(!ME&&!adm())return '';
+  let opts='<option value="all">Seluruh pertemuan</option>';
+  for(let i=1;i<=PERT;i++)opts+='<option value="'+i+'">Pertemuan '+i+'</option>';
+  const title=segment==='absen'?'Rekap absensi':'Rekap pengumpulan tugas';
+  return '<section class="export-tools" aria-label="'+title+'">'+
+    '<div class="export-tools-head"><b>'+title+'</b><span class="s">'+(adm()?'Ekspor data seluruh kelas':'Ekspor data pribadi')+'</span></div>'+
+    '<div class="export-tools-controls"><label class="export-scope">Cakupan<select data-export-scope="'+segment+'">'+opts+'</select></label>'+
+    '<div class="export-formats" aria-label="Format unduhan">'+
+    '<button type="button" class="btn sm" data-export-segment="'+segment+'" data-export-format="xlsx">XLSX</button>'+
+    '<button type="button" class="btn sm" data-export-segment="'+segment+'" data-export-format="csv">CSV</button>'+
+    '<button type="button" class="btn sm" data-export-segment="'+segment+'" data-export-format="pdf">PDF</button></div></div>'+
+    '<p class="s export-note">Pilih satu pertemuan atau seluruh pertemuan. Mahasiswa hanya dapat mengekspor datanya sendiri.</p></section>';
+}
+function exportCourseRecap(segment,format){
+  if(!D||D.kind!=='course'||!['absen','tugas'].includes(segment))return;
+  const c=S.co[D.key];
+  if(!c){toast('Mata kuliah tidak ditemukan.');return;}
+  const select=dlg.querySelector('[data-export-scope="'+segment+'"]');
+  const scope=select?select.value:'all',admin=adm();
+  const studentNos=admin?Array.from({length:N},(_,i)=>i+1):(ME?[Number(ME)]:[]);
+  let headers=[],rows=[];
+  if(segment==='absen'){
+    headers=['Mata Kuliah','Kode','Pertemuan','Tanggal','Topik','No. Absen','Nama Mahasiswa','Status Kehadiran','Bukti Absensi'];
+    const meetings=scope==='all'?Array.from({length:PERT},(_,i)=>i+1):[Number(scope)];
+    meetings.forEach(meeting=>{
+      const se=S.se[c.k+'_'+PAD(meeting)]||{},present=se.present||{},proof=se.bukti||{};
+      studentNos.forEach(no=>{
+        const status=present[no]||'';
+        const file=proof[no]||{};
+        rows.push([c.nama,c.k,'Pertemuan '+meeting,se.tanggal||'—',se.topik||'—',no,nameOf(no),status?(LBL[status]||status):'Belum diisi',file.name||'—']);
+      });
+    });
+  }else{
+    headers=['Mata Kuliah','Kode','Pertemuan','Jenis Tugas','Nama Tugas','Tenggat','No. Absen / Constructor','Nama Mahasiswa / Constructor','Team Principal','Status Pengumpulan','Waktu Pengumpulan','Metode','Tautan','Catatan'];
+    const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k);
+    const meetingOf=t=>{
+      const direct=Number(t.meeting_number||t.pertemuan||0);
+      if(direct>=1&&direct<=PERT)return direct;
+      const update=Object.values(S.cu).find(u=>u.course_code===c.k&&String(u.task_title||'').trim()===String(t.judul||'').trim());
+      const n=Number(update&&update.meeting_number||0);
+      return n>=1&&n<=PERT?n:null;
+    };
+    tasks.forEach(t=>{
+      const meeting=meetingOf(t);
+      if(scope!=='all'&&meeting!==Number(scope))return;
+      const meetingLabel=meeting?'Pertemuan '+meeting:'Tidak ditautkan ke pertemuan';
+      if(t.mode==='group'){
+        const allGroups=constructorGroups(c.k);
+        const groups=admin?allGroups:(ME&&myConstructor(ME,c.k)?[myConstructor(ME,c.k)]:[]);
+        groups.forEach(g=>{
+          const sub=(t.groupSubs||{})[g.id]||null;
+          const principal=Number(g.principal)||null;
+          rows.push([c.nama,c.k,meetingLabel,'Kelompok',t.judul||'Tugas',t.tenggat||'—',g.name||g.id,'—',principal?nameOf(principal):'—',sub&&sub.at?'Sudah dikumpulkan':'Belum dikumpulkan',sub&&sub.at?new Date(sub.at).toLocaleString('id-ID'):'—',sub?(sub.berkas&&sub.berkas.id?'Berkas':sub.tautan?'Tautan':'—'):'—',sub&&sub.tautan||'—',sub&&sub.catatan||'—']);
+        });
+      }else{
+        studentNos.forEach(no=>{
+          const sub=(t.subs||{})[no]||null;
+          rows.push([c.nama,c.k,meetingLabel,'Individu',t.judul||'Tugas',t.tenggat||'—',no,nameOf(no),'—',sub?'Sudah dikumpulkan':'Belum dikumpulkan',sub&&sub.at?new Date(sub.at).toLocaleString('id-ID'):'—',sub?(sub.berkas&&sub.berkas.id?'Berkas':sub.tautan?'Tautan':'—'):'—',sub&&sub.tautan||'—',sub&&sub.catatan||'—']);
+        });
+      }
+    });
+  }
+  if(!rows.length){toast(scope==='all'?'Belum ada data untuk diekspor.':'Tidak ada data pada pertemuan yang dipilih.');return;}
+  const safe=s=>String(s||'').replace(/[^a-z0-9_-]+/gi,'-').replace(/^-+|-+$/g,'');
+  const filename='Rekap-'+(segment==='absen'?'Absensi':'Pengumpulan-Tugas')+'-'+safe(c.k)+'-'+(scope==='all'?'Seluruh-Pertemuan':'Pertemuan-'+scope);
+  if(format==='csv'){
+    const csv=[headers].concat(rows).map(row=>row.map(value=>'"'+String(value==null?'':value).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+    const blob=new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=filename+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }else if(format==='xlsx'){
+    if(!window.XLSX){toast('Pustaka XLSX belum berhasil dimuat. Muat ulang halaman dan coba lagi.');return;}
+    const data=[headers].concat(rows),sheet=XLSX.utils.aoa_to_sheet(data);
+    sheet['!cols']=headers.map((h,i)=>({wch:Math.min(38,Math.max(12,...data.slice(0,100).map(r=>String(r[i]||'').length+2)))}));
+    const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,sheet,'Rekap');
+    XLSX.writeFile(book,filename+'.xlsx');
+  }else if(format==='pdf'){
+    const JsPDF=window.jspdf&&window.jspdf.jsPDF;
+    if(!JsPDF){toast('Pustaka PDF belum berhasil dimuat. Muat ulang halaman dan coba lagi.');return;}
+    const doc=new JsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    if(typeof doc.autoTable!=='function'){toast('Komponen tabel PDF belum berhasil dimuat. Muat ulang halaman dan coba lagi.');return;}
+    doc.setFont('helvetica','bold');doc.setFontSize(13);
+    doc.text(segment==='absen'?'Rekap Absensi':'Rekap Pengumpulan Tugas',14,13);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);
+    doc.text('Mata kuliah: '+c.nama+' ('+c.k+') · '+(scope==='all'?'Seluruh pertemuan':'Pertemuan '+scope)+' · Diekspor '+new Date().toLocaleString('id-ID'),14,19);
+    doc.autoTable({startY:23,head:[headers],body:rows,theme:'grid',styles:{font:'helvetica',fontSize:6,cellPadding:1.5,overflow:'linebreak'},headStyles:{fontSize:6},margin:{left:10,right:10,bottom:12},horizontalPageBreak:true,horizontalPageBreakRepeat:0});
+    doc.save(filename+'.pdf');
+  }
+  toast('Rekap berhasil diunduh.');
+}
+
 function courseDlg(){
   const c=S.co[D.key];
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
@@ -1044,6 +1136,7 @@ function courseDlg(){
   if(D.tab==='tugas')body=adm()?tugasAdmin(c):tugasStudent(c);
   else if(D.tab==='set'&&adm())body=settingsHtml(c);
   else body=adm()?absenAdmin(c):absenStudent(c);
+  if(D.tab==='absen'||D.tab==='tugas')body=exportTools(D.tab)+body;
   return head+tabsHtml(tabs)+'<div class="db">'+body+'</div>';
 }
 function pertPicker(c,mode){
@@ -1487,6 +1580,7 @@ document.addEventListener('touchend',e=>{
 },{passive:true});
 
 /* ---------- events ---------- */
+dlg.addEventListener('click',e=>{const b=e.target.closest('[data-export-format]');if(!b)return;exportCourseRecap(b.dataset.exportSegment,b.dataset.exportFormat);});
 dlg.addEventListener('click',e=>{
   const b=e.target.closest('[data-course-tab]');
   if(!b||!D||!['course','student'].includes(D.kind))return;
