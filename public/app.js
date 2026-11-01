@@ -1973,29 +1973,19 @@ document.addEventListener('click',async e=>{
       if(ok){ANN_EDIT=null;['an-judul','an-isi','an-k'].forEach(k=>{delete DR[k];});renderAdmin();}
       break;
     }
-    const editTaskId=()=>{const e=CU_EDIT&&S.cu[CU_EDIT];if(!e||!e.task_title)return null;const match=Object.keys(S.tu).find(id=>S.tu[id].k===e.course_code&&S.tu[id].judul===e.task_title);return match||null;};
     case 'cu-save':{
       if(!adm())break;
       const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),attendance_url:$('cu-attendance').value.trim(),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null};
-      const mode=$('cu-mode').value==='group'?'group':'individual',deskripsi=$('cu-desc').value.trim().slice(0,1000);
+      body.task_mode=$('cu-mode').value==='group'?'group':'individual';
+      body.task_description=$('cu-desc').value.trim().slice(0,1000);
       if(!body.course_code||!S.co[body.course_code]||!Number.isInteger(body.meeting_number)||body.meeting_number<1||body.meeting_number>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
       if([body.attendance_url,body.task_url,body.submission_url].some(u=>u&&!/^https:\/\//i.test(u))){toast('Semua tautan harus diawali https://');break;}
-      if(body.task_title&&!body.task_url&&!deskripsi){toast('Isi link materi/soal atau petunjuk tugas agar tugas memiliki instruksi.');break;}
+      if(body.task_title&&!body.task_url&&!body.task_description){toast('Isi link materi/soal atau petunjuk tugas agar tugas memiliki instruksi.');break;}
       const duplicate=Object.keys(S.cu).find(id=>id!==CU_EDIT&&S.cu[id].course_code===body.course_code&&Number(S.cu[id].meeting_number)===body.meeting_number);
       if(duplicate){toast('Pembaruan untuk mata kuliah dan pertemuan ini sudah ada. Gunakan tombol Edit pada tabel.');break;}
       const ok=await run(async()=>{
-        let updateId=CU_EDIT,taskId=editTaskId();
         if(CU_EDIT)await db.doc('course_updates/'+CU_EDIT).update(body);
-        else {const ref=await db.collection('course_updates').add(body);updateId=ref.id;}
-        if(body.task_title){
-          const taskBody={k:body.course_code,judul:body.task_title,tenggat:body.deadline||'',deskripsi:deskripsi,link:body.task_url,mode:mode,subs:(taskId&&S.tu[taskId]?S.tu[taskId].subs||{}:{}),groupSubs:(taskId&&S.tu[taskId]?S.tu[taskId].groupSubs||{}:{}),dibuat:(taskId&&S.tu[taskId]?S.tu[taskId].dibuat||Date.now():Date.now())};
-          if(taskId)await db.doc('tugas/'+taskId).update(taskBody);
-          else {const ref=await db.collection('tugas').add(Object.assign({},taskBody,{subs:{},groupSubs:{},dibuat:Date.now()}));taskId=ref.id;}
-          /* relasi tugas ditelusuri dari mata kuliah dan judul pada course_updates */
-        }else if(taskId){
-          await db.doc('tugas/'+taskId).delete();
-          
-        }
+        else await db.collection('course_updates').add(body);
       },'Pembaruan mata kuliah dan tugas berhasil disimpan');
       if(ok)CU_EDIT=null;
       refreshAll();break;
