@@ -77,7 +77,7 @@ function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ
 function meetingDate(n){const p=SEMESTER_ANCHOR_DATE.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]-(SEMESTER_ANCHOR_MEETING-Number(n))*7));return d.toISOString().slice(0,10);}
 function attendanceIsPast(meeting,se){const date=se&&se.tanggal?se.tanggal:meetingDate(meeting);return !!date&&date<today();}
 function attendanceMissingStatus(meeting,se,student){if(attendanceIsPast(meeting,se))return 'Absensi sudah terlewat';if(!se||!Object.keys(se).length)return 'Absensi belum dibuka';return student?'Belum mengisi':'Belum diisi';}
-function greetingText(name){const p=jakartaParts(),minutes=Number(p.hour)*60+Number(p.minute),n=esc(name||'Mahasiswa');if(minutes>=240&&minutes<=600)return 'Selamat Pagi, '+n+'. Semangat menjalani hari!';if(minutes>=601&&minutes<=899)return 'Selamat Siang, '+n+'. Bagaimana hari ini?';if(minutes>=900&&minutes<=1079)return 'Selamat Sore, '+n+'. Bagaimana hari ini?';if(minutes>=1080&&minutes<=1319)return 'Selamat Malam, '+n+'. Kerja bagus hari ini, jangan lupa istirahat, ya!';return n+', ini waktunya tidur!';}
+function greetingText(name){const p=jakartaParts(),minutes=Number(p.hour)*60+Number(p.minute),n=esc(name||'Mahasiswa');if(minutes>=240&&minutes<=600)return{title:'Selamat Pagi, '+n,subtitle:'Semangat menjalani hari!'};if(minutes>=601&&minutes<=899)return{title:'Selamat Siang, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=900&&minutes<=1079)return{title:'Selamat Sore, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=1080&&minutes<=1319)return{title:'Selamat Malam, '+n,subtitle:'Kerja bagus hari ini, jangan lupa istirahat, ya!'};return{title:n,subtitle:'Ini waktunya tidur!'};}
 function semesterMeetingNow(){const p=today().split('-').map(Number),a=SEMESTER_ANCHOR_DATE.split('-').map(Number),weeks=Math.floor((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(a[0],a[1]-1,a[2]))/604800000);return Math.max(1,Math.min(PERT,SEMESTER_ANCHOR_MEETING+weeks));}
 function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'';}
 function updateLiveClock(){const el=$('liveClock');if(!el)return;const now=new Date();el.dateTime=now.toISOString();el.textContent=new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now)+' WIB';}
@@ -918,7 +918,8 @@ function renderHome(force){
     missing.sort((a2,b2)=>(a2.tanggal||'').localeCompare(b2.tanggal||''));
     const s0=stu(ME),ak=S.ak[PAD(ME)];
     $('homeLede').textContent='Cek jadwal, tugas, dan kabar terbaru kelasmu di sini.';
-    h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname">'+greetingText(s0&&s0.depan?s0.depan:'Mahasiswa')+(isAd(ME)?' '+FLAG:'')+'</div></div></div>';
+    const greeting=greetingText(s0&&s0.depan?s0.depan:'Mahasiswa');
+    h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
     if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password Anda masih password bawaan. Ganti sekarang agar akun lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
     h+=homeTiles(ME);
     const left=[],right=[];
