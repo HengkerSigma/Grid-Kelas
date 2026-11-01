@@ -850,3 +850,21 @@ button.is-busy{cursor:wait;opacity:.65}
 .gk-native-tour-actions button{border:1px solid #485262;border-radius:5px;padding:8px 11px;background:#252e3b;color:#fff;font-weight:700;cursor:pointer}
 .gk-native-tour-actions button[data-tour="next"]{background:#e10600;border-color:#e10600}
 .gk-native-tour-actions button:disabled{opacity:.35;cursor:default}
+
+/* Rookie tutorial mobile layout: keep the callout away from the highlighted control. */
+@media(max-width:600px){
+  .gk-native-tour-pop{
+    width:calc(100vw - 20px);
+    max-width:calc(100vw - 20px);
+    max-height:min(36vh,300px);
+    overflow-y:auto;
+    padding:14px;
+    border-radius:10px;
+  }
+  .gk-native-tour-pop h3{font-size:14px;line-height:1.35}
+  .gk-native-tour-pop p{font-size:12px;line-height:1.45}
+  .gk-native-tour-hint{font-size:9px;margin-top:8px;padding:7px}
+  .gk-native-tour-actions{gap:5px;margin-top:12px}
+  .gk-native-tour-actions button{padding:8px 9px;font-size:11px}
+  .gk-tour-help{right:12px;bottom:12px}
+}
