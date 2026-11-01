@@ -868,3 +868,7 @@ button.is-busy{cursor:wait;opacity:.65}
   .gk-native-tour-actions button{padding:8px 9px;font-size:11px}
   .gk-tour-help{right:12px;bottom:12px}
 }
+
+/* Mobile cue for the horizontally scrollable Pit Wall navigation. */
+@keyframes gk-pitwall-swipe{0%,100%{filter:none}35%{filter:drop-shadow(0 2px 8px rgba(225,6,0,.35))}55%{filter:none}}
+@media(max-width:600px){.nav.gk-pitwall-swipe{animation:gk-pitwall-swipe 1.2s ease-in-out 2}}
