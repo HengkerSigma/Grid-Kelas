@@ -622,7 +622,7 @@ async function launchGridClassTour(force){
     stagePadding:7,stageRadius:12,popoverClass:'gk-race-tour',
     steps:[
       {element:'.nav',popover:{title:'01 · PIT WALL NAVIGATION',description:'Ini pusat navigasi Grid Kelas. Di layar mobile, geser menu ke samping untuk melihat seluruh bagian: Beranda, Mahasiswa, Mata Kuliah, dan Pengelola.',side:'bottom',align:'center'},
-       onNextClick:()=>{setView('mahasiswa',true);setTimeout(()=>d.moveNext(),120);}},
+       onNextClick:()=>{setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
       {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
        onNextClick:()=>{d.moveNext();}},
       {element:'#v-mahasiswa #sgrid .scard.me-highlight',popover:{title:'03 · YOUR DRIVER CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
