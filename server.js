@@ -45,7 +45,7 @@ const STATIC = {
   '/db.js': ['public/db.js', 'text/javascript; charset=utf-8'],
   '/diagnostic.js': ['public/diagnostic.js', 'text/javascript; charset=utf-8']
 };
-const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: " + SUPA_ORIGIN + "; script-src 'self'; connect-src 'self' " + SUPA_ORIGIN + "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: " + SUPA_ORIGIN + "; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' " + SUPA_ORIGIN + "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
 const pad = (n) => String(n).padStart(2, '0');
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
