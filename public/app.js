@@ -474,7 +474,8 @@ function loadGridDriver(){
     window.driver.js.driver=function(options){
       let index=0,layer=null,spot=null,pop=null;
       const steps=options.steps||[];
-      const cleanup=()=>{if(layer)layer.remove();layer=spot=pop=null;};
+      let reposition=null;
+      const cleanup=()=>{if(reposition){window.removeEventListener('scroll',reposition,true);window.removeEventListener('resize',reposition);reposition=null;}if(layer)layer.remove();layer=spot=pop=null;};
       const destroy=()=>{cleanup();if(typeof options.onDestroyed==='function')options.onDestroyed();};
       const render=()=>{
         cleanup();
@@ -485,30 +486,40 @@ function loadGridDriver(){
         layer=document.createElement('div');layer.className='gk-native-tour-layer';
         spot=document.createElement('div');spot.className='gk-native-tour-spot';
         pop=document.createElement('section');pop.className='gk-native-tour-pop';
-        const rect=target.getBoundingClientRect(),pad=8;
-        spot.style.top=Math.max(8,rect.top-pad)+'px';spot.style.left=Math.max(8,rect.left-pad)+'px';
-        spot.style.width=Math.min(window.innerWidth-16,rect.width+pad*2)+'px';
-        spot.style.height=Math.min(window.innerHeight-16,rect.height+pad*2)+'px';
-        const p=step.popover||{};
+        const p=step.popover||{},pad=4;
         pop.innerHTML='<div class="gk-native-tour-kicker">GRID KELAS · ROOKIE LAP</div><div class="gk-native-tour-count">'+(index+1)+' / '+steps.length+'</div><h3></h3><p></p><div class="gk-native-tour-hint">↗ COBA KLIK FITUR YANG DISOROT — TUTORIAL TETAP TERBUKA</div><div class="gk-native-tour-actions"><button type="button" data-tour="close">Tutup</button><span></span><button type="button" data-tour="prev">Kembali</button><button type="button" data-tour="next"></button></div>';
         pop.querySelector('h3').textContent=p.title||'';pop.querySelector('p').textContent=p.description||'';
         pop.querySelector('[data-tour="prev"]').disabled=index===0;
         pop.querySelector('[data-tour="next"]').textContent=index===steps.length-1?'Selesai':'Lanjutkan';
         const place=()=>{
-          const r=target.getBoundingClientRect(),w=Math.min(380,window.innerWidth-28);
+          if(!target.isConnected)return;
+          const r=target.getBoundingClientRect();
+          const left=Math.max(4,Math.min(window.innerWidth-4,r.left-pad));
+          const top=Math.max(4,Math.min(window.innerHeight-4,r.top-pad));
+          spot.style.left=left+'px';spot.style.top=top+'px';
+          spot.style.width=Math.max(0,Math.min(window.innerWidth-4,r.right+pad)-left)+'px';
+          spot.style.height=Math.max(0,Math.min(window.innerHeight-4,r.bottom+pad)-top)+'px';
+          const w=Math.min(380,window.innerWidth-28);
           pop.style.width=w+'px';
-          let top=p.side==='top'?r.top-pop.offsetHeight-14:r.bottom+14;
-          if(top<12||top+pop.offsetHeight>window.innerHeight-12)top=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.bottom+14));
-          pop.style.top=top+'px';pop.style.left=Math.max(14,Math.min(window.innerWidth-w-14,r.left+(r.width-w)/2))+'px';
+          let popTop=p.side==='top'?r.top-pop.offsetHeight-14:r.bottom+14;
+          if(popTop<12||popTop+pop.offsetHeight>window.innerHeight-12)popTop=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.top-pop.offsetHeight-14));
+          pop.style.top=popTop+'px';
+          pop.style.left=Math.max(14,Math.min(window.innerWidth-w-14,r.left+(r.width-w)/2))+'px';
         };
-        layer.appendChild(spot);layer.appendChild(pop);const tourHost=dlg&&dlg.open?dlg:document.body;tourHost.appendChild(layer);place();
+        layer.appendChild(spot);layer.appendChild(pop);
+        const tourHost=dlg&&dlg.open?dlg:document.body;
+        tourHost.appendChild(layer);
+        reposition=place;
+        window.addEventListener('scroll',reposition,true);
+        window.addEventListener('resize',reposition);
+        requestAnimationFrame(place);
+        setTimeout(place,350);
         pop.querySelector('[data-tour="close"]').onclick=destroy;
         pop.querySelector('[data-tour="prev"]').onclick=()=>{index=Math.max(0,index-1);render();};
         pop.querySelector('[data-tour="next"]').onclick=()=>{
           if(index===steps.length-1){destroy();return;}
           if(typeof step.onNextClick==='function')step.onNextClick();else{index++;render();}
         };
-        window.addEventListener('resize',place,{once:true});
       };
       return {drive:()=>{index=0;render();},moveNext:()=>{index++;render();},movePrevious:()=>{index=Math.max(0,index-1);render();},destroy};
     };
