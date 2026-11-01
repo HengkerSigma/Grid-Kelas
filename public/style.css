@@ -935,3 +935,12 @@ button.is-busy{cursor:wait;opacity:.65}
 .password-toggle:hover,.password-toggle:focus-visible{background:var(--surface-2);color:var(--text);outline:none}
 .password-toggle:focus-visible{box-shadow:0 0 0 2px var(--accent)}
 .password-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+
+/* Mobile: keep identity columns fixed; scroll only Total and course columns */
+.sector-table-scroll{width:100%;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.sector-table-scroll .sx{width:max-content;min-width:100%;table-layout:auto}
+@media (max-width:640px){
+  .sector-table-scroll{display:block;box-sizing:border-box}
+  .sector-table-scroll .sx{width:max-content;min-width:100%}
+}
