@@ -556,10 +556,21 @@ async function decide(method, p, body, sess, existing) {
       return { del: true };
     }
     if (method !== 'PUT') return ERR_FORBID;
+    if (archiveKey && isObj(body) && onlyKeys(body, ['url']) && isStr(body.url, 500)) {
+      let parsed;
+      try { parsed = new URL(body.url.trim()); } catch (e) { return ERR_BAD('Tautan foto arsip tidak valid.'); }
+      const prefix = '/storage/v1/object/public/' + MEDIA_BUCKET + '/';
+      const uploadedId = parsed.pathname.startsWith(prefix) ? parsed.pathname.slice(prefix.length) : '';
+      if (parsed.protocol !== 'https:' || parsed.origin !== SUPA_ORIGIN || parsed.username || parsed.password ||
+          !/^[0-9a-f]{32}$/.test(uploadedId) || parsed.pathname !== prefix + uploadedId ||
+          (parsed.search && !/^\?v=\d+$/.test(parsed.search)) || parsed.hash) return ERR_BAD('Foto harus berasal dari unggahan Class Archive yang sah.');
+      const meta = await readMeta(uploadedId);
+      if (!meta || meta.bucket !== MEDIA_BUCKET || (!admin && meta.owner !== sess.no)) return ERR_BAD('Unggahan foto tidak cocok dengan akun ini.');
+      return { data: { data: parsed.toString() } };
+    }
     if (!isObj(body) || !onlyKeys(body, ['data']) || !isStr(body.data, 260000) || !/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(body.data)) return ERR_BAD('Gambar tidak valid.');
     return { upload: { id: id, dataUrl: body.data } };
   }
-
   if (root === 'sessions') {
     if (parts.length !== 2) return ERR_FORBID;
     const m = /^([A-Za-z0-9]{2,8})_(\d\d)$/.exec(id);
