@@ -442,7 +442,7 @@ function dueText(t){
   return d+' hari lagi · '+fmtDate(t.tenggat);
 }
 function pitData(no){
-  const all=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode!=='group'&&!t.groupSubs).map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
+  const all=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode!=='group').map(t=>({t:t,done:!!(t.subs&&t.subs[no])}));
   const done=all.filter(x=>x.done),dnf=all.filter(x=>!x.done&&isLocked(x.t)),open=all.filter(x=>!x.done&&!isLocked(x.t));
   const n={r:0,y:0,g:0};open.forEach(x=>{n[flagOf(x.t)]++;});
   return{open:open,done:done,dnf:dnf,a:done.length,b:all.length,n:n};
