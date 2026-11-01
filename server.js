@@ -285,7 +285,8 @@ async function isAdminNo(no) {
   return !!(a && a.admin === true);
 }
 function setCookie(req, res, token, maxAgeSec) {
-  const secure = process.env.COOKIE_SECURE === '1' ||
+  // Vercel selalu menyajikan deployment melalui HTTPS; jangan bergantung pada TRUST_PROXY untuk Secure cookie.
+  const secure = process.env.COOKIE_SECURE === '1' || process.env.VERCEL === '1' ||
     (TRUST_PROXY && String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https');
   res.setHeader('Set-Cookie', 'gk_session=' + token + '; HttpOnly; SameSite=Lax; Path=/; Max-Age=' + maxAgeSec + (secure ? '; Secure' : ''));
 }
@@ -459,7 +460,9 @@ async function view(p, data, sess) {
   const parts = p.split('/'), root = parts[0];
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
-  if (root === 'students' || root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
+  // Pengunjung hanya memerlukan nama untuk direktori mahasiswa; jangan kirim kolom lain (mis. NIM/kontak) ke sesi anonim.
+  if (root === 'students') return sess ? data : pick(data, ['depan', 'belakang']);
+  if (root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
   if (root === 'course_updates') {
     if (!sess) return null;
     if (admin) return data;
