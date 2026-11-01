@@ -76,7 +76,7 @@ function fmtDate(s){if(!s)return '';const p=String(s).split('-');if(p.length!==3
 function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms));}catch(e){return '';}}
 function meetingDate(n){const p=SEMESTER_ANCHOR_DATE.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]-(SEMESTER_ANCHOR_MEETING-Number(n))*7));return d.toISOString().slice(0,10);}
 function semesterMeetingNow(){const p=today().split('-').map(Number),a=SEMESTER_ANCHOR_DATE.split('-').map(Number),weeks=Math.floor((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(a[0],a[1]-1,a[2]))/604800000);return Math.max(1,Math.min(PERT,SEMESTER_ANCHOR_MEETING+weeks));}
-function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'Pasca-UTS';}
+function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'';}
 function updateLiveClock(){const el=$('liveClock');if(!el)return;const now=new Date();el.dateTime=now.toISOString();el.textContent=new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now)+' WIB';}
 const photo=key=>{const m=S.md[key],src=m&&(m.url||m.data);return src&&((m.url&&/^https:\/\//.test(src))||okImg(src))?'<img src="'+esc(src)+'" alt="">':SIL;};
 const stu=n=>S.st[PAD(n)]||null;
@@ -88,7 +88,7 @@ const taskList=()=>Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).fi
 const cname=k=>S.co[k]?S.co[k].nama:k;
 
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},4200);}
-const ERRMAP={unauthenticated:'Sesi berakhir. Silakan masuk lagi.',too_large:'Berkas terlalu besar. Maksimal 20 MB.',unsupported_type:'Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.',quota_or_state:'Penyimpanan berkas penuh. Hubungi pengelola.',rate_limited:'Terlalu sering. Coba lagi sebentar lagi.',not_granted:'Akun ini belum boleh mengunggah berkas.',invalid_argument:'Tidak bisa menyimpan. Akun ini belum punya akses mengubah data kelas.'};
+const ERRMAP={unauthenticated:'Sesi berakhir. Silakan masuk lagi.',too_large:'Berkas terlalu besar. Maksimal 20 MB.',unsupported_type:'Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.',quota_or_state:'Penyimpanan berkas penuh. Hubungi pengelola.',rate_limited:'Terlalu sering. Coba lagi sebentar lagi.',not_granted:'Akun ini belum boleh mengunggah berkas.',invalid_argument:'Perubahan ditolak server. Periksa izin akun atau format data yang dikirim.'};
 let pendingRuns=0,busyButtons=[];
 function loadingLabel(msg){
   const s=String(msg||'').toLowerCase();
@@ -633,7 +633,7 @@ async function launchGridClassTour(force){
        onNextClick:()=>{setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
       {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
        onNextClick:()=>{d.moveNext();}},
-      {element:'#v-mahasiswa #sgrid .scard.me-highlight',popover:{title:'03 · YOUR DRIVER CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
+      {element:'#v-mahasiswa #sgrid .scard.me-highlight',popover:{title:'03 · PERSONAL CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
        onNextClick:()=>{if(!dlg.open){const b=document.querySelector('#v-mahasiswa #sgrid .scard.me-highlight');if(b)b.click();}setTimeout(()=>d.moveNext(),180);}},
       {element:'#dlg .student-overview',popover:{title:'04 · PERSONAL TELEMETRY',description:'Ringkasan performa akademik pribadimu: persentase kehadiran, jumlah tugas yang sudah dikumpulkan, dan pencapaian Early Bird.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#dlg [data-course-tab="hasil"]');if(b)b.click();setTimeout(()=>d.moveNext(),140);}},
@@ -1093,18 +1093,17 @@ function buildCourseRecap(segment,format){
   const studentNos=admin?Array.from({length:N},(_,i)=>i+1):(ME?[Number(ME)]:[]);
   let headers=[],rows=[];
   if(segment==='absen'){
-    headers=['Mata Kuliah','Kode','Pertemuan','Tanggal Pertemuan','Tahap Semester','Catatan Pertemuan','Tanggal Pencatatan Absensi','Topik','No. Absen','Nama Mahasiswa','Status Kehadiran','Bukti Absensi'];
+    headers=['Mata Kuliah','Pertemuan Ke-','Tanggal Pertemuan','No. Absen','Nama Mahasiswa','Status Kehadiran','Bukti Absensi'];
     const meetings=scope==='all'?Array.from({length:PERT},(_,i)=>i+1):[Number(scope)];
     meetings.forEach(meeting=>{
       const se=S.se[c.k+'_'+PAD(meeting)]||{},present=se.present||{},proof=se.bukti||{};
       studentNos.forEach(no=>{
-        const status=present[no]||'';
-        const file=proof[no]||{};
-        rows.push([c.nama,c.k,'Pertemuan '+meeting,meetingDate(meeting),meetingPhase(meeting),meeting<=8?'Pertemuan ini sudah terlewat':'—',se.tanggal||'—',se.topik||'—',no,nameOf(no),status?(LBL[status]||status):'Belum diisi',file.name||'—']);
+        const status=present[no]||'',file=proof[no]||{};
+        rows.push([c.nama,'Pertemuan '+meeting,se.tanggal||meetingDate(meeting),no,nameOf(no),status?(LBL[status]||status):'Belum diisi',file.name||(file.id?'Bukti terlampir':'—')]);
       });
     });
   }else{
-    headers=['Mata Kuliah','Kode','Pertemuan','Tanggal Pertemuan','Tahap Semester','Catatan Pertemuan','Jenis Tugas','Nama Tugas','Tenggat','No. Absen / Constructor','Nama Mahasiswa / Constructor','Team Principal','Status Pengumpulan','Waktu Pengumpulan','Metode','Tautan','Catatan'];
+    headers=['Mata Kuliah','Pertemuan Ke-','Tanggal Pengumpulan','No. Absen','Nama Mahasiswa','Status Pengumpulan','Bukti Tugas'];
     const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k);
     const meetingOf=t=>{
       const direct=Number(t.meeting_number||t.pertemuan||0);
@@ -1113,23 +1112,21 @@ function buildCourseRecap(segment,format){
       const n=Number(update&&update.meeting_number||0);
       return n>=1&&n<=PERT?n:null;
     };
+    const pushTaskRow=(meeting,no,sub)=>{
+      const proof=sub&&sub.berkas&&sub.berkas.name||sub&&sub.tautan||'—';
+      rows.push([c.nama,meeting?'Pertemuan '+meeting:'—',sub&&sub.at?formatDateTime(sub.at):'—',no,nameOf(no),sub&&sub.at?'Sudah dikumpulkan':'Belum dikumpulkan',proof]);
+    };
     tasks.forEach(t=>{
       const meeting=meetingOf(t);
       if(scope!=='all'&&meeting!==Number(scope))return;
-      const meetingLabel=meeting?'Pertemuan '+meeting:'Tidak ditautkan ke pertemuan';
       if(t.mode==='group'){
-        const allGroups=constructorGroups(c.k);
-        const groups=admin?allGroups:(ME&&myConstructor(ME,c.k)?[myConstructor(ME,c.k)]:[]);
-        groups.forEach(g=>{
+        constructorGroups(c.k).forEach(g=>{
           const sub=(t.groupSubs||{})[g.id]||null;
-          const principal=Number(g.principal)||null;
-          rows.push([c.nama,c.k,meetingLabel,meeting?meetingDate(meeting):'—',meeting?meetingPhase(meeting):'—',meeting&&meeting<=8?'Pertemuan ini sudah terlewat':'—','Kelompok',t.judul||'Tugas',t.tenggat||'—',g.name||g.id,'—',principal?nameOf(principal):'—',sub&&sub.at?'Sudah dikumpulkan':'Belum dikumpulkan',sub&&sub.at?formatDateTime(sub.at):'—',sub?(sub.berkas&&sub.berkas.id?'Berkas':sub.tautan?'Tautan':'—'):'—',sub&&sub.tautan||'—',sub&&sub.catatan||'—']);
+          const groupNos=Array.from(new Set((Array.isArray(g.members)?g.members:[]).concat(g.principal?[Number(g.principal)]:[]).map(Number))).filter(no=>Number.isInteger(no)&&no>=1&&no<=N);
+          groupNos.filter(no=>admin||no===Number(ME)).forEach(no=>pushTaskRow(meeting,no,sub));
         });
       }else{
-        studentNos.forEach(no=>{
-          const sub=(t.subs||{})[no]||null;
-          rows.push([c.nama,c.k,meetingLabel,meeting?meetingDate(meeting):'—',meeting?meetingPhase(meeting):'—',meeting&&meeting<=8?'Pertemuan ini sudah terlewat':'—','Individu',t.judul||'Tugas',t.tenggat||'—',no,nameOf(no),'—',sub?'Sudah dikumpulkan':'Belum dikumpulkan',sub&&sub.at?formatDateTime(sub.at):'—',sub?(sub.berkas&&sub.berkas.id?'Berkas':sub.tautan?'Tautan':'—'):'—',sub&&sub.tautan||'—',sub&&sub.catatan||'—']);
-        });
+        studentNos.forEach(no=>pushTaskRow(meeting,no,(t.subs||{})[no]||null));
       }
     });
   }
@@ -1137,8 +1134,8 @@ function buildCourseRecap(segment,format){
   const safe=s=>String(s||'').replace(/[^a-z0-9_-]+/gi,'-').replace(/^-+|-+$/g,'');
   const filename='Rekap-'+(segment==='absen'?'Absensi':'Pengumpulan-Tugas')+'-'+safe(c.k)+'-'+(scope==='all'?'Seluruh-Pertemuan':'Pertemuan-'+scope);
   if(format==='csv'){
-    const csv=[headers].concat(rows).map(row=>row.map(value=>'"'+String(value==null?'':value).replace(/"/g,'""')+'"').join(',')).join('\r\n');
-    const blob=new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8;'});
+    const csv=[headers].concat(rows).map(row=>row.map(value=>'"'+String(value==null?'':value).replace(/"/g,'""')+'"').join(',')).join('\\r\\n');
+    const blob=new Blob(['\\ufeff',csv],{type:'text/csv;charset=utf-8;'});
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=filename+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }else if(format==='xlsx'){
@@ -1156,7 +1153,7 @@ function buildCourseRecap(segment,format){
     doc.text(segment==='absen'?'Rekap Absensi':'Rekap Pengumpulan Tugas',14,13);
     doc.setFont('helvetica','normal');doc.setFontSize(8);
     doc.text('Mata kuliah: '+c.nama+' ('+c.k+') · '+(scope==='all'?'Seluruh pertemuan':'Pertemuan '+scope)+' · Diekspor '+formatDateTime(Date.now()),14,19);
-    doc.autoTable({startY:23,head:[headers],body:rows,theme:'grid',styles:{font:'helvetica',fontSize:6,cellPadding:1.5,overflow:'linebreak'},headStyles:{fontSize:6},margin:{left:10,right:10,bottom:12},horizontalPageBreak:true,horizontalPageBreakRepeat:0});
+    doc.autoTable({startY:23,head:[headers],body:rows,theme:'grid',styles:{font:'helvetica',fontSize:7,cellPadding:1.8,overflow:'linebreak'},headStyles:{fontSize:7},margin:{left:10,right:10,bottom:12},horizontalPageBreak:true,horizontalPageBreakRepeat:0});
     doc.save(filename+'.pdf');
   }
   toast('Rekap berhasil diunduh.');
@@ -1221,7 +1218,7 @@ function pertPicker(c,mode){
     let has=false,sv='';
     if(mode==='adm')has=!!(s2&&Object.values(p).some(Boolean));
     else if(ME&&p[ME]){has=true;sv=p[ME];}
-    const phase=i<=7?'Pra-UTS':i===8?'UTS':i===9?'Pasca-UTS':'';
+    const phase=i<=7?'Pra-UTS':i===8?'UTS':'';
     h+='<button type="button" class="pt'+(has?' has':'')+(i<=8?' meeting-past':'')+(i===8?' meeting-uts':'')+'"'+(sv?' data-s="'+sv+'"':'')+' data-act="pert" data-n="'+i+'" aria-pressed="'+(i===n)+'" aria-label="Pertemuan '+i+', '+phase+', '+fmtDate(meetingDate(i))+(i<=8?', Pertemuan ini sudah terlewat':'')+'"><span>'+i+'</span>'+(phase?'<small>'+phase+'</small>':'')+'</button>';
   }
   return h+'</div></div>';
