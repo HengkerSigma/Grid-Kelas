@@ -96,6 +96,7 @@ function showLoading(msg){
   const el=$('globalLoading');if(!el)return;
   $('loadingText').textContent=loadingLabel(msg);
   el.hidden=false;
+  if(typeof dlg!=='undefined'&&dlg)dlg.inert=true;
   if(!el.open){
     if(!el.dataset.preventCancel){
       el.addEventListener('cancel',e=>e.preventDefault());
@@ -111,6 +112,7 @@ function hideLoading(){
   if(el.open&&typeof el.close==='function')el.close();
   else el.removeAttribute('open');
   el.hidden=true;el.setAttribute('aria-busy','false');
+  if(typeof dlg!=='undefined'&&dlg)dlg.inert=false;
 }
 async function run(fn,okMsg){
   pendingRuns++;
@@ -622,8 +624,8 @@ async function launchGridClassTour(force){
       {element:'.nav',popover:{title:'01 · PIT WALL NAVIGATION',description:'Ini pusat navigasi Grid Kelas. Di layar mobile, geser menu ke samping untuk melihat seluruh bagian: Beranda, Mahasiswa, Mata Kuliah, dan Pengelola.',side:'bottom',align:'center'},
        onNextClick:()=>{setView('mahasiswa',true);setTimeout(()=>d.moveNext(),120);}},
       {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
-       onNextClick:()=>{const b=document.querySelector('#v-mahasiswa #sgrid .scard.me-highlight');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
-      {element:'#dlg #sgrid .scard.me-highlight',popover:{title:'03 · YOUR DRIVER CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
+       onNextClick:()=>{d.moveNext();}},
+      {element:'#v-mahasiswa #sgrid .scard.me-highlight',popover:{title:'03 · YOUR DRIVER CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#dlg #sgrid .scard.me-highlight');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
       {element:'#dlg .student-overview',popover:{title:'04 · DRIVER TELEMETRY',description:'Ringkasan ini menampilkan persentase kehadiran, jumlah tugas yang sudah dikumpulkan, dan jumlah pencapaian Early Bird.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#dlg [data-course-tab="hasil"]');if(b)b.click();setTimeout(()=>d.moveNext(),140);}},
