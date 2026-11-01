@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Unbounded:wght@500;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=export-recap-v1">
+<link rel="stylesheet" href="style.css?v=fix-library-loading-v2">
 </head>
 <body>
 <header class="top" id="top">
@@ -88,7 +88,7 @@
   <div class="inner gut">&copy; 2026 - Adriant Satryo Widodo</div>
 </footer>
 
-<div class="global-loading" id="globalLoading" role="status" aria-live="polite" aria-busy="false" hidden><div class="loading-card"><span class="loading-spinner" aria-hidden="true"></span><span id="loadingText">Sedang memproses…</span></div></div>
+<dialog class="global-loading" id="globalLoading" role="status" aria-live="polite" aria-busy="false" aria-label="Sedang memproses" hidden><div class="loading-card"><span class="loading-spinner" aria-hidden="true"></span><span id="loadingText">Sedang memproses…</span></div></dialog>
 <dialog id="dlg" aria-labelledby="dtitle"><div class="box" id="dbox"></div></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
@@ -97,5 +97,5 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="diagnostic.js"></script>
 <script src="db.js"></script>
-<script src="app.js?v=export-recap-v1"></script></body>
+<script src="app.js?v=fix-library-loading-v2"></script></body>
 </html>
