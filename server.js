@@ -420,9 +420,8 @@ async function purgeTask(p, d) {
   } catch (e) { console.error(e); }
 }
 async function dropExpired(rows) {
-  const keep = [];
-  for (const r of rows) { if (taskExpired(r.data)) await purgeTask(r.key, r.data); else keep.push(r); }
-  return keep;
+  // Tugas kedaluwarsa tetap menjadi arsip; jangan hapus data atau hasil pengumpulan.
+  return rows;
 }
 
 /* ---------- unggahan ---------- */
@@ -1019,7 +1018,7 @@ const server = http.createServer(async (req, res) => {
       const out = {}, groupOut = {};
       (await listCol('tugas')).forEach((row) => {
         const d = row.data;
-        if (!isObj(d) || taskExpired(d)) return;
+        if (!isObj(d)) return;
         const m = {};
         Object.keys(isObj(d.subs) ? d.subs : {}).forEach((no) => {
           const at = d.subs[no] && d.subs[no].at;
@@ -1066,7 +1065,7 @@ const server = http.createServer(async (req, res) => {
       if (!dp) return fail(res, 400, 'invalid_argument', 'Path dokumen tidak valid.');
       const sess = await getSession(req);
       const docData = await getDoc(dp);
-      if (method === 'GET' && dp.startsWith('tugas/') && taskExpired(docData)) { await purgeTask(dp, docData); return json(res, 200, { exists: false }); }
+      // Tugas kedaluwarsa tetap dapat dibaca sebagai riwayat dan sumber achievement.
       if (method === 'GET') {
         const v = docData !== null ? await view(dp, docData, sess) : null;
         return json(res, 200, v === null ? { exists: false } : { exists: true, data: v });
