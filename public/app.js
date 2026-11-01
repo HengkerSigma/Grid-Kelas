@@ -626,7 +626,7 @@ async function launchGridClassTour(force){
       {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
        onNextClick:()=>{d.moveNext();}},
       {element:'#v-mahasiswa #sgrid .scard.me-highlight',popover:{title:'03 · YOUR DRIVER CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
-       onNextClick:()=>{const b=document.querySelector('#dlg #sgrid .scard.me-highlight');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
+       onNextClick:()=>{if(!dlg.open){const b=document.querySelector('#v-mahasiswa #sgrid .scard.me-highlight');if(b)b.click();}setTimeout(()=>d.moveNext(),180);}},
       {element:'#dlg .student-overview',popover:{title:'04 · DRIVER TELEMETRY',description:'Ringkasan ini menampilkan persentase kehadiran, jumlah tugas yang sudah dikumpulkan, dan jumlah pencapaian Early Bird.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#dlg [data-course-tab="hasil"]');if(b)b.click();setTimeout(()=>d.moveNext(),140);}},
       {element:'#dlg [data-course-tab="hasil"]',popover:{title:'05 · RACE RESULTS',description:'Tab Hasil menampilkan riwayat pengumpulan tugas beserta posisi atau peringkat yang kamu raih.',side:'bottom',align:'center'},
