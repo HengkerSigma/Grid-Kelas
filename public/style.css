@@ -951,3 +951,22 @@ button.is-busy{cursor:wait;opacity:.65}
   .sector-table-scroll{overflow-x:auto;touch-action:pan-x pan-y}
   .sector-table-scroll .sx{width:max-content;min-width:100%}
 }
+
+
+/* Paddock Constructor tyre compounds */
+.tire-icon{width:23px;height:23px;flex:none;display:inline-block;vertical-align:middle;color:var(--muted);filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
+.tire-icon.soft{color:#e10600}
+.tire-icon.medium{color:#d6a300}
+.tire-icon.hard{color:#737b87}
+.pit-it.tire-soft{border-left-color:#e10600}
+.pit-it.tire-medium{border-left-color:#d6a300}
+.pit-it.tire-hard{border-left-color:#737b87}
+.tire-legend{margin:2px 0 12px}
+.tire-legend .tire-icon{width:20px;height:20px}
+.paddock-tires{gap:10px;flex-wrap:wrap}
+.paddock-tires .pfl{gap:3px}
+.paddock-tires .tire-icon{width:18px;height:18px}
+@media(max-width:600px){
+  .paddock-tires{gap:8px}
+  .paddock-tires .pfl{font-size:.82rem}
+}
