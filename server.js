@@ -111,7 +111,9 @@ async function getDoc(p) {
     const r = must(await supabase.from('courses').select('*').eq('k', id).maybeSingle());
     return courseFromRow(r.data);
   } else if (root === 'tugas') {
-    const r = must(await supabase.from('course_updates').select('*').eq('task_id', id).maybeSingle());
+    // Identitas tugas mengikuti primary key baris course_updates.
+    let r = must(await supabase.from('course_updates').select('*').eq('id', id).maybeSingle());
+    if (!r.data) r = must(await supabase.from('course_updates').select('*').eq('task_id', id).maybeSingle());
     if (r.data) return taskFromCourseUpdate(r.data);
     const legacy = must(await supabase.from('app_data').select('content').eq('key', p).maybeSingle());
     return legacy.data ? legacy.data.content : null;
@@ -132,7 +134,8 @@ async function setDoc(p, val) {
     must(await supabase.from('courses').upsert(await courseToRow(val)));
   } else if (root === 'tugas') {
     const id = p.slice('tugas/'.length), cols = taskColumns(val);
-    const found = must(await supabase.from('course_updates').select('*').eq('task_id', id).maybeSingle());
+    let found = must(await supabase.from('course_updates').select('*').eq('id', id).maybeSingle());
+    if (!found.data) found = must(await supabase.from('course_updates').select('*').eq('task_id', id).maybeSingle());
     if (found.data) must(await supabase.from('course_updates').update(cols).eq('id', found.data.id));
     else {
       const k = String(val.k || '').trim();
@@ -167,7 +170,8 @@ async function deleteDoc(p) {
   if (root === 'courses') {
     must(await supabase.from('courses').delete().eq('k', id));
   } else if (root === 'tugas') {
-    const found = must(await supabase.from('course_updates').select('id').eq('task_id', id).maybeSingle());
+    let found = must(await supabase.from('course_updates').select('id').eq('id', id).maybeSingle());
+    if (!found.data) found = must(await supabase.from('course_updates').select('id').eq('task_id', id).maybeSingle());
     if (found.data) must(await supabase.from('course_updates').update({ task_id: null, task_title: null, task_url: null,
       deadline: null, task_mode: 'individual', task_description: '', task_submissions: {},
       task_group_submissions: {}, task_created_at: null }).eq('id', found.data.id));
@@ -211,9 +215,13 @@ async function listCol(cp) {
     return out;
   }
   if (cp === 'tugas') {
-    const r = must(await supabase.from('course_updates').select('*').not('task_id', 'is', null).order('course_code').order('meeting_number'));
+    // Koleksi tugas adalah proyeksi langsung dari course_updates; task_id tidak lagi menjadi syarat.
+    const r = must(await supabase.from('course_updates').select('*').order('course_code').order('meeting_number'));
     const seen = new Set();
-    (r.data || []).forEach((u) => { const task = taskFromCourseUpdate(u); if (task) { seen.add(u.task_id); out.push({ key: 'tugas/' + u.task_id, data: task }); } });
+    (r.data || []).forEach((u) => {
+      const task = taskFromCourseUpdate(u);
+      if (task) { seen.add(u.id); out.push({ key: 'tugas/' + u.id, data: task }); }
+    });
     // Fallback hanya untuk tugas lama yang belum bisa dipindahkan karena seluruh 16 slot pertemuan sudah terisi.
     const legacy = must(await supabase.from('app_data').select('key,content').like('key', 'tugas/%'));
     (legacy.data || []).forEach((row) => {
@@ -594,7 +602,7 @@ async function decide(method, p, body, sess, existing) {
     return { data: { course_code:k, meeting_number:meeting, attendance_url:attendance,
       task_title:hasTask ? taskTitle : null, task_url:hasTask ? taskUrl : null,
       submission_url:submission, deadline:hasTask ? (deadline || null) : null,
-      task_id:hasTask ? (existing && existing.task_id || crypto.randomBytes(10).toString('hex')) : null,
+      task_id:hasTask ? (existing && existing.task_id || id) : null,
       task_mode:hasTask ? mode : 'individual', task_description:hasTask ? description : '',
       task_submissions:hasTask && existing && isObj(existing.task_submissions) ? existing.task_submissions : {},
       task_group_submissions:hasTask && existing && isObj(existing.task_group_submissions) ? existing.task_group_submissions : {},
