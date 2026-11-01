@@ -353,6 +353,9 @@ h2 .flag,.gname .flag{width:.85em;height:.85em;vertical-align:-.1em}
 .sx th:nth-child(-n+2),.sx td:nth-child(-n+2){position:sticky;z-index:1;background:var(--surface)}
 .sx th:first-child,.sx td:first-child{left:0;min-width:2.6rem}
 .sx th:nth-child(2),.sx td:nth-child(2){left:2.6rem}
+/* In the Attendance Sector, let every column move horizontally inside its scroll region. */
+.sector-table-scroll .sx th:nth-child(-n+2){left:auto;z-index:2}
+.sector-table-scroll .sx td:nth-child(-n+2){left:auto;z-index:auto}
 .sx th{z-index:2}.sx th:nth-child(-n+2){z-index:3}
 @media (max-width:640px){.sx th,.sx td{padding:6px 5px}.sx .sxn{min-width:6.5rem;font-size:.88rem}.sxc.big{min-width:2.8rem;padding:3px 5px;font-size:.78rem}}
 
@@ -926,4 +929,25 @@ button.is-busy{cursor:wait;opacity:.65}
   .gk-native-tour-layer{background:rgba(4,8,16,.14)}
   .gk-native-tour-spot{box-shadow:0 0 0 9999px rgba(4,8,16,.36),0 0 22px rgba(225,6,0,.58)}
   .gk-tour-help[hidden]{display:none!important}
+}
+
+/* Password visibility control */
+.password-input-wrap{position:relative;width:100%;display:flex;align-items:center}
+.password-input-wrap input{width:100%;padding-right:46px}
+.password-toggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:36px;height:36px;padding:7px;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;touch-action:manipulation}
+.password-toggle:hover,.password-toggle:focus-visible{background:var(--surface-2);color:var(--text);outline:none}
+.password-toggle:focus-visible{box-shadow:0 0 0 2px var(--accent)}
+.password-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+
+/* Constrain the sector dialog's grid children so the table cannot widen the dialog. */
+.sector-dialog-content{grid-template-columns:minmax(0,1fr);min-width:0;width:100%}
+.sector-dialog-content>*{min-width:0;max-width:100%}
+.sector-overview{width:100%;max-width:100%;min-width:0}
+.sector-table-scroll{display:block;width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;box-sizing:border-box;scrollbar-width:thin}
+.sector-table-scroll .sx{width:max-content;min-width:100%;table-layout:auto}
+.sector-table-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:640px){
+  .sector-table-scroll{overflow-x:auto;touch-action:pan-x pan-y}
+  .sector-table-scroll .sx{width:max-content;min-width:100%}
 }
