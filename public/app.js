@@ -633,12 +633,18 @@ function loadGridDriver(){
 }
 function renderTourHelp(){
   let b=document.getElementById('gkTourHelp');
-  if(!ME){if(b)b.remove();return;}
   if(!b){
     b=document.createElement('button');b.id='gkTourHelp';b.type='button';b.className='gk-tour-help';
     b.setAttribute('aria-label','Buka tutorial Grid Kelas');b.title='Buka tutorial Grid Kelas';b.textContent='?';
     const openTour=e=>{
       if(e){e.preventDefault();e.stopPropagation();}
+      if(!ME){
+        let note=document.getElementById('gkTourHelpNotice');
+        if(!note){note=document.createElement('div');note.id='gkTourHelpNotice';note.className='gk-tour-help-notice';document.documentElement.appendChild(note);}
+        note.textContent='Masuk untuk melihat tutorial lengkapnya.';
+        clearTimeout(note._hideTimer);note._hideTimer=setTimeout(()=>note.remove(),5000);
+        return;
+      }
       if(GRID_TOUR_STARTED)return;
       b.disabled=true;b.textContent='…';
       Promise.resolve(launchGridClassTour(true)).then(ok=>{
