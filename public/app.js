@@ -980,7 +980,7 @@ function classArchivePanel(){
       '<div class="row2"><label class="btn sm pickfile">'+(PEND.archive?'Ganti foto':'Pilih foto')+
       '<input type="file" accept="image/jpeg,image/png,image/webp" data-file="archive"></label><span class="s">'+(PEND.archive?'Foto siap diunggah':'Foto JPG, PNG, atau WebP')+'</span></div>'+
       '<div class="row2"><button type="button" class="btn pri" data-act="archive-save">Tambahkan ke Class Archive</button></div></div>';
-  }else h+='<p class="s" style="margin:12px 0">Penambahan foto hanya untuk admin atau mahasiswa yang diberi izin oleh admin.</p>';
+  }
   if(!rows.length)return h+'<p class="empty">Belum ada dokumentasi kelas.</p></div>';
   h+='<ul class="gal">';
   rows.forEach(x=>{
@@ -1524,22 +1524,26 @@ function studentAchievementCounts(no){
   const pole=courseList().filter(course=>row&&row.cells[course.k]&&row.cells[course.k].c==='p').length;
   return{earlyBird:earlyBird,challenger:challenger,pole:pole};
 }
+function passwordInput(id,autocomplete,extra){
+  const eye='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+  return '<div class="password-input-wrap"><input id="'+id+'" type="password" autocomplete="'+autocomplete+'" '+(extra||'')+'><button type="button" class="password-toggle" data-act="toggle-password" data-target="'+id+'" aria-label="Tampilkan password" aria-pressed="false">'+eye+'</button></div>';
+}
 function loginDlg(){
   let h='<div class="db"><div class="row2" style="justify-content:space-between"><h2 id="dtitle" style="margin:0;font-family:var(--f-disp);font-size:1.3rem;text-transform:uppercase">'+(ME?'Akun':'Masuk')+'</h2><button type="button" class="btn sm" data-act="close">Tutup</button></div>';
   if(isAdmin)h+='<div class="mine"><div><b>Pemilik halaman</b><span class="s">'+(ownerMode?'Mode pengelola aktif.':'Anda sedang melihat sebagai tamu.')+'</span></div><button type="button" class="btn" data-act="owner-toggle">'+(ownerMode?'Keluar dari mode pengelola':'Masuk sebagai pengelola')+'</button></div>';
   if(ME){
     h+='<div class="mine"><div><b>Masuk sebagai No. '+ME+(isAd(ME)?' '+FLAG:'')+'</b><span class="s">'+esc(nameOf(ME))+'</span></div><button type="button" class="btn" data-act="me-clear">Keluar</button></div>'+
       '<div class="tcard"><h3>Ganti password</h3>'+
-      '<div class="field"><label for="pw-old">Password lama</label><input id="pw-old" type="password" autocomplete="current-password"></div>'+
-      '<div class="fgrid"><div class="field"><label for="pw-new">Password baru</label><input id="pw-new" type="password" autocomplete="new-password" minlength="6"></div>'+
-      '<div class="field"><label for="pw-new2">Ulangi password baru</label><input id="pw-new2" type="password" autocomplete="new-password"></div></div>'+
+      '<div class="field"><label for="pw-old">Password lama</label>'+passwordInput('pw-old','current-password')+'</div>'+
+      '<div class="fgrid"><div class="field"><label for="pw-new">Password baru</label>'+passwordInput('pw-new','new-password','minlength="6"')+'</div>'+
+      '<div class="field"><label for="pw-new2">Ulangi password baru</label>'+passwordInput('pw-new2','new-password')+'</div></div>'+
       '<div class="row2"><button type="button" class="btn pri" data-act="pw-change">Simpan password</button></div></div>';
   }else if(D.step==='form'){
     const no=D.no;
     h+='<div class="row2"><button type="button" class="btn sm" data-act="login-back">&#8249; Pilih nama lain</button></div>'+
       '<div class="shead"><div class="sbig" style="width:84px;height:84px">'+photo('s'+PAD(no))+fb(no)+'</div><div><div class="k" style="font-family:var(--f-disp);font-weight:700;font-size:.8rem;color:var(--accent);letter-spacing:.06em">NO. '+no+'</div><div style="font-family:var(--f-disp);font-weight:700;font-size:1.2rem;line-height:1.2;overflow-wrap:anywhere">'+esc(nameOf(no))+'</div></div></div>'+
       '<div class="field"><label for="lg-nim">NIM</label><input id="lg-nim" type="text" inputmode="numeric" autocomplete="username" maxlength="20" value="'+esc(D.nim||'')+'"></div>'+
-      '<div class="field"><label for="lg-pw">Password</label><input id="lg-pw" type="password" autocomplete="current-password"></div>'+
+      '<div class="field"><label for="lg-pw">Password</label>'+passwordInput('lg-pw','current-password')+'</div>'+
       (D.err?'<p class="empty" role="alert" style="color:var(--bad);font-weight:600">'+esc(D.err)+'</p>':'')+
       '<div class="row2"><button type="button" class="btn pri" data-act="login-go">Masuk</button><button type="button" class="btn" data-act="pw-forgot" aria-expanded="'+!!D.forgot+'">Lupa password?</button></div>'+
       '<p class="s" style="margin:0">Belum pernah mengganti password? Gunakan password bawaan dari pengelola.</p>';
@@ -1816,6 +1820,18 @@ document.addEventListener('click',async e=>{
     case 'hub-task-tab':D.taskTab=d.tab==='group'?'group':'individual';renderDialog(true);break;
     case 'pit-history-toggle':D.historyOpen=!D.historyOpen;renderDialog(true);break;
     case 'open-sektor':openD('sektor');break;
+    case 'toggle-password':{
+      const input=document.getElementById(d.target);
+      if(!input||!b.isConnected)break;
+      const visible=input.type==='password';
+      input.type=visible?'text':'password';
+      b.setAttribute('aria-label',visible?'Sembunyikan password':'Tampilkan password');
+      b.setAttribute('aria-pressed',String(visible));
+      b.innerHTML=visible
+        ?'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"></path><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a16 16 0 0 1-3.1 3.8M6.2 6.2C3.5 8.1 2 12 2 12s3.6 7 10 7c1.1 0 2.1-.2 3-.5"></path></svg>'
+        :'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+      break;
+    }
     case 'close':dlg.close();break;
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
