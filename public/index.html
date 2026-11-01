@@ -8,16 +8,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Unbounded:wght@500;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=semester-timeline-v1">
+<link rel="stylesheet" href="style.css?v=mobile-f1-navigation-v1">
 </head>
 <body>
 <header class="top" id="top">
   <div class="inner gut bar">
-    <a class="brand" href="#beranda" data-view="beranda" aria-label="Formula 1 ELSE3, ke Beranda">
+    <a class="brand" href="#beranda" data-view="beranda" data-mobile-nav-toggle aria-controls="mainNav" aria-expanded="false" aria-label="Buka navigasi Formula 1 ELSE3">
       <svg class="mark" viewBox="0 0 64 30" aria-hidden="true"><path d="M14 0H64L59 9H9Z"/><path d="M8 11H52L47 20H3Z"/><path d="M0 22H28L24 30H0Z"/></svg>
       <span class="wm">Formula 1 ELSE3</span>
     </a>
-    <nav class="nav" aria-label="Navigasi utama">
+    <nav class="nav" id="mainNav" aria-label="Navigasi utama">
       <button type="button" class="nl" data-view="beranda">Beranda</button>
       <button type="button" class="nl" data-view="mahasiswa">Mahasiswa</button>
       <button type="button" class="nl" data-view="mata-kuliah">Mata Kuliah</button>
@@ -98,5 +98,5 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="diagnostic.js"></script>
 <script src="db.js"></script>
-<script src="app.js?v=personal-card-export-v2"></script></body>
+<script src="app.js?v=mobile-nav-constructor-tour-v1"></script></body>
 </html>
