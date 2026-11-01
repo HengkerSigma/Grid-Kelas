@@ -110,6 +110,9 @@ async function getDoc(p) {
   if (root === 'courses') {
     const r = must(await supabase.from('courses').select('*').eq('k', id).maybeSingle());
     return courseFromRow(r.data);
+  } else if (root === 'tugas') {
+    const r = must(await supabase.from('course_updates').select('*').eq('task_id', id).maybeSingle());
+    return taskFromCourseUpdate(r.data);
   } else if (root === 'course_updates') {
     const r = must(await supabase.from('course_updates').select('*').eq('id', id).maybeSingle());
     return r.data || null;
@@ -125,6 +128,24 @@ async function setDoc(p, val) {
 
   if (root === 'courses') {
     must(await supabase.from('courses').upsert(await courseToRow(val)));
+  } else if (root === 'tugas') {
+    const id = p.slice('tugas/'.length), cols = taskColumns(val);
+    const found = must(await supabase.from('course_updates').select('*').eq('task_id', id).maybeSingle());
+    if (found.data) must(await supabase.from('course_updates').update(cols).eq('id', found.data.id));
+    else {
+      const k = String(val.k || '').trim();
+      const rows = must(await supabase.from('course_updates').select('id,meeting_number,task_id').eq('course_code', k));
+      const empty = (rows.data || []).find(x => !x.task_id);
+      let meeting = empty ? Number(empty.meeting_number) : 0;
+      if (!meeting) {
+        const occupied = new Set((rows.data || []).map(x => Number(x.meeting_number)));
+        for (let n = 1; n <= PERT; n++) if (!occupied.has(n)) { meeting = n; break; }
+      }
+      if (!meeting) throw new Error('Semua 16 pertemuan mata kuliah ini sudah memiliki pembaruan. Tidak bisa menempatkan tugas baru.');
+      if (empty) must(await supabase.from('course_updates').update(Object.assign({ task_id: id }, cols)).eq('id', empty.id));
+      else must(await supabase.from('course_updates').insert(Object.assign({ id: 'task-' + id, task_id: id,
+        course_code: k, meeting_number: meeting, attendance_url: null, submission_url: null }, cols)));
+    }
   } else if (root === 'course_updates') {
     must(await supabase.from('course_updates').upsert(Object.assign({}, val, { id: p.slice('course_updates/'.length) })));
   } else {
@@ -139,11 +160,33 @@ async function deleteDoc(p) {
 
   if (root === 'courses') {
     must(await supabase.from('courses').delete().eq('k', id));
+  } else if (root === 'tugas') {
+    must(await supabase.from('course_updates').update({ task_id: null, task_title: null, task_url: null,
+      deadline: null, task_mode: 'individual', task_description: '', task_submissions: {},
+      task_group_submissions: {}, task_created_at: null }).eq('task_id', id));
   } else if (root === 'course_updates') {
     must(await supabase.from('course_updates').delete().eq('id', id));
   } else {
     must(await supabase.from('app_data').delete().eq('key', p));
   }
+}
+
+function taskFromCourseUpdate(row) {
+  if (!row || !row.task_title || !row.task_id) return null;
+  return { k: row.course_code, judul: row.task_title, tenggat: row.deadline || '',
+    deskripsi: row.task_description || '', link: row.task_url || '',
+    mode: row.task_mode === 'group' ? 'group' : 'individual',
+    subs: isObj(row.task_submissions) ? row.task_submissions : {},
+    groupSubs: isObj(row.task_group_submissions) ? row.task_group_submissions : {},
+    dibuat: Number(row.task_created_at) || Date.parse(row.created_at || '') || Date.now() };
+}
+function taskColumns(task) {
+  return { task_title: task.judul || null, deadline: task.tenggat || null,
+    task_description: task.deskripsi || '', task_url: task.link || '',
+    task_mode: task.mode === 'group' ? 'group' : 'individual',
+    task_submissions: isObj(task.subs) ? task.subs : {},
+    task_group_submissions: isObj(task.groupSubs) ? task.groupSubs : {},
+    task_created_at: Number(task.dibuat) || Date.now() };
 }
 
 /* Ambil hanya dokumen anak langsung dari satu koleksi (bukan seluruh database). */
@@ -157,6 +200,11 @@ async function listCol(cp) {
   if (cp === 'course_updates') {
     const r = must(await supabase.from('course_updates').select('*').order('meeting_number', { ascending: true }));
     (r.data || []).forEach((u) => out.push({ key: 'course_updates/' + u.id, data: u }));
+    return out;
+  }
+  if (cp === 'tugas') {
+    const r = must(await supabase.from('course_updates').select('*').not('task_id', 'is', null).order('course_code').order('meeting_number'));
+    (r.data || []).forEach((u) => { const task = taskFromCourseUpdate(u); if (task) out.push({ key: 'tugas/' + u.task_id, data: task }); });
     return out;
   }
   const r2 = must(await supabase.from('app_data').select('key,content').like('key', cp + '/%'));
@@ -505,10 +553,19 @@ async function decide(method, p, body, sess, existing) {
     if (!/^[A-Za-z0-9]{2,8}$/.test(k) || !Number.isInteger(meeting) || meeting < 1 || meeting > PERT) return ERR_BAD('Pilih mata kuliah dan pertemuan 1 sampai ' + PERT + '.');
     if ([attendance, taskUrl, submission].some(u => u && (!/^https:\/\//i.test(u) || !isHttpUrl(u)))) return ERR_BAD('Semua tautan harus menggunakan HTTPS.');
     if (taskTitle.length > 120 || (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline))) return ERR_BAD('Judul tugas atau tenggat tidak valid.');
-    const course = await getDoc('courses/' + k);
-    if (!course) return ERR_BAD('Mata kuliah tidak ditemukan.');
-    const now = Date.now();
-    return { data: { course_code:k, meeting_number:meeting, attendance_url:attendance, task_title:taskTitle, task_url:taskUrl, submission_url:submission, deadline:deadline || null, created_at:existing && existing.created_at || new Date(now).toISOString(), updated_at:new Date(now).toISOString() } };
+    if (!(await getDoc('courses/' + k))) return ERR_BAD('Mata kuliah tidak ditemukan.');
+    const now = Date.now(), hasTask = !!taskTitle, mode = body.task_mode === 'group' ? 'group' : 'individual';
+    const description = String(body.task_description || '').slice(0, 1000);
+    if (hasTask && !taskUrl && !description) return ERR_BAD('Isi link materi/soal atau petunjuk tugas agar tugas memiliki instruksi.');
+    return { data: { course_code:k, meeting_number:meeting, attendance_url:attendance,
+      task_title:hasTask ? taskTitle : null, task_url:hasTask ? taskUrl : null,
+      submission_url:submission, deadline:hasTask ? (deadline || null) : null,
+      task_id:hasTask ? (existing && existing.task_id || crypto.randomBytes(10).toString('hex')) : null,
+      task_mode:hasTask ? mode : 'individual', task_description:hasTask ? description : '',
+      task_submissions:hasTask && existing && isObj(existing.task_submissions) ? existing.task_submissions : {},
+      task_group_submissions:hasTask && existing && isObj(existing.task_group_submissions) ? existing.task_group_submissions : {},
+      task_created_at:hasTask ? (existing && existing.task_created_at || now) : null,
+      created_at:existing && existing.created_at || new Date(now).toISOString(), updated_at:new Date(now).toISOString() } };
   }
 
   if (root === 'students' || root === 'courses' || root === 'pengumuman') {
@@ -622,61 +679,51 @@ async function decide(method, p, body, sess, existing) {
     if (method === 'DELETE') return admin ? { del: true } : ERR_FORBID;
     if (method === 'POST' || (method === 'PUT' && admin)) {
       if (!admin) return ERR_FORBID;
-      const k = String(body.k || '');
-      const judul = String(body.judul || '').trim();
-      if (!judul || judul.length > 120) return ERR_BAD('Judul wajib diisi.');
+      const k = String(body.k || '').trim(), judul = String(body.judul || '').trim();
+      if (!/^[A-Za-z0-9]{2,8}$/.test(k) || !judul || judul.length > 120) return ERR_BAD('Mata kuliah dan judul tugas wajib diisi.');
+      if (!(await getDoc('courses/' + k))) return ERR_BAD('Mata kuliah tidak ditemukan.');
       const tenggat = String(body.tenggat || '');
       if (tenggat && !/^\d{4}-\d{2}-\d{2}$/.test(tenggat)) return ERR_BAD('Tenggat tidak valid.');
-      const deskripsi = String(body.deskripsi || '').slice(0, 1000);
-      const link = String(body.link || '').trim();
+      const deskripsi = String(body.deskripsi || '').slice(0, 1000), link = String(body.link || '').trim();
       if (link && (link.length > 500 || !isHttpUrl(link))) return ERR_BAD('Tautan kerjakan harus diawali http:// atau https://.');
       const mode = body.mode === 'group' ? 'group' : 'individual';
-      return { data: { k: k, judul: judul, tenggat: tenggat, deskripsi: deskripsi, link: link, mode: mode, subs: existing && isObj(existing.subs) ? existing.subs : {}, groupSubs: existing && isObj(existing.groupSubs) ? existing.groupSubs : {}, dibuat: existing && existing.dibuat ? existing.dibuat : Date.now() } };
+      return { data: { k, judul, tenggat, deskripsi, link, mode,
+        subs: existing && isObj(existing.subs) ? existing.subs : {},
+        groupSubs: existing && isObj(existing.groupSubs) ? existing.groupSubs : {},
+        dibuat: existing && existing.dibuat ? existing.dibuat : Date.now() } };
     }
     if (method === 'PATCH') {
       if (!existing) return ERR_MISSING;
       if (onlyKeys(body, ['subs'])) {
         if (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0) return ERR_BAD('Tenggat sudah lewat. Pengumpulan ditutup.');
         const me = String(sess.no);
-        if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me])) return ERR_FORBID;
-        if (existing.mode === 'group') return ERR_FORBID;
-        const s = body.subs[me];
-        const tautan = String(s.tautan || '').trim().slice(0, 500);
-        const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET);
-        const catatan = String(s.catatan || '').slice(0, 500);
+        if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me]) || existing.mode === 'group') return ERR_FORBID;
+        const s = body.subs[me], tautan = String(s.tautan || '').trim().slice(0, 500);
+        const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET), catatan = String(s.catatan || '').slice(0, 500);
         if (berkas === undefined) return ERR_BAD('Berkas tidak valid. Unggah ulang berkasnya.');
         if (tautan && !(/^https:\/\//i.test(tautan) && isHttpUrl(tautan))) return ERR_BAD('Tautan harus diawali https://');
         if (!tautan && !berkas) return ERR_BAD('Unggah berkas atau isi tautan tugas.');
-        const out = clone(existing);
-        if (!isObj(out.subs)) out.subs = {};
-        out.subs[me] = { tautan: tautan, catatan: catatan, berkas: berkas, at: Date.now() };
-        return { data: out };
+        const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
+        out.subs[me] = { tautan, catatan, berkas, at: Date.now() }; return { data: out };
       }
       if (onlyKeys(body, ['groupSubs'])) {
-        if (existing.mode !== 'group') return ERR_FORBID;
-        if (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0) return ERR_BAD('Tenggat sudah lewat. Pengumpulan ditutup.');
+        if (existing.mode !== 'group' || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_FORBID;
         if (!isObj(body.groupSubs) || Object.keys(body.groupSubs).length !== 1) return ERR_FORBID;
         const gid = Object.keys(body.groupSubs)[0], s = body.groupSubs[gid];
         if (!/^[A-Za-z0-9_-]{1,40}$/.test(gid) || !isObj(s)) return ERR_FORBID;
         const group = await getDoc('constructors/' + gid);
         if (!group || group.courseCode !== existing.k || Number(group.principal) !== Number(sess.no)) return ERR_FORBID;
-        const tautan = String(s.tautan || '').trim().slice(0, 500);
-        const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET);
+        const tautan = String(s.tautan || '').trim().slice(0, 500), berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET);
         const catatan = String(s.catatan || '').slice(0, 500);
         if (berkas === undefined) return ERR_BAD('Berkas tidak valid. Unggah ulang berkasnya.');
         if (tautan && !(/^https:\/\//i.test(tautan) && isHttpUrl(tautan))) return ERR_BAD('Tautan harus diawali https://');
         if (!tautan && !berkas) return ERR_BAD('Unggah berkas atau isi tautan tugas.');
-        const out = clone(existing);
-        if (!isObj(out.groupSubs)) out.groupSubs = {};
-        out.groupSubs[gid] = { tautan: tautan, catatan: catatan, berkas: berkas, at: Date.now(), by: sess.no };
-        return { data: out };
+        const out = clone(existing); if (!isObj(out.groupSubs)) out.groupSubs = {};
+        out.groupSubs[gid] = { tautan, catatan, berkas, at: Date.now(), by: sess.no }; return { data: out };
       }
       if (!admin) return ERR_FORBID;
       const out = Object.assign(clone(existing), pick(body, ['judul', 'tenggat', 'deskripsi', 'link']));
-      if (out.link !== undefined) {
-        out.link = String(out.link || '').trim();
-        if (out.link && (out.link.length > 500 || !isHttpUrl(out.link))) return ERR_BAD('Tautan kerjakan harus diawali http:// atau https://.');
-      }
+      if (out.link !== undefined) { out.link = String(out.link || '').trim(); if (out.link && (out.link.length > 500 || !isHttpUrl(out.link))) return ERR_BAD('Tautan kerjakan harus diawali http:// atau https://.'); }
       return { data: out };
     }
     return ERR_FORBID;
@@ -927,21 +974,21 @@ const server = http.createServer(async (req, res) => {
       const s = await getSession(req);
       if (!s) return fail(res, 401, 'unauthenticated', 'Masuk dulu untuk melanjutkan.');
       const out = {}, groupOut = {};
-      (await listCol('tugas')).forEach((row) => {
-        const d = row.data;
-        if (!isObj(d) || taskExpired(d)) return;
+      const taskRows = must(await supabase.from('course_updates').select('task_id,deadline,task_submissions,task_group_submissions').not('task_id', 'is', null));
+      (taskRows.data || []).forEach((row) => {
+        const d = { tenggat: row.deadline, subs: row.task_submissions, groupSubs: row.task_group_submissions };
+        if (taskExpired(d)) return;
         const m = {};
         Object.keys(isObj(d.subs) ? d.subs : {}).forEach((no) => {
           const at = d.subs[no] && d.subs[no].at;
           if (/^\d{1,2}$/.test(no) && typeof at === 'number') m[no] = at;
         });
-        const taskId = row.key.slice('tugas/'.length);
-        out[taskId] = m;
+        out[row.task_id] = m;
         if (isObj(d.groupSubs)) {
-          groupOut[taskId] = {};
+          groupOut[row.task_id] = {};
           Object.keys(d.groupSubs).forEach((gid) => {
             const at = d.groupSubs[gid] && d.groupSubs[gid].at;
-            if (typeof at === 'number') groupOut[taskId][gid] = at;
+            if (typeof at === 'number') groupOut[row.task_id][gid] = at;
           });
         }
       });
