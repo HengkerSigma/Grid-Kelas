@@ -903,3 +903,24 @@ button.is-busy{cursor:wait;opacity:.65}
 .meeting-history-grid li{margin:2px 0}
 .meeting-history-grid li small{margin-top:2px}
 @media(max-width:600px){.live-clock{font-size:.56rem;max-width:116px;white-space:normal;text-align:right;line-height:1.25}.hright{gap:6px}.meeting-history-grid{grid-template-columns:1fr}.meeting-history-item .chip{font-size:.62rem}}
+
+
+/* Mobile header: F logo opens the compact navigation drawer. */
+@media(max-width:600px){
+  .top{overflow:visible}
+  .bar{height:58px;gap:8px;align-items:center}
+  .brand{width:38px;justify-content:flex-start;gap:0}
+  .mark{width:36px;height:18px}
+  .wm{display:none}
+  .nav{display:none;position:absolute;top:100%;left:0;right:0;z-index:40;flex-direction:column;align-items:stretch;gap:0;padding:7px 14px;overflow:visible;background:var(--bg);border:1px solid var(--line);border-top:0;box-shadow:0 14px 28px rgba(0,0,0,.28)}
+  .top.mobile-nav-open .nav{display:flex}
+  .nav .nl{min-height:44px;padding:8px 5px;border-bottom:1px solid var(--line);font-size:.95rem}
+  .nav .nl:last-child{border-bottom:0}
+  .hright{margin-left:auto;gap:6px}
+  .live-clock{max-width:112px}
+  .login{padding:6px 8px;border-radius:6px;font-size:.68rem}
+  .avbtn{width:34px;height:34px}
+  .gk-native-tour-layer{background:rgba(4,8,16,.14)}
+  .gk-native-tour-spot{box-shadow:0 0 0 9999px rgba(4,8,16,.36),0 0 22px rgba(225,6,0,.58)}
+  .gk-tour-help[hidden]{display:none!important}
+}
