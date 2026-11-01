@@ -5,7 +5,7 @@ const $=id=>document.getElementById(id);
 const PAD=n=>String(n).padStart(2,'0');
 const ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>ESC[c]);
-const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/[A-Za-z0-9_]{1,40}\?v=\d+$/.test(u));
+const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/[0-9a-f]{32}(?:\?v=\d+)?$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
 let superLicenseDriveUrl='';
@@ -515,8 +515,9 @@ function loadGridDriver(){
         GRID_TOUR_HELP_VISIBLE=index===steps.length-1;
         renderTourHelp();
         const step=steps[index];
-        let target=typeof step.element==='string'?document.querySelector(step.element):step.element;
-        if(!target){index++;render();return;}
+        let target=typeof step.element==='function'?step.element():(typeof step.element==='string'?document.querySelector(step.element):step.element);
+        if(!target&&index===0)target=document.querySelector('.top');
+        if(!target){setTimeout(render,120);return;}
         target.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
         layer=document.createElement('div');layer.className='gk-native-tour-layer';
         spot=document.createElement('div');spot.className='gk-native-tour-spot';
@@ -527,8 +528,9 @@ function loadGridDriver(){
         pop.querySelector('[data-tour="prev"]').disabled=index===0;
         pop.querySelector('[data-tour="next"]').textContent=index===steps.length-1?'Selesai':'Lanjutkan';
         const place=()=>{
-          if(typeof step.element==='string')target=document.querySelector(step.element);
-          if(!target||!target.isConnected)return;
+          if(typeof step.element==='function')target=step.element();
+          else if(typeof step.element==='string')target=document.querySelector(step.element);
+          if(!target||!target.isConnected){target=document.querySelector('.top');if(!target)return;}
           const r=target.getBoundingClientRect();
           const left=Math.max(4,Math.min(window.innerWidth-4,r.left-pad));
           const top=Math.max(4,Math.min(window.innerHeight-4,r.top-pad));
@@ -567,7 +569,43 @@ function loadGridDriver(){
         requestAnimationFrame(place);
         setTimeout(place,350);
         pop.querySelector('[data-tour="close"]').onclick=destroy;
-        pop.querySelector('[data-tour="prev"]').onclick=()=>{index=Math.max(0,index-1);render();};
+        pop.querySelector('[data-tour="prev"]').onclick=()=>{
+          if(index===0)return;
+          const previousIndex=index-1;
+          if(dlg&&dlg.open)dlg.close();
+          const showStudentCard=(tab)=>{
+            setView('mahasiswa',true);
+            const line=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');
+            if(line)line.click();
+            const card=document.querySelector('#v-mahasiswa #sgrid .scard.me-highlight');
+            if(card)card.click();
+            setTimeout(()=>{const t=document.querySelector('#dlg [data-course-tab="'+tab+'"]');if(t)t.click();},0);
+          };
+          if(previousIndex===0){setView('beranda',true);}
+          else if(previousIndex===1||previousIndex===2){setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();}
+          else if(previousIndex===3){showStudentCard('overview');}
+          else if(previousIndex===4){showStudentCard('hasil');}
+          else if(previousIndex===5){showStudentCard('achievement');}
+          else if(previousIndex>=6&&previousIndex<=9){
+            setView('mahasiswa',true);
+            const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="constructor"]');if(b)b.click();
+            CONSTRUCTOR_SUBTAB=previousIndex>=9?'standings':'list';renderConstructor();
+          }else if(previousIndex>=10&&previousIndex<=12){
+            setView('mata-kuliah',true);
+            const tab=previousIndex===12?'history':'grand-prix';
+            const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="'+tab+'"]');if(b)b.click();
+          }else if(previousIndex===13){setView('beranda',true);}
+          else if(previousIndex===14||previousIndex===15){
+            setView('beranda',true);
+            const b=document.querySelector('#home [data-act="open-pit"]');if(b)b.click();
+            setTimeout(()=>{const tab=previousIndex===15?'group':'individual',t=document.querySelector('#dlg [data-act="hub-task-tab"][data-tab="'+tab+'"]');if(t)t.click();},0);
+          }else if(previousIndex===16){setView('beranda',true);}
+          else if(previousIndex===17){
+            setView('beranda',true);
+            const b=document.querySelector('#home [data-act="open-sektor"]');if(b)b.click();
+          }else{setView('beranda',true);}
+          index=previousIndex;render();
+        };
         pop.querySelector('[data-tour="next"]').onclick=()=>{
           if(index===steps.length-1){destroy();return;}
           if(typeof step.onNextClick==='function')step.onNextClick();else{index++;render();}
@@ -643,7 +681,7 @@ async function launchGridClassTour(force){
     progressText:'{{current}} / {{total}}',allowClose:true,overlayColor:'rgba(4,8,16,.82)',
     stagePadding:7,stageRadius:12,popoverClass:'gk-race-tour',
     steps:[
-      {element:'.brand',popover:{title:'01 · PIT WALL NAVIGATION',description:'Ini pusat navigasi Grid Kelas. Di layar mobile, ketuk logo F untuk membuka menu Beranda, Mahasiswa, Mata Kuliah, dan Pengelola. Di desktop, tab navigasi tampil langsung.',side:'bottom',align:'center'},
+      {element:()=>window.matchMedia('(max-width: 600px)').matches?document.querySelector('.brand'):document.querySelector('.nav'),popover:{title:'01 · PIT WALL NAVIGATION',description:'Ini pusat navigasi Grid Kelas. '+(window.matchMedia('(max-width: 600px)').matches?'Di layar mobile, ketuk logo F untuk membuka menu Beranda, Mahasiswa, dan Mata Kuliah.':'Di desktop, gunakan tab Beranda, Mahasiswa, dan Mata Kuliah'+(adm()?', serta Pengelola.':'.')),side:'bottom',align:'center'},
        onNextClick:()=>{setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
       {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
        onNextClick:()=>{d.moveNext();}},
@@ -1119,7 +1157,7 @@ function buildCourseRecap(segment,format){
       const se=S.se[c.k+'_'+PAD(meeting)]||{},present=se.present||{},proof=se.bukti||{};
       studentNos.forEach(no=>{
         const status=present[no]||'',file=proof[no]||{};
-        rows.push([c.nama,'Pertemuan '+meeting,se.tanggal||meetingDate(meeting),no,nameOf(no),status?(LBL[status]||status):'Belum diisi',file.name||(file.id?'Bukti terlampir':'—')]);
+        rows.push([c.nama,'Pertemuan '+meeting,se.tanggal||meetingDate(meeting),no,nameOf(no),status?(LBL[status]||status):(Object.keys(se).length?'Belum diisi':'Absensi belum dibuka'),file.name||(file.id?'Bukti terlampir':'—')]);
       });
     });
   }else{
@@ -1249,7 +1287,7 @@ function absenStudent(c,scheduleMode){
   let h=scheduleMode?'':pertPicker(c,'mhs');
   if(se.tanggal||se.topik||n<=8)h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se.tanggal||meetingDate(n))+(se.topik?' · '+esc(se.topik):'')+(n<=8?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
-  const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):'Belum mengisi';
+  const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):(Object.keys(se).length?'Belum mengisi':'Absensi belum dibuka');
   h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+(bk&&bk.id?'<div><b class="s">Bukti absensi</b>'+fileHtml(bk)+'</div>':'<span class="s">Tidak ada bukti yang dilampirkan pada pertemuan ini.</span>')+'</div>';
   const a=stats(ME).by[c.k]||{h:0,t:0};
   h+='<p class="sum"><span>Hadir '+a.h+' dari '+a.t+' pertemuan terisi</span></p>';
@@ -1262,10 +1300,11 @@ function absenAdmin(c){
   const rec=cnt.H+cnt.I+cnt.S+cnt.A+cnt.K;
   let h=pertPicker(c,'adm');
   if(se&&(se.tanggal||se.topik)||n<=8)h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(n<=8?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
-  h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
+  if(!se)h+='<p class="empty"><b>Absensi belum dibuka.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
+  else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
-    const status=p[i]?(LBL[p[i]]||p[i]):'Belum diisi';
+    const status=p[i]?(LBL[p[i]]||p[i]):(se?'Belum diisi':'Absensi belum dibuka');
     h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span></li>';
   }
   return h+'</ol>';
@@ -1283,7 +1322,7 @@ function absenBtn(c){
   if(!ME)return '';
   const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
   if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
-  if(state==='future')return '<button type="button" class="btn sm" disabled>Absen belum dibuka</button>';
+  if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
   if(state==='passed')return '<button type="button" class="btn sm" disabled>Absen sudah lewat</button>';
   return '<button type="button" class="btn sm pri" data-act="schedule-attendance" data-k="'+esc(c.k)+'">Isi absen</button>';
 }
