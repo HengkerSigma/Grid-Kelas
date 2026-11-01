@@ -499,12 +499,23 @@ function loadGridDriver(){
           spot.style.left=left+'px';spot.style.top=top+'px';
           spot.style.width=Math.max(0,Math.min(window.innerWidth-4,r.right+pad)-left)+'px';
           spot.style.height=Math.max(0,Math.min(window.innerHeight-4,r.bottom+pad)-top)+'px';
-          const w=Math.min(380,window.innerWidth-28);
+          const mobile=window.innerWidth<=600;
+          const w=mobile?Math.max(0,window.innerWidth-20):Math.min(380,window.innerWidth-28);
           pop.style.width=w+'px';
-          let popTop=p.side==='top'?r.top-pop.offsetHeight-14:r.bottom+14;
-          if(popTop<12||popTop+pop.offsetHeight>window.innerHeight-12)popTop=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.top-pop.offsetHeight-14));
-          pop.style.top=popTop+'px';
-          pop.style.left=Math.max(14,Math.min(window.innerWidth-w-14,r.left+(r.width-w)/2))+'px';
+          if(mobile){
+            pop.style.maxHeight='min(36vh,300px)';
+            pop.style.overflowY='auto';
+            const preferTop=r.top>window.innerHeight/2;
+            pop.style.top=(preferTop?10:Math.max(10,window.innerHeight-pop.offsetHeight-10))+'px';
+            pop.style.left='10px';
+          }else{
+            pop.style.maxHeight='';
+            pop.style.overflowY='';
+            let popTop=p.side==='top'?r.top-pop.offsetHeight-14:r.bottom+14;
+            if(popTop<12||popTop+pop.offsetHeight>window.innerHeight-12)popTop=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.top-pop.offsetHeight-14));
+            pop.style.top=popTop+'px';
+            pop.style.left=Math.max(14,Math.min(window.innerWidth-w-14,r.left+(r.width-w)/2))+'px';
+          }
         };
         layer.appendChild(spot);layer.appendChild(pop);
         const tourHost=dlg&&dlg.open?dlg:document.body;
@@ -597,17 +608,18 @@ async function launchGridClassTour(force){
       {element:'#constructorPanel',popover:{title:'03 · CONSTRUCTOR GARAGE',description:'Di sini kamu bisa melihat daftar tim Constructor, anggota tim, Team Principal, serta klasemen berdasarkan progres pengumpulan tugas kelompok.',side:'top',align:'center'},
        onNextClick:()=>{setView('mata-kuliah',true);setTimeout(()=>d.moveNext(),120);}},
       {element:'#v-mata-kuliah .course-subtabs',popover:{title:'04 · GRAND PRIX & HISTORY',description:'GRAND PRIX berisi kartu mata kuliah aktif. HISTORY menyimpan tugas yang sudah melewati tenggat. Pilih tab untuk mengganti tampilan.',side:'bottom',align:'start'},
-       onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="history"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
-      {element:'#cgrid',popover:{title:'05 · COURSE GARAGE',description:'Setiap kartu mewakili satu mata kuliah. Buka kartu untuk melihat informasi perkuliahan, absensi, materi, dan tugas yang terhubung dengan mata kuliah tersebut.',side:'top',align:'center'},
+       onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="grand-prix"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
+      {element:'#cgrid .course',popover:{title:'05 · COURSE GARAGE',description:'Setiap kartu mewakili satu mata kuliah. Buka kartu untuk melihat informasi perkuliahan, absensi, materi, dan tugas yang terhubung dengan mata kuliah tersebut.',side:'top',align:'center'},
        onNextClick:()=>{setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
       {element:'#home .tiles',popover:{title:'06 · RACE CONTROL',description:'Hub Tugas merangkum tugas individu dan Constructor yang perlu kamu selesaikan. Sektor Absensi menunjukkan progres kehadiran dan posisi sektormu di kelas.',side:'bottom',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#home [data-act="open-pit"]');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
       {element:'#dlg .hub-task-tabs',popover:{title:'07 · PIT LANE TUGAS',description:'Pilih PIT TUGAS untuk pekerjaan individu atau PADDOCK CONSTRUCTOR untuk tugas kelompok. Periksa instruksi dan tenggat sebelum mengirim hasil.',side:'top',align:'center'},
        onNextClick:()=>{if(dlg.open)dlg.close();setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
-      {element:'#home .schedule-panel',popover:{title:'08 · RACE WEEKEND SCHEDULE',description:'Jadwal hari ini menampilkan kelas dan jam perkuliahan. Gunakan tombol Isi Absen saat sesi dibuka, atau buka riwayat absensi untuk mengecek catatan sebelumnya.',side:'top',align:'center'}},
+      {element:'#home .schedule-panel',popover:{title:'08 · SCHEDULE',description:'Jadwal hari ini menampilkan kelas dan jam perkuliahan. Gunakan tombol Isi Absen saat sesi dibuka, atau buka riwayat absensi untuk mengecek catatan sebelumnya.',side:'top',align:'center'}},
       {element:'#home .team-radio',popover:{title:'09 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'}},
       {element:'#home #superLicensePanel',popover:{title:'10 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
-      {element:'#home #classArchivePanel',popover:{title:'11 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}}
+      {element:'#home #classArchivePanel',popover:{title:'11 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}},
+      {element:'#gkTourHelp',popover:{title:'12 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Kalau suatu saat lupa letak fitur atau cara menggunakan Grid Kelas, tekan tombol ini untuk membuka tutorial lagi.',side:'top',align:'center'}}
     ],
 
     onDestroyed:()=>{try{localStorage.setItem(tourKey(),'done');}catch(e){}GRID_TOUR_STARTED=false;renderTourHelp();}
