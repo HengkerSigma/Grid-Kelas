@@ -1062,28 +1062,60 @@ function buildWhatsAppTemplate(){
   const category=($('wa-category')||{}).value||'tasks',course=($('wa-course')||{}).value||'all';
   const meeting=Number(($('wa-meeting')||{}).value)||1,date=($('wa-date')||{}).value||today();
   const combine=!!(($('wa-combine')||{}).checked),selected=course==='all'?null:[course];
-  const lines=['🏁 *GRID-KELAS · INFORMASI KELAS*','📅 '+fmtDate(date),''];
+  const lines=['📻 *01ELSE003 | Team Radio*',''];
   const includeTasks=category==='tasks'||(combine&&category==='attendance');
   const includeAttendance=category==='attendance'||(combine&&category==='tasks');
+  let taskCount=0,attendanceCount=0,seminarCount=0;
   if(includeTasks){
     const rows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.task_title&&(!selected||selected.includes(x.course_code))).sort((a,b)=>String(a.deadline||'9999').localeCompare(String(b.deadline||'9999')));
-    lines.push('📚 *PEMBARUAN TUGAS & MATERI*');
-    if(rows.length)rows.forEach(x=>{lines.push('• *'+cname(x.course_code)+' · Pertemuan '+x.meeting_number+'*','  '+x.task_title);if(x.deadline)lines.push('  Tenggat: '+fmtDate(x.deadline));if(okHttps(x.task_url))lines.push('  📎 Buka materi/soal: '+x.task_url);if(okHttps(x.submission_url))lines.push('  📤 Buka pengumpulan: '+x.submission_url);});
-    else lines.push('Belum ada tugas untuk pilihan ini.');lines.push('');
+    taskCount=rows.length;
+    lines.push('🏁 *PEMBARUAN TUGAS*');
+    if(rows.length===1){
+      const x=rows[0];
+      lines.push('📚 Mata kuliah: *'+cname(x.course_code)+'*','📝 Tugas: *'+x.task_title+'*');
+      if(x.meeting_number)lines.push('🔢 Pertemuan: *'+x.meeting_number+'*');
+      if(x.deadline)lines.push('📅 Tenggat: *'+fmtDate(x.deadline)+'*');
+    }else if(rows.length>1){
+      lines.push('Ada beberapa tugas baru yang perlu kamu perhatikan!','');
+      rows.forEach(x=>{
+        lines.push('📚 *'+cname(x.course_code)+'*','• *'+x.task_title+'*');
+        if(x.meeting_number)lines.push('  Pertemuan: *'+x.meeting_number+'*');
+        if(x.deadline)lines.push('  Tenggat: *'+fmtDate(x.deadline)+'*');
+      });
+    }else lines.push('Belum ada pembaruan tugas untuk pilihan ini.');
+    lines.push('');
   }
   if(includeAttendance){
-    const rows=[];(selected||Object.keys(S.pl)).forEach(k=>{const d=S.pl[k]||{};if(d.enabled===false)return;const url=(d.links||{})[meeting]||((Number(d.meeting_number)===meeting)?d.url:'');if(okHttps(url))rows.push({course:k,url:url});});
-    lines.push('🗓️ *PEMBARUAN ABSENSI · PERTEMUAN '+meeting+'*');
-    if(rows.length)rows.forEach(x=>lines.push('• *'+cname(x.course)+'*','  👉 Buka forum absensi: '+x.url));else lines.push('Belum ada tautan absensi untuk pilihan ini.');lines.push('');
+    const rows=[];(selected||Object.keys(S.pl)).forEach(k=>{
+      const d=S.pl[k]||{};if(d.enabled===false)return;
+      const url=(d.links||{})[meeting]||((Number(d.meeting_number)===meeting)?d.url:'');
+      if(okHttps(url))rows.push({course:k,url:url});
+    });
+    attendanceCount=rows.length;
+    lines.push('🚦 *ABSEN DIBUKA*');
+    if(rows.length===1){
+      lines.push('📚 Mata kuliah: *'+cname(rows[0].course)+'*','🔢 Pertemuan: *'+meeting+'*','📅 Jadwal: *'+fmtDate(date)+'*');
+    }else if(rows.length>1){
+      rows.forEach(x=>lines.push('📚 *'+cname(x.course)+'* · Pertemuan *'+meeting+'*'));
+    }else lines.push('Belum ada tautan absensi untuk pilihan ini.');
+    lines.push('');
   }
   if(category==='seminar'){
     const rows=Object.keys(S.pc).map(id=>S.pc[id]).filter(x=>!x.createdAt||new Date(x.createdAt).toISOString().slice(0,10)===date).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    lines.push('🎓 *PEMBARUAN SEMINAR*');
-    if(rows.length)rows.forEach(x=>{lines.push('• '+(x.title||'Seminar'));if(okHttps(x.registrationUrl))lines.push('  🎟️ Daftar seminar: '+x.registrationUrl);});else lines.push('Belum ada seminar pada tanggal yang dipilih.');lines.push('');
+    seminarCount=rows.length;
+    lines.push('🎓 *SEMINAR TERSEDIA*');
+    if(rows.length)rows.forEach(x=>lines.push('• *'+(x.title||'Seminar')+'*'));
+    else lines.push('Belum ada seminar pada tanggal yang dipilih.');
+    lines.push('');
   }
-  lines.push('Silakan buka tautan yang diperlukan dan perhatikan tenggat atau jadwalnya.','', '🌐 Grid-Kelas: '+location.origin);return lines.join('\n').trim();
+  let cta='Periksa pembaruan terbaru di Grid-Kelas agar tidak ada informasi penting yang terlewat.';
+  if(taskCount&&attendanceCount)cta='Periksa tugas yang diperbarui dan segera selesaikan absensimu!';
+  else if(taskCount)cta=taskCount===1?'Segera periksa instruksi dan selesaikan tugasmu sebelum tenggat berakhir!':'Atur strategi pengerjaanmu dan pastikan tidak ada tenggat yang terlewat!';
+  else if(attendanceCount)cta='Segera buka forum dan selesaikan absensimu sesuai jadwal!';
+  else if(seminarCount)cta='Lihat informasi seminar dan manfaatkan kesempatan untuk mendaftar!';
+  lines.push('🏎️ '+cta,'','👉 *BUKA GRID-KELAS*',location.origin);
+  return lines.join('\n').trim();
 }
-
 function renderAdmin(){
   if(!adm()){$('admin').innerHTML='';return;}
   const a0=document.activeElement;
@@ -1453,7 +1485,13 @@ function smodeOf(id,mine){
 }
 /* Tombol tugas: "Kerjakan" membuka soal (LMS kampus / PDF / dll.), "Kumpulkan" mengirim file atau tautan hasil tugas. */
 function taskActions(t,mine){
-  const id=t.id,open=D.subOpen===id,locked=isLocked(t),can=ME&&canWrite&&!locked;
+  const id=t.id,open=D.subOpen===id,locked=isLocked(t),can=ME&&canWrite&&!locked,platform=isPlatformCourse(S.co[t.k]);
+  if(platform){
+    let h='<div class="platform-task-check">';
+    if(mine)h+='<p class="tdone"><b>&#10003; Tugas platform telah dikonfirmasi selesai.</b><br><span class="s">Dikonfirmasi '+fmtTime(mine.at)+'</span></p>';
+    else if(can)h+='<p class="s"><b>Apakah kamu sudah mengerjakan pre-test sampai kuesioner Mentari?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="platform-task-done" data-id="'+esc(id)+'">Ya</button><button type="button" class="btn sm" data-act="platform-task-not-done" data-id="'+esc(id)+'">Belum</button></div>';
+    return h+'</div>';
+  }
   let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">DNF</span><span class="s">Tenggat sudah lewat. Pengumpulan ditutup'+'.</span>':'');
   if((ME||adm())&&!locked)h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Soal belum ditautkan oleh dosen.</span>');
   if(can)h+='<button type="button" class="btn sm pri" data-act="tsub-open" data-id="'+esc(id)+'" aria-expanded="'+open+'">'+(mine?'Ubah pengumpulan':'Kumpulkan')+'</button>';
@@ -1470,8 +1508,7 @@ function taskActions(t,mine){
       h+=(driveOf(t.k)?'<div class="row2"><a class="btn sm" href="'+esc(driveOf(t.k))+'" target="_blank" rel="noopener noreferrer">Buka folder Drive '+esc(t.k)+' <span aria-hidden="true">&#8599;</span></a><span class="s">Unggah file tugas ke folder ini, lalu tempel tautannya di bawah.</span></div>':'')+
         '<div class="field"><label for="sl-'+esc(id)+'">Tautan tugas</label><input id="sl-'+esc(id)+'" data-dr="sl-'+esc(id)+'" type="url" inputmode="url" placeholder="https://drive.google.com/…" value="'+esc(dv('sl-'+id,mine&&mine.tautan||''))+'"><span class="s">Boleh Google Drive, Dropbox, GitHub, dan sebagainya, asalkan diawali https://. Untuk Google Drive: Bagikan, atur &quot;Siapa saja yang memiliki link&quot; (Viewer), lalu tempel tautannya di sini.</span></div>';
     }
-    h+=
-      '<div class="field"><label for="sc-'+esc(id)+'">Catatan (opsional)</label><textarea id="sc-'+esc(id)+'" data-dr="sc-'+esc(id)+'" maxlength="500">'+esc(dv('sc-'+id,mine&&mine.catatan||''))+'</textarea></div>'+
+    h+='<div class="field"><label for="sc-'+esc(id)+'">Catatan (opsional)</label><textarea id="sc-'+esc(id)+'" data-dr="sc-'+esc(id)+'" maxlength="500">'+esc(dv('sc-'+id,mine&&mine.catatan||''))+'</textarea></div>'+
       '<div class="row2"><button type="button" class="btn pri" data-act="tsub" data-id="'+esc(id)+'">'+(mine?'Perbarui':'Kirim')+'</button><button type="button" class="btn" data-act="tsub-open" data-id="'+esc(id)+'">Batal</button></div></div>';
   }
   return h;
@@ -1878,6 +1915,26 @@ document.addEventListener('click',async e=>{
     case 'auto-attend':{
       if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dan pastikan akun punya izin mengisi absen.');break;}
       const k=d.k;await run(()=>saveScheduleAttendance(k),'Absensi berhasil terisi.');break;
+    }
+    case 'platform-task-done':{
+      if(!ME||!canWrite)break;
+      const id=d.id,t=S.tu[id],mine=t&&t.subs?t.subs[ME]:null;
+      if(!t||t.mode==='group'||!isPlatformCourse(S.co[t.k])){toast('Tugas platform tidak ditemukan.');break;}
+      if(isLocked(t)){toast('Tenggat sudah lewat. Pengumpulan ditutup.');break;}
+      if(mine){toast('Tugas ini sudah dikonfirmasi selesai.');break;}
+      const payload={tautan:'',catatan:'Konfirmasi penyelesaian tugas platform: pre-test hingga kuesioner Mentari.',berkas:null,at:Date.now(),platformConfirmation:true};
+      const ok=await run(()=>db.doc('tugas/'+id).update({subs:{[ME]:payload}}),'Tugas platform dikonfirmasi selesai');
+      if(ok)renderDialog(true);
+      break;
+    }
+    case 'platform-task-not-done':{
+      if(!ME||!canWrite)break;
+      const t=S.tu[d.id];
+      if(!t||t.mode==='group'||!isPlatformCourse(S.co[t.k])){toast('Tugas platform tidak ditemukan.');break;}
+      const url=(t.link&&okUrl(t.link))?t.link:platOf(t.k);
+      if(url)window.open(url,'_blank','noopener,noreferrer');
+      else toast('Link tugas atau platform belum diatur oleh pengelola.');
+      break;
     }
     case 'forum-done':{
       if(!ME)break;
