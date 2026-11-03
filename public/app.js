@@ -924,7 +924,18 @@ function sektorDlg(){
   return h+'</div>';
 }
 
+function renderHomeSkeleton(){
+  const block='<span class="sk-line"></span>';
+  $('homeLede').textContent='Memuat ringkasan kelas…';
+  $('home').innerHTML=
+    '<div class="home-skeleton" aria-hidden="true">'+
+      '<section class="panel sk-home-welcome"><div class="sk-avatar"></div><div class="sk-home-copy">'+block+block+'</div></section>'+
+      '<div class="sk-home-tiles"><div class="panel sk-tile">'+block+block+'</div><div class="panel sk-tile">'+block+block+'</div><div class="panel sk-tile">'+block+block+'</div></div>'+
+      '<div class="cols"><div class="col"><section class="panel sk-home-panel">'+block+block+block+block+'</section></div><div class="col"><section class="panel sk-home-panel">'+block+block+block+'</section></div></div>'+
+    '</div>';
+}
 function renderHome(force){
+  if(dbState==='loading'&&!loaded.st&&!loaded.co){renderHomeSkeleton();return;}
   const a0=document.activeElement;
   if(!force&&a0&&$('home').contains(a0)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a0.tagName))return;
   const td=today(),dayN=jakartaWeekday();
@@ -1909,7 +1920,7 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const msg=String($('wa-preview').value||'').trim();
       if(!msg){toast('Susun atau isi pesan terlebih dahulu.');break;}
-      window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank','noopener,noreferrer');break;
+      window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank','noopener,noreferrer');break;
     }
    case 'forum-options':{
       if(!ME){toast('Masuk sebagai mahasiswa untuk membuka forum.');break;}

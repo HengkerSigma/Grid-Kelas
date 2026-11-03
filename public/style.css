@@ -1036,3 +1036,25 @@ button.is-busy{cursor:wait;opacity:.65}
 .notification-combine input{width:18px;height:18px;accent-color:var(--accent)}
 .whatsapp-notification-panel{border-color:rgba(37,211,102,.4)}
 @media(max-width:600px){.notification-tabs{display:grid;grid-template-columns:1fr}.notification-tab{text-align:left}.notification-center-head{display:block}}
+
+/* Skeleton loading awal: shimmer ringan, tetap mengikuti tema aktif. */
+@keyframes gk-skeleton-shimmer{to{background-position:-200% 0}}
+.scard.skel,.course.skel,.sk-line,.sk-avatar,.sk-tile{background:linear-gradient(100deg,var(--surface-2) 20%,color-mix(in srgb,var(--surface-2) 55%,var(--fg)) 38%,var(--surface-2) 56%);background-size:200% 100%;animation:gk-skeleton-shimmer 1.35s ease-in-out infinite}
+.scard.skel .sph,.scard.skel .snm,.scard.skel .smeta{visibility:hidden}
+.course.skel{border:1px solid var(--line);color:transparent}
+.home-skeleton{display:grid;gap:16px}
+.sk-home-welcome{display:flex;align-items:center;gap:14px;min-height:94px}
+.sk-avatar{width:58px;height:58px;flex:none;border-radius:50%}
+.sk-home-copy{display:grid;gap:10px;flex:1}
+.sk-line{display:block;height:12px;width:72%;border-radius:99px}
+.sk-line:last-child{width:46%}
+.sk-home-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.sk-tile{display:grid;align-content:center;gap:12px;min-height:100px;padding:16px}
+.sk-tile .sk-line:first-child{width:38%;height:22px}
+.sk-tile .sk-line:last-child{width:64%}
+.sk-home-panel{display:grid;gap:14px;min-height:190px;padding:20px}
+.sk-home-panel .sk-line:nth-child(2){width:88%}
+.sk-home-panel .sk-line:nth-child(3){width:66%}
+.sk-home-panel .sk-line:nth-child(4){width:78%}
+@media(prefers-reduced-motion:reduce){.scard.skel,.course.skel,.sk-line,.sk-avatar,.sk-tile{animation:none}}
+@media(max-width:620px){.sk-home-tiles{grid-template-columns:1fr}.sk-home-tiles .sk-tile{min-height:76px}}
