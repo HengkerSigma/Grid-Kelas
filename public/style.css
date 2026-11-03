@@ -1010,3 +1010,13 @@ button.is-busy{cursor:wait;opacity:.65}
   .seminar-info h3{font-size:.9rem}
   .seminar-actions .btn{font-size:.74rem;padding:6px 8px}
 }
+
+/* Overview and Exhibition use the same heading-scale tabs as other page sections. */
+.overview-subtabs{margin:0 0 26px;gap:clamp(8px,2vw,18px)}
+.overview-subtabs .student-subtab{font-size:clamp(1.6rem,5.2vw,3.2rem);padding-bottom:7px}
+.overview-subtabs .course-subtab-sep{font-size:clamp(1.6rem,5.2vw,3.2rem)}
+.tire-legend li>span:not(.dnfb){display:inline;font-size:.78rem;color:var(--muted);line-height:1.25}
+@media(max-width:600px){
+ .overview-subtabs{gap:7px;margin-bottom:18px;flex-wrap:wrap}
+ .overview-subtabs .student-subtab,.overview-subtabs .course-subtab-sep{font-size:clamp(1.25rem,6vw,2rem);padding-bottom:5px}
+}
