@@ -1081,7 +1081,7 @@ function buildWhatsAppTemplate(){
     lines.push('*PEMBARUAN SEMINAR*');
     if(rows.length)rows.forEach(x=>{lines.push('• '+(x.title||'Seminar'));if(okHttps(x.registrationUrl))lines.push('  Pendaftaran: '+x.registrationUrl);});else lines.push('Belum ada seminar pada tanggal yang dipilih.');lines.push('');
   }
-  lines.push('Buka Grid-Kelas: '+location.origin);return lines.join('\\n').trim();
+  lines.push('Buka Grid-Kelas: '+location.origin);return lines.join('\n').trim();
 }
 
 function renderAdmin(){
@@ -1141,7 +1141,7 @@ function renderAdmin(){
     '<div class="field"><label for="cu-deadline">Batas waktu pengumpulan</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="cu-desc">Petunjuk tugas</label><textarea id="cu-desc" maxlength="1000" placeholder="Jelaskan instruksi dan apa yang harus dikumpulkan">'+esc(linkedTask&&linkedTask.deskripsi||'')+'</textarea></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div>'+
-    '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="6" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div>'+taskPanel+'</div>';</tbody></table></div></div>';
+    '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="6" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div>'+taskPanel+'</div>';
   }
   if(ADMIN_NOTIFY_TAB==='attendance'){
     const chosenCourse=cl.find(c=>c.k===PLATFORM_FORM_COURSE)||cl[0]||null;
