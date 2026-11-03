@@ -655,8 +655,17 @@ async function decide(method, p, body, sess, existing) {
     if (!admin || parts.length !== 2 || !/^[A-Za-z0-9_]{1,20}$/.test(id)) return ERR_FORBID;
     if (method === 'DELETE') return { del: true };
     if (method !== 'PUT' && method !== 'PATCH') return ERR_FORBID;
-    if (!isObj(body) || !onlyKeys(body, ['url']) || !isStr(body.url, 500) || !/^https:\/\//i.test(body.url.trim()) || !isHttpUrl(body.url)) return ERR_BAD('Link absen platform harus diawali https://');
-    return { data: { url: body.url.trim() } };
+    if (isObj(body) && onlyKeys(body, ['url']) && isStr(body.url, 500) && /^https:\/\//i.test(body.url.trim()) && isHttpUrl(body.url)) return { data: { url: body.url.trim() } };
+    if (!isObj(body) || !onlyKeys(body, ['links', 'meeting_number', 'url']) || !isObj(body.links)) return ERR_BAD('Data link absensi pertemuan tidak valid.');
+    const links = {};
+    for (const meeting of Object.keys(body.links)) {
+      const url = body.links[meeting];
+      if (!/^(?:[1-9]|[12][0-9]|3[0-2])$/.test(meeting) || !isStr(url, 500) || !/^https:\/\//i.test(url.trim()) || !isHttpUrl(url)) return ERR_BAD('Setiap link absensi harus menggunakan HTTPS dan nomor pertemuan yang valid.');
+      links[meeting] = url.trim();
+    }
+    const meetingNumber = Number(body.meeting_number);
+    if (!Number.isInteger(meetingNumber) || meetingNumber < 1 || meetingNumber > 32 || !links[meetingNumber]) return ERR_BAD('Pilih pertemuan yang memiliki link absensi.');
+    return { data: { links: links, meeting_number: meetingNumber, url: links[meetingNumber] } };
   }
 
   if (root === 'media') {

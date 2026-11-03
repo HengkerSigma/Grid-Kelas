@@ -13,7 +13,8 @@ const driveOf=k=>{const d=S.dr[k];return d&&okDrive(d.url)?d.url:'';};
 const okDrive=u=>{try{const x=new URL(String(u||'').trim());return x.protocol==='https:'&&DRIVE_HOSTS.indexOf(x.hostname)>=0;}catch(e){return false;}};
 /* Mata kuliah bertipe platform: doc platform/<k> berisi link khusus tempat absen diisi (hanya terlihat setelah masuk). */
 const okHttps=u=>{try{return new URL(String(u||'').trim()).protocol==='https:';}catch(e){return false;}};
-const platOf=k=>{const d=S.pl[k];return d&&okHttps(d.url)?String(d.url).trim():'';};
+const platConfigOf=k=>S.pl[k]||null;
+const platOf=(k,meeting)=>{const d=platConfigOf(k),n=Number(meeting||defaultPert(k)),mapped=d&&d.links&&d.links[n],legacy=d&&Number(d.meeting_number||0)===n?d.url:'';const u=mapped||legacy;return u&&okHttps(u)?String(u).trim():'';};
 const isPlatformCourse=c=>!!(c&&c.k&&S.pl[c.k]);
 const okId=i=>/^[0-9a-f]{32}$/.test(i||'');
 const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';
@@ -219,29 +220,15 @@ function dosenHtml(c){
 function renderCourses(){
   const host=$('cgrid');
   if(COURSE_SUBTAB==='history'){
-    const td=today();
-    const history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id]))
-      .filter(t=>t.tenggat&&t.tenggat<td)
-      .sort((a,b)=>(b.tenggat||'').localeCompare(a.tenggat||''));
-    if(!history.length){
-      host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat. Nikmati dulu track yang masih berjalan!</li>';
-      host.setAttribute('aria-busy',String(!loaded.co));
-      return;
-    }
-    host.innerHTML=history.map(t=>{
-      if(t.mode==='group'){
-        const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,courseGroupIds=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(gid=>courseGroupIds.includes(gid)).length,total=courseGroupIds.length;
-        const status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';
-        return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+' · KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article></li>';
-      }
-      const mine=ME&&t.subs?t.subs[ME]:null,subs=t.subs||{},count=Object.keys(subs).length;
-      const status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
-      return '<li class="history-item"><article class="tcard"><div class="history-top"><div><span class="history-course">'+esc(cname(t.k))+'</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+
-        (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
-        '<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article></li>';
-    }).join('');
-    host.setAttribute('aria-busy',String(!loaded.co));
-    return;
+    const td=today(),history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.tenggat&&t.tenggat<td).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
+    if(!history.length){host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat. Nikmati dulu track yang masih berjalan!</li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
+    const byCourse=new Map();history.forEach(t=>{if(!byCourse.has(t.k))byCourse.set(t.k,[]);byCourse.get(t.k).push(t);});
+    host.innerHTML=Array.from(byCourse.entries()).map(([k,tasks])=>'<li class="history-course-group"><section class="panel"><div class="history-course-heading"><span class="constructor-kicker">MATA KULIAH</span><h3 class="ph3">'+esc(cname(k))+'</h3><span class="chip">'+tasks.length+' tugas</span></div><div class="history-course-list">'+tasks.map(t=>{
+      if(t.mode==='group'){const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,ids=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(id=>ids.includes(id)).length,total=ids.length,status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';return '<article class="tcard history-item"><div class="history-top"><div><span class="history-course">KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';}
+      const mine=ME&&t.subs?t.subs[ME]:null,count=Object.keys(t.subs||{}).length,status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
+      return '<article class="tcard history-item"><div class="history-top"><h3>'+esc(t.judul)+'</h3><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';
+    }).join('')+'</div></section></li>').join('');
+    host.setAttribute('aria-busy',String(!loaded.co));return;
   }
   const list=courseList();
   if(!list.length){
@@ -340,7 +327,7 @@ function renderConstructor(){
  const host=$('constructorPanel');if(!host)return;host.className='constructor-grid';
  const courses=courseList(),isAdmin=adm();
  if(isAdmin&&loaded.co&&loaded.cs)ensureDefaultConstructors();
- let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">DAFTAR CONSTRUCTOR</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
+ let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">CONSTRUCTOR LINE-UP</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
  h+='<p class="s constructor-intro">'+(CONSTRUCTOR_SUBTAB==='standings'?'Lihat posisi tiap Constructor berdasarkan waktu pengumpulan tugas kelompok.':'Lihat pembagian tim di setiap mata kuliah. Buka detailnya untuk cek anggota dan Team Principal.')+'</p>';
  if(CONSTRUCTOR_SUBTAB==='standings'){
   const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
@@ -735,7 +722,7 @@ async function launchGridClassTour(force){
        onNextClick:()=>{const b=document.querySelector('#dlg [data-course-tab="achievement"]');if(b)b.click();setTimeout(()=>d.moveNext(),140);}},
       {element:'#dlg [data-course-tab="achievement"]',popover:{title:'06 · ACHIEVEMENTS',description:'Lihat pencapaian Early Bird, Challenger, dan Pole Position yang berhasil kamu raih selama perkuliahan.',side:'bottom',align:'center'},
        onNextClick:()=>{if(dlg.open)dlg.close();setView('mahasiswa',true);CONSTRUCTOR_SUBTAB='list';const first=courseList()[0];if(first)CONSTRUCTOR_COURSE_OPEN[first.k]=true;const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="constructor"]');if(b)b.click();setTimeout(()=>d.moveNext(),160);}},
-      {element:'#v-mahasiswa .student-subtabs [data-tab="constructor"]',popover:{title:'07 · CONSTRUCTOR GARAGE',description:'Ketuk tab CONSTRUCTOR untuk masuk ke garasi tim kelas. Di sini kamu bisa melihat daftar tim dan klasemen Constructor.',side:'bottom',align:'start'},
+      {element:'#v-mahasiswa .student-subtabs [data-tab="constructor"]',popover:{title:'07 · CONSTRUCTOR',description:'Ketuk tab CONSTRUCTOR untuk melihat susunan tim per mata kuliah dan klasemen Constructor.',side:'bottom',align:'start'},
        onNextClick:()=>{CONSTRUCTOR_SUBTAB='list';renderConstructor();setTimeout(()=>d.moveNext(),140);}},
       {element:'#constructorPanel .constructor-subtabs [data-tab="list"]',popover:{title:'08 · CONSTRUCTOR LINE-UP',description:'Tab ini membuka daftar Constructor per mata kuliah. Setiap tim memiliki anggota dan Team Principal yang mengatur pengumpulan tugas kelompok.',side:'bottom',align:'start'},
        onNextClick:()=>{const first=document.querySelector('#constructorPanel .constructor-course');if(first)first.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>d.moveNext(),180);}},
@@ -805,7 +792,7 @@ function pitDlg(){
       const done=mineTasks.filter(x=>x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at);
       const late=mineTasks.filter(x=>isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
       const renderGroup=(items,status)=>items.map(({t,g})=>{const sub=t.groupSubs&&t.groupSubs[g.id],principal=Number(g.principal)===Number(ME),compound=constructorCompound(t),itemClass=status==='active'?'tire-'+compound:status;const marker=status==='done'?'<span class="pck">&#10003;</span>':status==='dnf'?'<span class="dnfb">DNF</span>':tireSvg(compound);return '<li class="pit-it '+itemClass+'">'+marker+'<div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?dueText(t):'Tanpa tenggat')+' · '+esc(g.name||'Constructor')+'</span><span class="s">'+(status==='done'?'Dikumpulkan '+fmtTime(sub.at):status==='dnf'?'Tenggat lewat':principal?'Siap dikumpulkan oleh Team Principal':'Menunggu Team Principal')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">'+(status==='done'?'Lihat':'Buka tugas')+'</button>'+(status==='done'?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Lihat hasil</button>':'')+'</span></li>';}).join('');
-      if(active.length||late.length)h+='<ul class="pleg tire-legend" aria-label="Legenda waktu tugas"><li title="Kurang dari 1 hari">'+tireSvg('soft')+'<span>Kurang dari 1 hari</span></li><li title="1 sampai kurang dari 3 hari">'+tireSvg('medium')+'<span>1 sampai kurang dari 3 hari</span></li><li title="3 hari atau lebih">'+tireSvg('hard')+'<span>3 hari atau lebih</span></li></ul>';
+      if(active.length||late.length)h+='<ul class="pleg tire-legend" aria-label="Legenda waktu tugas"><li title="Kurang dari 1 hari">'+tireSvg('soft')+'<span>Kurang dari 1 hari</span></li><li title="Kurang dari 3 hari">'+tireSvg('medium')+'<span>Kurang dari 3 hari</span></li><li title="3 hari atau lebih">'+tireSvg('hard')+'<span>3 hari atau lebih</span></li></ul>';
       if(active.length)h+='<h3 class="ph3">Tugas aktif</h3><ul class="plist">'+renderGroup(active,'active')+'</ul>';
       if(done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+renderGroup(done,'done')+'</ul>';
       if(late.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+renderGroup(late,'dnf')+'</ul>';
@@ -1364,6 +1351,8 @@ function scheduleAttendanceState(c,now){
 function absenBtn(c){
   if(!ME)return '';
   const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
+   const range=hariRange(c),weekdayPlatform=!!S.pl[c.k]&&range.a==='Senin'&&range.b==='Jumat';
+   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(!link)return '<button type="button" class="btn sm" disabled>Link absensi belum diperbarui · Pertemuan '+n+'</button>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
   if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   if(!session)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
   if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
@@ -1420,23 +1409,12 @@ function taskActions(t,mine){
   return h;
 }
 function tugasStudent(c){
-  const list=taskList().filter(t=>t.k===c.k),td=today();
-  if(!list.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
-  let h='';
-  if(!ME)h+='<div class="mine"><div><b>Masuk untuk mengerjakan dan mengumpulkan tugas</b><span class="s">Pilih nomor absen Anda terlebih dahulu.</span></div><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>';
-  list.forEach(t=>{
-    const mine=ME&&t.subs?t.subs[ME]:null,late=t.tenggat&&t.tenggat<td;
-    if(t.mode==='group'){
-      const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);
-      h+=groupTaskCard(t,g,sub,principal);
-      return;
-    }
-    h+='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+
-      (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+
-      (mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+
-      (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+taskActions(t,mine)+'</article>';
-  });
-  return h;
+  const all=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k),active=taskList().filter(t=>t.k===c.k),history=all.filter(t=>isLocked(t)).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
+  if(!active.length&&!history.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
+  let h='';if(!ME)h+='<div class="mine"><div><b>Masuk untuk mengerjakan dan mengumpulkan tugas</b><span class="s">Pilih nomor absen Anda terlebih dahulu.</span></div><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>';
+  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);return groupTaskCard(t,g,sub,principal);}return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+(late?'':taskActions(t,mine))+'</article>';};
+  if(active.length)h+='<h3 class="ph3">Tugas aktif</h3>'+active.map(renderTask).join('');else h+='<p class="empty">Tidak ada tugas aktif.</p>';
+  if(history.length)h+='<details class="task-history"><summary>Riwayat tugas ('+history.length+')</summary>'+history.map(renderTask).join('')+'</details>';return h;
 }
 function tugasAdmin(c){
   const list=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k).sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
@@ -1477,7 +1455,7 @@ function settingsHtml(c){
     '<div class="field"><label for="f-jam">Jam</label><input id="f-jam" type="text" maxlength="20" value="'+esc(c.jam)+'"></div>'+
     '<div class="field"><label for="f-tipe">Tipe ruang</label><select id="f-tipe"><option value="ruangan"'+(plat?'':' selected')+'>Ruangan</option><option value="platform"'+(plat?' selected':'')+'>Platform</option></select></div>'+
     '<div class="field"><label for="f-ruang" id="f-ruang-l">'+(plat?'Nama platform':'Nama ruangan')+'</label><input id="f-ruang" type="text" maxlength="20" value="'+esc(c.ruang)+'" placeholder="'+(plat?'Contoh: Zoom':'Contoh: R.301')+'"></div>'+
-    '<div class="field" id="f-link-w" style="grid-column:1/-1;'+(plat?'':'display:none')+'"><label for="f-link">Link absen platform</label><input id="f-link" type="url" inputmode="url" maxlength="500" placeholder="https://…" value="'+esc(platOf(c.k))+'"><span class="s">Tombol Isi absen membuka link ini di tab baru saat jadwal kuliah berlangsung. Hanya terlihat oleh yang sudah masuk.</span></div>'+
+    '<div class="field" id="f-link-w" style="grid-column:1/-1;'+(plat?'':'display:none')+'"><label for="f-link-meeting">Pertemuan ke- untuk link absensi</label><select id="f-link-meeting">'+Array.from({length:PERT},(_,i)=>i+1).map(n=>'<option value="'+n+'"'+(Number(S.pl[c.k]&&S.pl[c.k].meeting_number||defaultPert(c.k))===n?' selected':'')+'>Pertemuan '+n+'</option>').join('')+'</select><label for="f-link">Link absensi platform</label><input id="f-link" type="url" inputmode="url" maxlength="500" placeholder="https://…" value="'+esc(platOf(c.k,Number(S.pl[c.k]&&S.pl[c.k].meeting_number||defaultPert(c.k)))||'')+'"><span class="s">Setiap pertemuan menyimpan link masing-masing. Pilih pertemuan untuk melihat atau memperbarui linknya.</span></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="f-drive">Folder Google Drive mata kuliah</label><input id="f-drive" type="url" inputmode="url" maxlength="500" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(driveOf(c.k))+'"><span class="s">Hanya terlihat oleh yang sudah masuk. Atur akses folder agar mahasiswa bisa menambah file (Editor) atau melihat (Viewer).</span></div>'+
     '<div class="field"><label for="f-warna">Warna kartu</label><input id="f-warna" type="color" value="'+colr(c.warna)+'"></div></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="save-course">Simpan perubahan</button></div>'+
@@ -1979,11 +1957,13 @@ document.addEventListener('click',async e=>{
       const drv=$('f-drive').value.trim(),h1=$('f-hari').value,h2=$('f-hari2').value;
       if(drv&&!okDrive(drv)){toast('Tautan folder harus dari Google Drive (drive.google.com atau docs.google.com).');break;}
       const platform=$('f-tipe').value==='platform',lnk=$('f-link').value.trim();
-      if(platform&&!okHttps(lnk)){toast('Isi link absen platform yang diawali https://');break;}
+      const platformMeeting=Math.max(1,Math.min(PERT,parseInt($('f-link-meeting').value,10)||defaultPert(c.k)));
+       if(platform&&!okHttps(lnk)){toast('Isi link absen platform yang diawali https://');break;}
+      const platformLinks=Object.assign({},(S.pl[c.k]&&S.pl[c.k].links)||{});if(platform)platformLinks[platformMeeting]=lnk;
       await run(async()=>{
         await db.doc('courses/'+c.k).update({nama:$('f-nama').value.trim()||c.nama,sks:sks,hari:h1,hariSampai:(h2&&h2!==h1?h2:''),jam:$('f-jam').value.trim(),ruang:$('f-ruang').value.trim(),warna:$('f-warna').value,dosen:$('f-dosen').value.trim()});
         if(drv)await db.doc('drives/'+c.k).set({url:drv});else await db.doc('drives/'+c.k).delete();
-        if(platform)await db.doc('platform/'+c.k).set({url:lnk});else if(S.pl[c.k])await db.doc('platform/'+c.k).delete();
+        if(platform)await db.doc('platform/'+c.k).set({links:platformLinks,meeting_number:platformMeeting,url:lnk});else if(S.pl[c.k])await db.doc('platform/'+c.k).delete();
       },'Perubahan disimpan');
       break;
     }
@@ -2167,6 +2147,10 @@ document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.d
 document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;
+  if(t.id==='f-link-meeting'){
+    const course=D&&D.key&&S.pl[D.key],n=Number(t.value),url=course&&course.links&&course.links[n]||(course&&Number(course.meeting_number)===n?course.url:'');
+    $('f-link').value=url||'';return;
+  }
   if(t.id==='f-tipe'){
     const p=t.value==='platform';
     $('f-link-w').style.display=p?'':'none';
