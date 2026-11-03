@@ -176,7 +176,7 @@ function renderStrip(){
   let h='';
   for(let n=1;n<=N;n++){
     const s=stu(n);
-    h+='<button type="button" class="rs'+(Number(ME)===n?' me-highlight':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'</span></button>';
+    h+='<button type="button" class="rs'+(Number(ME)===n?' me-highlight':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'<small>'+esc(nameOf(n))+'</small></span></button>';
   }
   const r=$('rail'),x=r.scrollLeft;
   r.innerHTML=h;
@@ -220,6 +220,7 @@ function dosenHtml(c){
 function renderCourses(){
   const host=$('cgrid');
   if(COURSE_SUBTAB==='history'){
+    if(!ME&&!adm()){host.innerHTML='<li class="history-empty"><b>Riwayat tugas mata kuliah</b><p class="s">Masuk sebagai mahasiswa untuk melihat riwayat tugas setiap mata kuliah.</p></li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
     const td=today(),history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.tenggat&&t.tenggat<td).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
     if(!history.length){host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat. Nikmati dulu track yang masih berjalan!</li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
     const byCourse=new Map();history.forEach(t=>{if(!byCourse.has(t.k))byCourse.set(t.k,[]);byCourse.get(t.k).push(t);});
@@ -329,6 +330,7 @@ function renderConstructor(){
  if(isAdmin&&loaded.co&&loaded.cs)ensureDefaultConstructors();
  let h='<div class="constructor-subtabs" role="tablist" aria-label="Bagian Constructor"><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="list" aria-selected="'+(CONSTRUCTOR_SUBTAB==='list')+'">CONSTRUCTOR LINE-UP</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="constructor-subtab" data-tab="standings" aria-selected="'+(CONSTRUCTOR_SUBTAB==='standings')+'">KLASEMEN KONSTRUKTOR</button></div>';
  h+='<p class="s constructor-intro">'+(CONSTRUCTOR_SUBTAB==='standings'?'Lihat posisi tiap Constructor berdasarkan waktu pengumpulan tugas kelompok.':'Lihat pembagian tim di setiap mata kuliah. Buka detailnya untuk cek anggota dan Team Principal.')+'</p>';
+ if(!ME&&!isAdmin){h+='<div class="constructor-empty"><b>Area Constructor</b><p class="s">Masuk sebagai mahasiswa untuk melihat Constructor Line-Up dan klasemen tim kelas.</p></div>';host.innerHTML=h;return;}
  if(CONSTRUCTOR_SUBTAB==='standings'){
   const tasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
   if(!tasks.length)h+='<div class="constructor-empty">Belum ada tugas kelompok untuk ditampilkan.</div>';
@@ -939,7 +941,7 @@ function renderHome(force){
     $('homeLede').textContent='Cek jadwal, tugas, dan kabar terbaru kelasmu di sini.';
     const greeting=greetingText(s0&&s0.depan?s0.depan:'Mahasiswa');
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
-    if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password Anda masih password bawaan. Ganti sekarang agar akun lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
+    if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password akunmu masih yang bawaan. Yuk, ganti sekarang biar akunmu lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
     h+=homeTiles(ME);
     const left=[],right=[];
     left.push(schedPanel(sched,dayN));
@@ -1018,7 +1020,7 @@ function renderExhibition(){
   const host=$('exhibition');if(!host)return;
   const seminars=Object.keys(S.pc).map(id=>Object.assign({id:id},S.pc[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   let h='<div class="exhibition-sections"><section class="exhibition-section">'+superLicensePanel()+'</section><section class="exhibition-section">'+classArchivePanel()+'</section></div>';
-  h+='<section class="panel paddock-club" id="paddockClubPanel"><div class="paddock-club-head"><div><span class="constructor-kicker">ACADEMIC EVENTS</span><h2 class="ph3">Paddock Club</h2><p class="s">Pusat informasi seminar dan kegiatan akademik untuk membantu mengumpulkan poin KAK sebagai salah satu persiapan syarat sidang proposal skripsi.</p></div><span class="chip">'+seminars.length+' seminar</span></div>';
+  h+='<section class="panel paddock-club" id="paddockClubPanel"><div class="paddock-club-head"><div><h2 class="ph3">Paddock Club</h2><p class="s">Pusat informasi seminar dan kegiatan akademik untuk membantu mengumpulkan poin KAK sebagai salah satu persiapan syarat sidang proposal skripsi.</p></div><span class="chip">'+seminars.length+' seminar</span></div>';
   if(adm()&&ME&&AS)h+='<div class="seminar-admin"><h3 class="ph3">Tambah seminar</h3><div class="field"><label for="pc-title">Judul seminar</label><input id="pc-title" data-dr="pc-title" type="text" maxlength="160" value="'+esc(dv('pc-title',''))+'" placeholder="Masukkan judul seminar"></div><div class="field"><label for="pc-link">Link pendaftaran</label><input id="pc-link" data-dr="pc-link" type="url" inputmode="url" value="'+esc(dv('pc-link',''))+'" placeholder="https://..."></div><div class="row2"><label class="btn sm pickfile">'+(PEND.seminar?'Ganti poster':'Pilih poster')+'<input type="file" accept="image/jpeg,image/png,image/webp" data-file="seminar"></label><span class="s">'+(PEND.seminar?esc(PEND.seminar.name||'Poster siap diunggah'):'Poster JPG, PNG, atau WebP · maksimal 20 MB')+'</span></div><div class="row2"><button type="button" class="btn pri" data-act="seminar-save">Terbitkan seminar</button></div></div>';
   if(!seminars.length)h+='<div class="seminar-empty"><b>Belum ada seminar yang ditambahkan.</b><span class="s">Informasi seminar akan ditampilkan di sini setelah dipublikasikan pengelola.</span></div>';
   else{h+='<div class="seminar-list">';seminars.forEach(x=>{const poster=x.poster||{},src=poster.url||(poster.id?('/_blob/'+poster.id):'');h+='<article class="seminar-card"><div class="seminar-poster">'+(src?'<img src="'+esc(src)+'" alt="Poster '+esc(x.title||'seminar')+'" loading="lazy">':'<div class="seminar-poster-empty">POSTER<br>SEMINAR</div>')+'</div><div class="seminar-info"><span class="constructor-kicker">PADDOCK CLUB · SEMINAR</span><h3>'+esc(x.title||'Seminar tanpa judul')+'</h3><div class="seminar-actions">'+(okHttps(x.registrationUrl)?'<a class="btn pri" href="'+esc(x.registrationUrl)+'" target="_blank" rel="noopener noreferrer">Daftar <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Link pendaftaran belum tersedia.</span>')+(adm()?'<button type="button" class="btn sm" data-act="seminar-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</div></div></article>';});h+='</div>';}
@@ -1352,7 +1354,7 @@ function absenBtn(c){
   if(!ME)return '';
   const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
    const range=hariRange(c),weekdayPlatform=!!S.pl[c.k]&&range.a==='Senin'&&range.b==='Jumat';
-   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(!link)return '<button type="button" class="btn sm" disabled>Link absensi belum diperbarui · Pertemuan '+n+'</button>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
+   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
   if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   if(!session)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
   if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
