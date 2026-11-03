@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Grid-Kelas F logo">
+  <rect width="1200" height="630" fill="#fff"/>
+  <g fill="#e10600" transform="translate(168 134) scale(13.2)">
+    <path d="M14 0H64L59 9H9Z"/>
+    <path d="M8 11H52L47 20H3Z"/>
+    <path d="M0 22H28L24 30H0Z"/>
+  </g>
+</svg>
