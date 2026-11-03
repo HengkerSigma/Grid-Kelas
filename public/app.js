@@ -1058,6 +1058,32 @@ function teamRadioPanel(anns){
     '<div class="tr-controls"><button type="button" class="tr-nav" data-act="team-radio-prev" aria-label="Pengumuman sebelumnya"'+(total<2?' disabled':'')+'>&#8592;</button><button type="button" class="tr-nav" data-act="team-radio-next" aria-label="Pengumuman berikutnya"'+(total<2?' disabled':'')+'>&#8594;</button></div></div></section>';
 }
 
+function buildWhatsAppTemplate(){
+  const category=($('wa-category')||{}).value||'tasks',course=($('wa-course')||{}).value||'all';
+  const meeting=Number(($('wa-meeting')||{}).value)||1,date=($('wa-date')||{}).value||today();
+  const combine=!!(($('wa-combine')||{}).checked),selected=course==='all'?null:[course];
+  const lines=['*GRID-KELAS · TEAM RADIO*','*'+fmtDate(date)+'*',''];
+  const includeTasks=category==='tasks'||(combine&&category==='attendance');
+  const includeAttendance=category==='attendance'||(combine&&category==='tasks');
+  if(includeTasks){
+    const rows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.task_title&&(!selected||selected.includes(x.course_code))).sort((a,b)=>String(a.deadline||'9999').localeCompare(String(b.deadline||'9999')));
+    lines.push('*PEMBARUAN TUGAS*');
+    if(rows.length)rows.forEach(x=>{lines.push('• '+cname(x.course_code)+' · Pertemuan '+x.meeting_number+': '+x.task_title);if(x.deadline)lines.push('  Tenggat: '+fmtDate(x.deadline));if(okHttps(x.task_url))lines.push('  Materi/soal: '+x.task_url);if(okHttps(x.submission_url))lines.push('  Pengumpulan: '+x.submission_url);});
+    else lines.push('Belum ada tugas untuk pilihan ini.');lines.push('');
+  }
+  if(includeAttendance){
+    const rows=[];(selected||Object.keys(S.pl)).forEach(k=>{const d=S.pl[k]||{};if(d.enabled===false)return;const url=(d.links||{})[meeting]||((Number(d.meeting_number)===meeting)?d.url:'');if(okHttps(url))rows.push({course:k,url:url});});
+    lines.push('*PEMBARUAN ABSENSI · PERTEMUAN '+meeting+'*');
+    if(rows.length)rows.forEach(x=>lines.push('• '+cname(x.course)+': '+x.url));else lines.push('Belum ada tautan absensi untuk pilihan ini.');lines.push('');
+  }
+  if(category==='seminar'){
+    const rows=Object.keys(S.pc).map(id=>S.pc[id]).filter(x=>!x.createdAt||new Date(x.createdAt).toISOString().slice(0,10)===date).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    lines.push('*PEMBARUAN SEMINAR*');
+    if(rows.length)rows.forEach(x=>{lines.push('• '+(x.title||'Seminar'));if(okHttps(x.registrationUrl))lines.push('  Pendaftaran: '+x.registrationUrl);});else lines.push('Belum ada seminar pada tanggal yang dipilih.');lines.push('');
+  }
+  lines.push('Buka Grid-Kelas: '+location.origin);return lines.join('\n').trim();
+}
+
 function renderAdmin(){
   if(!adm()){$('admin').innerHTML='';return;}
   const a0=document.activeElement;
@@ -1096,12 +1122,18 @@ function renderAdmin(){
   const updates=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).sort((a,b)=>a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
   const edit=CU_EDIT&&S.cu[CU_EDIT]?Object.assign({id:CU_EDIT},S.cu[CU_EDIT]):null;
   const linkedTask=edit?S.tu[edit.id]||null:null;
-  const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+(u.attendance_url?'<a href="'+esc(u.attendance_url)+'" target="_blank" rel="noopener">Absensi</a>':'—')+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Materi/soal</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');
+  const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Materi/soal</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');;
+  let tk='';
+  tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
+    const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
+    tk+='<li class="it"><div><b>'+esc(t.judul)+(lk?' <span class="dnfb">DNF</span>':'')+'</b><span class="s">'+esc(cname(t.k))+' · '+dueText(t)+' · '+cnt+'/'+N+' terkumpul'+'</span></div>'+
+      (tkDel===t.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="tk-del-yes" data-id="'+esc(t.id)+'">Hapus</button><button type="button" class="btn sm" data-act="tk-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="tk-del" data-id="'+esc(t.id)+'">Hapus</button>')+'</li>';
+  });
+  const taskPanel=tk?'<div class="task-management-inline"><h4 class="ph3">Daftar tugas aktif</h4><p class="s">Kelola tugas yang sudah diterbitkan. Tugas yang melewati tenggat tetap tersimpan di History.</p><ul>'+tk+'</ul></div>':'<div class="task-management-inline"><h4 class="ph3">Daftar tugas aktif</h4><p class="empty">Belum ada tugas aktif.</p></div>';
   if(ADMIN_NOTIFY_TAB==='tasks'){
-  h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Atur semuanya sekaligus di sini: info pertemuan, link absensi, materi, sampai tugas dan tenggatnya. Setelah disimpan, update akan muncul di halaman mahasiswa.</p>'+
+  h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Kelola informasi pertemuan, materi, tugas, dan tenggat. Pengaturan tautan absensi tersedia di subtab Absensi.</p>'+
     '<div class="cu-form"><div class="field"><label for="cu-course">Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((edit?edit.course_code:cl[0]&&cl[0].k)===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="field"><label for="cu-meeting">Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" value="'+(edit?edit.meeting_number:1)+'"></div>'+
-    '<div class="field"><label for="cu-attendance">Link absensi</label><input id="cu-attendance" type="url" placeholder="https://..." value="'+esc(edit&&edit.attendance_url||'')+'"></div>'+
     '<div class="field"><label for="cu-title">Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" value="'+esc(edit&&edit.task_title||'')+'"></div>'+
     '<div class="field"><label for="cu-mode">Jenis tugas</label><select id="cu-mode"><option value="individual"'+((linkedTask&&linkedTask.mode==='group')?'':' selected')+'>Individu</option><option value="group"'+((linkedTask&&linkedTask.mode==='group')?' selected':'')+'>Kelompok</option></select></div>'+
     '<div class="field"><label for="cu-task">Link tugas / materi / soal</label><input id="cu-task" type="url" placeholder="https://..." value="'+esc(edit&&edit.task_url||'')+'"></div>'+
@@ -1109,7 +1141,7 @@ function renderAdmin(){
     '<div class="field"><label for="cu-deadline">Batas waktu pengumpulan</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="cu-desc">Petunjuk tugas</label><textarea id="cu-desc" maxlength="1000" placeholder="Jelaskan instruksi dan apa yang harus dikumpulkan">'+esc(linkedTask&&linkedTask.deskripsi||'')+'</textarea></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div>'+
-    '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Absensi</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="7" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div></div>';
+    '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="6" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div>'+taskPanel+'</div>';
   }
   if(ADMIN_NOTIFY_TAB==='attendance'){
     const chosenCourse=cl.find(c=>c.k===PLATFORM_FORM_COURSE)||cl[0]||null;
@@ -1132,10 +1164,13 @@ function renderAdmin(){
       '<div class="panel"><h3 class="ph3">Seminar terdaftar</h3>'+(seminars.length?'<ul class="notification-link-list">'+seminars.map(x=>'<li><b>'+esc(x.title||'Seminar')+'</b> · '+(okHttps(x.registrationUrl)?'<a href="'+esc(x.registrationUrl)+'" target="_blank" rel="noopener">Link pendaftaran</a>':'Tanpa tautan')+' · <button type="button" class="btn sm" data-act="seminar-del" data-id="'+esc(x.id)+'">Hapus</button></li>').join('')+'</ul>':'<p class="empty">Belum ada seminar.</p>')+'</div>';
   }
   h+='<div class="panel whatsapp-notification-panel"><h3 class="ph3">Bagikan pembaruan ke WhatsApp</h3><p class="s">Susun pesan dari data Grid-Kelas, edit pratinjau, lalu buka WhatsApp untuk memilih grup kelas.</p>'+
-    '<div class="cu-form"><div class="field"><label for="wa-category">Jenis pesan</label><select id="wa-category"><option value="tasks">Pembaruan tugas</option><option value="attendance">Pembaruan absensi</option><option value="seminar">Pembaruan seminar</option></select></div>'+
+    '<div class="cu-form"><div class="field"><label for="wa-category">Jenis pesan</label><select id="wa-category"><option value="tasks">Tugas</option><option value="attendance">Absensi</option><option value="seminar">Seminar</option></select></div>'+
+    '<div class="field"><label for="wa-course">Mata kuliah</label><select id="wa-course"><option value="all">Semua mata kuliah</option>'+cl.map(c=>'<option value="'+esc(c.k)+'">'+esc(c.nama)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label for="wa-meeting">Pertemuan absensi</label><select id="wa-meeting">'+Array.from({length:PERT},(_,i)=>'<option value="'+(i+1)+'">Pertemuan '+(i+1)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label for="wa-date">Tanggal pembaruan</label><input id="wa-date" type="date" value="'+today()+'"></div>'+
     '<label class="notification-combine"><input type="checkbox" id="wa-combine"> Gabungkan pembaruan tugas dan absensi dalam satu pesan</label>'+
-    '<div class="field" style="grid-column:1/-1"><label for="wa-preview">Pratinjau pesan (dapat diedit)</label><textarea id="wa-preview" data-dr="wa-preview" rows="9" maxlength="5000" placeholder="Tekan Susun pesan untuk membuat draf dari data Grid-Kelas.">'+esc(dv('wa-preview',''))+'</textarea></div>'+
-    '<div class="row2"><button type="button" class="btn" data-act="wa-generate">Susun pesan</button><button type="button" class="btn pri" data-act="wa-share">Buka WhatsApp</button></div></div>'+
+    '<div class="field" style="grid-column:1/-1"><label for="wa-preview">Template pesan (bisa diedit)</label><textarea id="wa-preview" data-dr="wa-preview" rows="10" maxlength="5000">'+esc(buildWhatsAppTemplate())+'</textarea></div>'+
+    '<div class="row2"><button type="button" class="btn pri" data-act="wa-share">Buka WhatsApp</button></div></div>'+
     '<p class="s">WhatsApp terbuka dengan pesan terisi. Pilih grup kelas dan tekan Kirim secara manual. Grid-Kelas tidak dapat memastikan pesan sudah terkirim.</p></div></section>';
   h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="stack">'+
     '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(annEdit?annEdit.judul:dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
@@ -1143,13 +1178,6 @@ function renderAdmin(){
     '<div class="field"><label for="an-k">Perihal</label><select id="an-k" data-dr="an-k"><option value="general"'+((annEdit?annEdit.k:dv('an-k','general'))==='general'?' selected':'')+'>General</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((annEdit?annEdit.k:dv('an-k','general'))===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">'+(annEdit?'Simpan perubahan':'Kirim pengumuman')+'</button>'+(annEdit?'<button type="button" class="btn" data-act="ann-edit-cancel">Batal edit</button>':'')+'</div></div>'+
     (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
-  let tk='';
-  tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
-    const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
-    tk+='<li class="it"><div><b>'+esc(t.judul)+(lk?' <span class="dnfb">DNF</span>':'')+'</b><span class="s">'+esc(cname(t.k))+' · '+dueText(t)+' · '+cnt+'/'+N+' terkumpul'+'</span></div>'+
-      (tkDel===t.id?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="tk-del-yes" data-id="'+esc(t.id)+'">Hapus</button><button type="button" class="btn sm" data-act="tk-del-no">Batal</button></span>':'<button type="button" class="btn sm" data-act="tk-del" data-id="'+esc(t.id)+'">Hapus</button>')+'</li>';
-  });
-  h+='<div class="stack"><div class="panel" id="task-panel"><h3 class="ph3">Kelola tugas</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin-bottom:10px">Pantau tugas yang sudah dibuat dan hapus kalau memang sudah tidak diperlukan. Tugas yang lewat tenggat tetap tersimpan di History.</p>'+(tk?'<ul>'+tk+'</ul>':'<p class="empty">Belum ada tugas.</p>')+'</div></div>';
   // akun
   let ar='';
   for(let n=1;n<=N;n++){
@@ -1826,23 +1854,7 @@ document.addEventListener('click',async e=>{
       if(ok){PLATFORM_FORM_COURSE=course;PLATFORM_FORM_MEETING=meeting;refreshAll();}
       break;
     }
-    case 'wa-generate':{
-      if(!adm())break;
-      const category=$('wa-category').value,combine=$('wa-combine').checked;
-      const taskRows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.task_title).sort((a,b)=>String(b.updated_at||b.created_at||'').localeCompare(String(a.updated_at||a.created_at||''))).slice(0,5);
-      const attendanceRows=[];
-      Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.attendance_url).sort((a,b)=>String(b.updated_at||b.created_at||'').localeCompare(String(a.updated_at||a.created_at||''))).slice(0,5).forEach(x=>attendanceRows.push({course:x.course_code,meeting:x.meeting_number,url:x.attendance_url}));
-      Object.keys(S.pl).forEach(k=>{const d=S.pl[k]||{};if(d.enabled===false)return;Object.keys(d.links||{}).forEach(n=>{if(okHttps(d.links[n]))attendanceRows.push({course:k,meeting:n,url:d.links[n]});});});
-      const seminarRows=Object.keys(S.pc).map(id=>S.pc[id]).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,5);
-      const lines=['*GRID-KELAS · TEAM RADIO*',''];
-      const includeTasks=category==='tasks'||(combine&&category!=='seminar');
-      const includeAttendance=category==='attendance'||(combine&&category!=='seminar');
-      if(includeTasks){lines.push('*PEMBARUAN TUGAS*');if(taskRows.length)taskRows.forEach(x=>{lines.push('• '+cname(x.course_code)+' · Pertemuan '+x.meeting_number+': '+x.task_title);if(x.deadline)lines.push('  Tenggat: '+fmtDate(x.deadline));if(okHttps(x.task_url))lines.push('  Materi/soal: '+x.task_url);});else lines.push('Belum ada tugas yang tercatat.');lines.push('');}
-      if(includeAttendance){lines.push('*PEMBARUAN ABSENSI*');if(attendanceRows.length)attendanceRows.slice(0,8).forEach(x=>lines.push('• '+cname(x.course)+' · Pertemuan '+x.meeting+': '+x.url));else lines.push('Belum ada tautan absensi yang tercatat.');lines.push('');}
-      if(category==='seminar'){lines.push('*PEMBARUAN SEMINAR*');if(seminarRows.length)seminarRows.forEach(x=>{lines.push('• '+(x.title||'Seminar'));if(okHttps(x.registrationUrl))lines.push('  Pendaftaran: '+x.registrationUrl);});else lines.push('Belum ada seminar yang tercatat.');lines.push('');}
-      lines.push('Buka Grid-Kelas: '+location.origin);
-      const msg=lines.join('\n').trim();$('wa-preview').value=msg;DR['wa-preview']=msg;toast('Pratinjau pesan berhasil disusun.');break;
-    }
+    case 'wa-generate':{if(!adm())break;const msg=buildWhatsAppTemplate();$('wa-preview').value=msg;DR['wa-preview']=msg;toast('Template pesan diperbarui.');break;}
     case 'wa-share':{
       if(!adm())break;
       const msg=String($('wa-preview').value||'').trim();
@@ -2082,11 +2094,11 @@ document.addEventListener('click',async e=>{
     }
     case 'cu-save':{
       if(!adm())break;
-      const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),attendance_url:$('cu-attendance').value.trim(),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null};
+      const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null};
       body.task_mode=$('cu-mode').value==='group'?'group':'individual';
       body.task_description=$('cu-desc').value.trim().slice(0,1000);
       if(!body.course_code||!S.co[body.course_code]||!Number.isInteger(body.meeting_number)||body.meeting_number<1||body.meeting_number>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
-      if([body.attendance_url,body.task_url,body.submission_url].some(u=>u&&!/^https:\/\//i.test(u))){toast('Semua tautan harus diawali https://');break;}
+      if([body.task_url,body.submission_url].some(u=>u&&!/^https:\/\//i.test(u))){toast('Semua tautan tugas harus diawali https://');break;}
       if(body.task_title&&!body.task_url&&!body.task_description){toast('Isi link materi/soal atau petunjuk tugas agar tugas memiliki instruksi.');break;}
       const duplicate=Object.keys(S.cu).find(id=>id!==CU_EDIT&&S.cu[id].course_code===body.course_code&&Number(S.cu[id].meeting_number)===body.meeting_number);
       if(duplicate){toast('Pembaruan untuk mata kuliah dan pertemuan ini sudah ada. Gunakan tombol Edit pada tabel.');break;}
@@ -2229,6 +2241,7 @@ document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.d
 document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;
+  if(['wa-category','wa-course','wa-meeting','wa-date','wa-combine'].includes(t.id)){const p=$('wa-preview');if(p){p.value=buildWhatsAppTemplate();DR['wa-preview']=p.value;}return;}
   if(t.id==='f-tipe'){
     const p=t.value==='platform';
     $('f-ruang-l').textContent=p?'Nama platform':'Nama ruangan';
