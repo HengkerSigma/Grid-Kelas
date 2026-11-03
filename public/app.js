@@ -1922,8 +1922,11 @@ document.addEventListener('click',async e=>{
       if(!msg){toast('Susun atau isi pesan terlebih dahulu.');break;}
       const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       const waUrl=isMobile?'https://wa.me/':'https://web.whatsapp.com/';
-      const waTab=window.open(waUrl,'_blank');
-      if(!waTab){toast('Izinkan pop-up browser untuk membuka WhatsApp.');break;}
+      let waTab=null;
+      if(!isMobile){
+        waTab=window.open(waUrl,'_blank');
+        if(!waTab){toast('Izinkan pop-up browser untuk membuka WhatsApp.');break;}
+      }
       let copied=false;
       try{
         if(!navigator.clipboard||!window.isSecureContext)throw new Error('Clipboard API tidak tersedia');
@@ -1932,12 +1935,22 @@ document.addEventListener('click',async e=>{
         const temp=document.createElement('textarea');
         temp.value=msg;temp.setAttribute('readonly','');
         temp.style.position='fixed';temp.style.opacity='0';temp.style.pointerEvents='none';
-        document.body.appendChild(temp);temp.select();
+        document.body.appendChild(temp);temp.focus();temp.select();
         try{copied=document.execCommand('copy');}catch(__){copied=false;}
         temp.remove();
       }
-      if(!copied){toast('WhatsApp sudah dibuka, tetapi pesan belum berhasil disalin. Salin isi pratinjau secara manual.');break;}
-      toast('Pesan disalin. Pilih grup WhatsApp, lalu tempel dengan Ctrl + V.');break;
+      if(!copied){
+        if(waTab)waTab.close();
+        toast('Pesan belum berhasil disalin. Salin isi pratinjau secara manual, lalu buka WhatsApp.');
+        break;
+      }
+      if(isMobile){
+        toast('Pesan berhasil disalin. Membuka WhatsApp…');
+        window.location.href=waUrl;
+      }else{
+        toast('Pesan disalin. Pilih grup WhatsApp, lalu tempel dengan Ctrl + V.');
+      }
+      break;
     }
    case 'forum-options':{
       if(!ME){toast('Masuk sebagai mahasiswa untuk membuka forum.');break;}
