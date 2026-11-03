@@ -80,7 +80,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 .rail{display:flex;gap:14px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth;cursor:grab;user-select:none;-webkit-user-select:none}
 .rail.drag{cursor:grabbing;scroll-behavior:auto}
 .rail::-webkit-scrollbar{display:none}
-.rs{flex:none;width:82px;display:grid;justify-items:center;gap:6px;background:none;border:0;padding:0;color:var(--fg)}
+.rs{flex:none;width:62px;display:grid;justify-items:center;gap:6px;background:none;border:0;padding:0;color:var(--fg)}
 .sav{position:relative;width:58px;height:58px;border-radius:50%;overflow:hidden;background:var(--surface-2);border:2px solid var(--line)}
 .sav img,.dav img,.aav img,.sph img,.gav img{width:100%;height:100%;object-fit:cover;-webkit-user-drag:none}
 .rs:hover .sav,.rs[aria-current="true"] .sav{border-color:var(--accent)}
