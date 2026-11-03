@@ -1111,12 +1111,6 @@ function renderAdmin(){
     '<div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div>'+
     '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Absensi</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="7" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div></div>';
   }
-  h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="stack">'+
-    '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(annEdit?annEdit.judul:dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
-    '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(annEdit?annEdit.isi:dv('an-isi',''))+'</textarea></div>'+
-    '<div class="field"><label for="an-k">Perihal</label><select id="an-k" data-dr="an-k"><option value="general"'+((annEdit?annEdit.k:dv('an-k','general'))==='general'?' selected':'')+'>General</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((annEdit?annEdit.k:dv('an-k','general'))===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
-    '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">'+(annEdit?'Simpan perubahan':'Kirim pengumuman')+'</button>'+(annEdit?'<button type="button" class="btn" data-act="ann-edit-cancel">Batal edit</button>':'')+'</div></div>'+
-    (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
   if(ADMIN_NOTIFY_TAB==='attendance'){
     const chosenCourse=cl.find(c=>c.k===PLATFORM_FORM_COURSE)||cl[0]||null;
     const chosenMeeting=Math.max(1,Math.min(PERT,Number(PLATFORM_FORM_MEETING)||defaultPert(chosenCourse&&chosenCourse.k||'')));
@@ -1126,7 +1120,7 @@ function renderAdmin(){
       '<div class="cu-form"><div class="field"><label for="notify-platform-course">Mata kuliah</label><select id="notify-platform-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+(chosenCourse&&chosenCourse.k===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
       '<div class="field"><label for="notify-platform-meeting">Pertemuan ke-</label><select id="notify-platform-meeting">'+Array.from({length:PERT},(_,i)=>i+1).map(n=>'<option value="'+n+'"'+(n===chosenMeeting?' selected':'')+'>Pertemuan '+n+'</option>').join('')+'</select></div>'+
       '<div class="field" style="grid-column:1/-1"><label for="notify-platform-url">Link absensi platform</label><input id="notify-platform-url" type="url" inputmode="url" maxlength="500" placeholder="https://..." value="'+esc(currentLink)+'"></div>'+
-      '<div class="row2"><button type="button" class="btn pri" data-act="platform-save"'+(chosenCourse?'':' disabled')+'>Simpan tautan absensi</button></div></div>'+
+      '<div class="row2"><button type="button" class="btn" data-act="platform-load"'+(chosenCourse?'':' disabled')+'>Muat tautan pilihan</button><button type="button" class="btn pri" data-act="platform-save"'+(chosenCourse?'':' disabled')+'>Simpan tautan absensi</button></div></div>'+
       '<p class="s">Kosongkan tautan untuk menghapus hanya pertemuan yang sedang dipilih.</p></div>';
     const configured=[];
     cl.forEach(c=>{const d=S.pl[c.k]||{},links=d.links||{};Object.keys(links).sort((a,b)=>Number(a)-Number(b)).forEach(n=>{if(okHttps(links[n]))configured.push('<li><b>'+esc(c.nama)+'</b> · Pertemuan '+esc(n)+' · <a href="'+esc(links[n])+'" target="_blank" rel="noopener">Buka tautan</a></li>');});});
@@ -1143,6 +1137,12 @@ function renderAdmin(){
     '<div class="field" style="grid-column:1/-1"><label for="wa-preview">Pratinjau pesan (dapat diedit)</label><textarea id="wa-preview" data-dr="wa-preview" rows="9" maxlength="5000" placeholder="Tekan Susun pesan untuk membuat draf dari data Grid-Kelas.">'+esc(dv('wa-preview',''))+'</textarea></div>'+
     '<div class="row2"><button type="button" class="btn" data-act="wa-generate">Susun pesan</button><button type="button" class="btn pri" data-act="wa-share">Buka WhatsApp</button></div></div>'+
     '<p class="s">WhatsApp terbuka dengan pesan terisi. Pilih grup kelas dan tekan Kirim secara manual. Grid-Kelas tidak dapat memastikan pesan sudah terkirim.</p></div></section>';
+  h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="stack">'+
+    '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(annEdit?annEdit.judul:dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
+    '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(annEdit?annEdit.isi:dv('an-isi',''))+'</textarea></div>'+
+    '<div class="field"><label for="an-k">Perihal</label><select id="an-k" data-dr="an-k"><option value="general"'+((annEdit?annEdit.k:dv('an-k','general'))==='general'?' selected':'')+'>General</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((annEdit?annEdit.k:dv('an-k','general'))===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
+    '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">'+(annEdit?'Simpan perubahan':'Kirim pengumuman')+'</button>'+(annEdit?'<button type="button" class="btn" data-act="ann-edit-cancel">Batal edit</button>':'')+'</div></div>'+
+    (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
   let tk='';
   tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
     const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
@@ -1802,6 +1802,12 @@ document.addEventListener('click',async e=>{
     case 'notify-tab':{
       if(!adm()||!['tasks','attendance','seminar'].includes(d.tab))break;
       ADMIN_NOTIFY_TAB=d.tab;renderAdmin();break;
+    }
+    case 'platform-load':{
+      if(!adm())break;
+      PLATFORM_FORM_COURSE=$('notify-platform-course').value;
+      PLATFORM_FORM_MEETING=Number($('notify-platform-meeting').value)||defaultPert(PLATFORM_FORM_COURSE);
+      renderAdmin();break;
     }
     case 'platform-save':{
       if(!adm())break;
