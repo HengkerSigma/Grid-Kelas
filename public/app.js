@@ -1386,7 +1386,7 @@ function scheduleAttendanceState(c,now){
 function absenBtn(c){
   if(!ME)return '';
   const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
-   const range=hariRange(c),weekdayPlatform=!!S.pl[c.k]&&range.a==='Senin'&&range.b==='Jumat';
+   const range=hariRange(c),weekdayPlatform=!!platConfigOf(c.k)&&range.a==='Senin'&&range.b==='Jumat';
    if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
   if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   if(!session)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
@@ -1815,6 +1815,7 @@ document.addEventListener('click',async e=>{
       if(!S.co[course]||!Number.isInteger(meeting)||meeting<1||meeting>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
       if(url&&!okHttps(url)){toast('Tautan absensi harus menggunakan HTTPS.');break;}
       const old=S.pl[course]||{},links=Object.assign({},old.links||{});
+      if(old.url&&Number(old.meeting_number)>0&&!links[old.meeting_number])links[old.meeting_number]=old.url;
       if(url)links[meeting]=url;else delete links[meeting];
       const remaining=Object.keys(links).sort((a,b)=>Number(a)-Number(b)),latest=remaining.length?Number(remaining[remaining.length-1]):0;
       const next=remaining.length?links[latest]:'';
@@ -2228,13 +2229,8 @@ document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.d
 document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;
-  if(t.id==='f-link-meeting'){
-    const course=D&&D.key&&S.pl[D.key],n=Number(t.value),url=course&&course.links&&course.links[n]||(course&&Number(course.meeting_number)===n?course.url:'');
-    $('f-link').value=url||'';return;
-  }
   if(t.id==='f-tipe'){
     const p=t.value==='platform';
-    $('f-link-w').style.display=p?'':'none';
     $('f-ruang-l').textContent=p?'Nama platform':'Nama ruangan';
     $('f-ruang').placeholder=p?'Contoh: Zoom':'Contoh: R.301';
     return;
