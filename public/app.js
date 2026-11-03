@@ -1217,7 +1217,7 @@ function renderAdmin(force=false){
     '<label class="notification-combine"><input type="checkbox" id="wa-combine"> Gabungkan pembaruan tugas dan absensi dalam satu pesan</label>'+
     '<div class="field" style="grid-column:1/-1"><label for="wa-preview">Template pesan (bisa diedit)</label><textarea id="wa-preview" data-dr="wa-preview" rows="10" maxlength="5000">'+esc(buildWhatsAppTemplate())+'</textarea></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="wa-share">Buka WhatsApp</button></div></div>'+
-    '<p class="s">WhatsApp terbuka dengan pesan terisi. Pilih grup kelas dan tekan Kirim secara manual. Grid-Kelas tidak dapat memastikan pesan sudah terkirim.</p></div></section>';
+    '<p class="s">Pesan otomatis disalin. Di WhatsApp, pilih grup kelas lalu tempel dengan Ctrl + V sebelum menekan Kirim. Grid-Kelas tidak dapat memastikan pesan sudah terkirim.</p></div></section>';
   h+='<div id="announcement-panel"><div class="stack"><div class="panel"><h3 class="ph3">Buat pengumuman</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="stack">'+
     '<div class="field"><label for="an-judul">Judul</label><input id="an-judul" data-dr="an-judul" type="text" maxlength="120" value="'+esc(annEdit?annEdit.judul:dv('an-judul',''))+'" placeholder="Contoh: Kuis minggu depan"></div>'+
     '<div class="field"><label for="an-isi">Isi</label><textarea id="an-isi" data-dr="an-isi" maxlength="1000" placeholder="Tulis pengumuman untuk kelas">'+esc(annEdit?annEdit.isi:dv('an-isi',''))+'</textarea></div>'+
@@ -1920,7 +1920,23 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const msg=String($('wa-preview').value||'').trim();
       if(!msg){toast('Susun atau isi pesan terlebih dahulu.');break;}
-      window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank','noopener,noreferrer');break;
+      const waTab=window.open('about:blank','_blank');
+      if(!waTab){toast('Izinkan pop-up browser untuk membuka WhatsApp.');break;}
+      let copied=false;
+      try{
+        if(!navigator.clipboard||!window.isSecureContext)throw new Error('Clipboard API tidak tersedia');
+        await navigator.clipboard.writeText(msg);copied=true;
+      }catch(_){
+        const temp=document.createElement('textarea');
+        temp.value=msg;temp.setAttribute('readonly','');
+        temp.style.position='fixed';temp.style.opacity='0';temp.style.pointerEvents='none';
+        document.body.appendChild(temp);temp.select();
+        try{copied=document.execCommand('copy');}catch(__){copied=false;}
+        temp.remove();
+      }
+      if(!copied){waTab.close();toast('Pesan belum berhasil disalin. Salin isi pratinjau secara manual.');break;}
+      waTab.location.href='https://wa.me/';
+      toast('Pesan disalin. Pilih grup WhatsApp, lalu tempel dengan Ctrl + V.');break;
     }
    case 'forum-options':{
       if(!ME){toast('Masuk sebagai mahasiswa untuk membuka forum.');break;}
