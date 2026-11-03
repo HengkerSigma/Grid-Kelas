@@ -1062,23 +1062,23 @@ function buildWhatsAppTemplate(){
   const category=($('wa-category')||{}).value||'tasks',course=($('wa-course')||{}).value||'all';
   const meeting=Number(($('wa-meeting')||{}).value)||1,date=($('wa-date')||{}).value||today();
   const combine=!!(($('wa-combine')||{}).checked),selected=course==='all'?null:[course];
-  const lines=['📻 *01ELSE003 | Team Radio*',''];
+  const lines=['\u{1F4FB} *01ELSE003 | Team Radio*',''];
   const includeTasks=category==='tasks'||(combine&&category==='attendance');
   const includeAttendance=category==='attendance'||(combine&&category==='tasks');
   let taskCount=0,attendanceCount=0,seminarCount=0;
   if(includeTasks){
     const rows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.task_title&&(!selected||selected.includes(x.course_code))).sort((a,b)=>String(a.deadline||'9999').localeCompare(String(b.deadline||'9999')));
     taskCount=rows.length;
-    lines.push('🏁 *PEMBARUAN TUGAS*');
+    lines.push('\u{1F3C1} *PEMBARUAN TUGAS*');
     if(rows.length===1){
       const x=rows[0];
-      lines.push('📚 Mata kuliah: *'+cname(x.course_code)+'*','📝 Tugas: *'+x.task_title+'*');
-      if(x.meeting_number)lines.push('🔢 Pertemuan: *'+x.meeting_number+'*');
-      if(x.deadline)lines.push('📅 Tenggat: *'+fmtDate(x.deadline)+'*');
+      lines.push('\u{1F4DA} Mata kuliah: *'+cname(x.course_code)+'*','\u{1F4DD} Tugas: *'+x.task_title+'*');
+      if(x.meeting_number)lines.push('\u{1F522} Pertemuan: *'+x.meeting_number+'*');
+      if(x.deadline)lines.push('\u{1F4C5} Tenggat: *'+fmtDate(x.deadline)+'*');
     }else if(rows.length>1){
       lines.push('Ada beberapa tugas baru yang perlu kamu perhatikan!','');
       rows.forEach(x=>{
-        lines.push('📚 *'+cname(x.course_code)+'*','• *'+x.task_title+'*');
+        lines.push('\u{1F4DA} *'+cname(x.course_code)+'*','• *'+x.task_title+'*');
         if(x.meeting_number)lines.push('  Pertemuan: *'+x.meeting_number+'*');
         if(x.deadline)lines.push('  Tenggat: *'+fmtDate(x.deadline)+'*');
       });
@@ -1092,18 +1092,18 @@ function buildWhatsAppTemplate(){
       if(okHttps(url))rows.push({course:k,url:url});
     });
     attendanceCount=rows.length;
-    lines.push('🚦 *ABSEN DIBUKA*');
+    lines.push('\u{1F6A6} *ABSEN DIBUKA*');
     if(rows.length===1){
-      lines.push('📚 Mata kuliah: *'+cname(rows[0].course)+'*','🔢 Pertemuan: *'+meeting+'*','📅 Jadwal: *'+fmtDate(date)+'*');
+      lines.push('\u{1F4DA} Mata kuliah: *'+cname(rows[0].course)+'*','\u{1F522} Pertemuan: *'+meeting+'*','\u{1F4C5} Jadwal: *'+fmtDate(date)+'*');
     }else if(rows.length>1){
-      rows.forEach(x=>lines.push('📚 *'+cname(x.course)+'* · Pertemuan *'+meeting+'*'));
+      rows.forEach(x=>lines.push('\u{1F4DA} *'+cname(x.course)+'* · Pertemuan *'+meeting+'*'));
     }else lines.push('Belum ada tautan absensi untuk pilihan ini.');
     lines.push('');
   }
   if(category==='seminar'){
     const rows=Object.keys(S.pc).map(id=>S.pc[id]).filter(x=>!x.createdAt||new Date(x.createdAt).toISOString().slice(0,10)===date).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     seminarCount=rows.length;
-    lines.push('🎓 *SEMINAR TERSEDIA*');
+    lines.push('\u{1F393} *SEMINAR TERSEDIA*');
     if(rows.length)rows.forEach(x=>lines.push('• *'+(x.title||'Seminar')+'*'));
     else lines.push('Belum ada seminar pada tanggal yang dipilih.');
     lines.push('');
@@ -1113,13 +1113,13 @@ function buildWhatsAppTemplate(){
   else if(taskCount)cta=taskCount===1?'Segera periksa instruksi dan selesaikan tugasmu sebelum tenggat berakhir!':'Atur strategi pengerjaanmu dan pastikan tidak ada tenggat yang terlewat!';
   else if(attendanceCount)cta='Segera buka forum dan selesaikan absensimu sesuai jadwal!';
   else if(seminarCount)cta='Lihat informasi seminar dan manfaatkan kesempatan untuk mendaftar!';
-  lines.push('🏎️ '+cta,'','👉 *BUKA GRID-KELAS*',location.origin);
+  lines.push('\u{1F3CE}\u{FE0F} '+cta,'','\u{1F449} *BUKA GRID-KELAS*',location.origin);
   return lines.join('\n').trim();
 }
-function renderAdmin(){
+function renderAdmin(force=false){
   if(!adm()){$('admin').innerHTML='';return;}
   const a0=document.activeElement;
-  if(a0&&$('v-pengelola').contains(a0)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a0.tagName))return;
+  if(!force&&a0&&$('v-pengelola').contains(a0)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a0.tagName))return;
   const td=today(),cl=courseList(),tasks=taskList();
   let totH=0,totT=0;
   const perC=cl.map(c=>{
@@ -1875,7 +1875,7 @@ document.addEventListener('click',async e=>{
     case 'overview-subtab':{setOverviewSubtab(d.tab);break;}
     case 'admin-main-tab':{
       if(!adm()||!['academic','students'].includes(d.tab))break;
-      ADMIN_MAIN_TAB=d.tab;renderAdmin();break;
+      ADMIN_MAIN_TAB=d.tab;renderAdmin(true);break;
     }
     case 'notify-tab':{
       if(!adm()||!['tasks','attendance','seminar'].includes(d.tab))break;
