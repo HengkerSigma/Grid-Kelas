@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Unbounded:wght@500;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=mobile-f1-navigation-v1">
+<link rel="stylesheet" href="style.css?v=exhibition-paddock-club-v1">
 </head>
 <body>
 <header class="top" id="top">
@@ -18,7 +18,8 @@
       <span class="wm">Formula 1 ELSE3</span>
     </a>
     <nav class="nav" id="mainNav" aria-label="Navigasi utama">
-      <button type="button" class="nl" data-view="beranda">Beranda</button>
+      <button type="button" class="nl" data-view="beranda">Overview</button>
+      <button type="button" class="nl" data-view="exhibition">Exhibition</button>
       <button type="button" class="nl" data-view="mahasiswa">Mahasiswa</button>
       <button type="button" class="nl" data-view="mata-kuliah">Mata Kuliah</button>
       <button type="button" class="nl" data-view="pengelola" id="navAdmin" hidden>Pengelola</button>
@@ -46,6 +47,14 @@
       <h1 class="title">Overview</h1>
       <p class="lede" id="homeLede">Ringkasan tugas, absensi, dan pengumuman kelas.</p>
       <div id="home"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-exhibition" hidden>
+    <div class="inner gut">
+      <h1 class="title">Exhibition</h1>
+      <p class="lede">Ruang apresiasi, dokumentasi kelas, sertifikat, dan agenda seminar akademik.</p>
+      <div id="exhibition"></div>
     </div>
   </section>
 
@@ -98,5 +107,5 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="diagnostic.js"></script>
 <script src="db.js"></script>
-<script src="app.js?v=course-updates-task-integration-v1"></script></body>
+<script src="app.js?v=exhibition-paddock-club-v1"></script></body>
 </html>

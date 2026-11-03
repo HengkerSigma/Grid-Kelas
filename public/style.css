@@ -970,3 +970,43 @@ button.is-busy{cursor:wait;opacity:.65}
   .paddock-tires{gap:8px}
   .paddock-tires .pfl{font-size:.82rem}
 }
+
+/* Exhibition: Super License, Class Archive, and Paddock Club */
+.exhibition-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px;align-items:start}
+.exhibition-section{min-width:0}
+.exhibition-section>.panel{height:100%}
+.paddock-club{margin-top:14px}
+.paddock-club-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
+.paddock-club-head>div{min-width:0;max-width:760px}
+.paddock-club-head .ph3{margin:4px 0 8px;font-size:clamp(1.15rem,3vw,1.55rem)}
+.seminar-admin{display:grid;gap:10px;padding:14px;margin:0 0 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.seminar-admin h3{margin:0}
+.seminar-admin .field{display:grid;gap:5px}
+.seminar-admin input:not([type=file]){width:100%;min-height:40px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--fg)}
+.seminar-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
+.seminar-card{display:grid;grid-template-columns:minmax(105px,34%) minmax(0,1fr);gap:13px;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.seminar-poster{aspect-ratio:3/4;min-width:0;overflow:hidden;background:var(--band)}
+.seminar-poster img{width:100%;height:100%;object-fit:cover}
+.seminar-poster-empty{height:100%;display:grid;place-content:center;text-align:center;color:var(--muted);font:700 .8rem var(--f-disp);letter-spacing:.08em}
+.seminar-info{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:9px;min-width:0;padding:12px 12px 12px 0}
+.seminar-info h3{margin:0;font-size:1rem;line-height:1.35;overflow-wrap:anywhere}
+.seminar-info .constructor-kicker{font-size:.62rem}
+.seminar-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:4px}
+.seminar-actions .btn{font-size:.8rem;padding:7px 11px}
+.seminar-empty{display:grid;gap:5px;padding:22px 14px;border:1px dashed var(--line);border-radius:9px;text-align:center}
+.tire-legend{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.tire-legend li{display:flex;align-items:center;gap:6px}
+.tire-legend li>span:not(.dnfb){display:grid;gap:0}
+.tire-legend li b{font-size:.7rem;letter-spacing:.06em;line-height:1.1}
+.tire-legend li small{font-size:.68rem;color:var(--muted);line-height:1.2}
+@media(max-width:760px){
+  .exhibition-sections{grid-template-columns:minmax(0,1fr)}
+  .paddock-club-head{gap:8px}
+  .seminar-list{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:420px){
+  .seminar-card{grid-template-columns:112px minmax(0,1fr);gap:10px}
+  .seminar-info{padding:9px 9px 9px 0}
+  .seminar-info h3{font-size:.9rem}
+  .seminar-actions .btn{font-size:.74rem;padding:6px 8px}
+}

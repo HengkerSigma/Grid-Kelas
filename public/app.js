@@ -50,13 +50,13 @@ function inSession(c,now){
   const p=jakartaParts(now),t=Number(p.hour)*60+Number(p.minute);
   return t>=r.s&&t<r.e;
 }
-const VIEWS=['beranda','mahasiswa','mata-kuliah','pengelola'];
+const VIEWS=['beranda','exhibition','mahasiswa','mata-kuliah','pengelola'];
 
 let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='loading';
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,ANN_EDIT=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
-const PEND={ser:null,dok:null,archive:null};
-const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{}};
+const PEND={ser:null,dok:null,archive:null,seminar:null};
+const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{}};
 let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
@@ -753,10 +753,11 @@ async function launchGridClassTour(force){
       {element:'#dlg .sector-overview',popover:{title:'19 · ABSENCE SECTOR',description:'Di tampilan sektor, bandingkan posisi dan progres absensi setiap mahasiswa. Warna sektor membantu membaca peringkat kehadiran.',side:'top',align:'center'},
        onNextClick:()=>{if(dlg.open)dlg.close();setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
       {element:'#home .schedule-panel',popover:{title:'20 · SCHEDULE',description:'Jadwal hari ini menampilkan kelas dan jam perkuliahan. Gunakan tombol Isi Absen saat sesi dibuka, atau buka riwayat absensi untuk mengecek catatan sebelumnya.',side:'top',align:'center'}},
-      {element:'#home .team-radio',popover:{title:'21 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'}},
-      {element:'#home #superLicensePanel',popover:{title:'22 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
-      {element:'#home #classArchivePanel',popover:{title:'23 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}},
-      {element:'#gkTourHelp',popover:{title:'24 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Kalau suatu saat lupa letak fitur atau cara menggunakan Grid Kelas, tekan tombol ini untuk membuka tutorial lagi.',side:'top',align:'center'}}
+      {element:'#home .team-radio',popover:{title:'21 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'},onNextClick:()=>{setView('exhibition',true);setTimeout(()=>d.moveNext(),140);}},
+      {element:'#v-exhibition #superLicensePanel',popover:{title:'22 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
+      {element:'#v-exhibition #classArchivePanel',popover:{title:'23 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}},
+      {element:'#v-exhibition #paddockClubPanel',popover:{title:'24 · PADDOCK CLUB',description:'Pusat informasi seminar untuk membantumu menemukan kegiatan yang menyediakan poin KAK. Buka poster dan gunakan tombol Daftar untuk menuju formulir pendaftaran.',side:'top',align:'center'}},
+      {element:'#gkTourHelp',popover:{title:'25 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Kalau suatu saat lupa letak fitur atau cara menggunakan Grid Kelas, tekan tombol ini untuk membuka tutorial lagi.',side:'top',align:'center'}}
     ],
 
     onDestroyed:()=>{try{localStorage.setItem(tourKey(),'done');}catch(e){}GRID_TOUR_STARTED=false;GRID_TOUR_HELP_VISIBLE=true;renderTourHelp();}
@@ -794,7 +795,7 @@ function pitDlg(){
       const done=mineTasks.filter(x=>x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at);
       const late=mineTasks.filter(x=>isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
       const renderGroup=(items,status)=>items.map(({t,g})=>{const sub=t.groupSubs&&t.groupSubs[g.id],principal=Number(g.principal)===Number(ME),compound=constructorCompound(t),itemClass=status==='active'?'tire-'+compound:status;const marker=status==='done'?'<span class="pck">&#10003;</span>':status==='dnf'?'<span class="dnfb">DNF</span>':tireSvg(compound);return '<li class="pit-it '+itemClass+'">'+marker+'<div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?dueText(t):'Tanpa tenggat')+' · '+esc(g.name||'Constructor')+'</span><span class="s">'+(status==='done'?'Dikumpulkan '+fmtTime(sub.at):status==='dnf'?'Tenggat lewat':principal?'Siap dikumpulkan oleh Team Principal':'Menunggu Team Principal')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">'+(status==='done'?'Lihat':'Buka tugas')+'</button>'+(status==='done'?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Lihat hasil</button>':'')+'</span></li>';}).join('');
-      if(active.length||late.length)h+='<ul class="pleg tire-legend" aria-label="Indikator waktu tugas"><li title="Kurang dari 1 hari">'+tireSvg('soft')+'</li><li title="1 sampai kurang dari 3 hari">'+tireSvg('medium')+'</li><li title="3 hari atau lebih">'+tireSvg('hard')+'</li><li title="Lewat tenggat, belum dikumpulkan"><span class="dnfb">DNF</span></li></ul>';
+      if(active.length||late.length)h+='<ul class="pleg tire-legend" aria-label="Legenda waktu tugas"><li title="Tenggat kurang dari 1 hari">'+tireSvg('soft')+'<span><b>SOFT</b><small>Kurang dari 1 hari</small></span></li><li title="Tenggat 1 sampai kurang dari 3 hari">'+tireSvg('medium')+'<span><b>MEDIUM</b><small>1–2 hari</small></span></li><li title="Tenggat 3 hari atau lebih">'+tireSvg('hard')+'<span><b>HARD</b><small>3 hari atau lebih</small></span></li><li title="Lewat tenggat, belum dikumpulkan"><span class="dnfb">DNF</span><span><b>DNF</b><small>Tenggat lewat</small></span></li></ul>';
       if(active.length)h+='<h3 class="ph3">Tugas aktif</h3><ul class="plist">'+renderGroup(active,'active')+'</ul>';
       if(done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+renderGroup(done,'done')+'</ul>';
       if(late.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+renderGroup(late,'dnf')+'</ul>';
@@ -947,7 +948,7 @@ function renderHome(force){
     left.push(schedPanel(sched,dayN));
     right.push(teamRadioPanel(anns));
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
-    h+='<div class="cols" style="margin-top:14px"><div class="col">'+superLicensePanel()+'</div><div class="col">'+classArchivePanel()+'</div></div>';
+
   }else if(adm()){
     $('homeLede').textContent='Mode pengelola aktif.';
     h+='<div class="panel welcome"><p>Mode pengelola aktif. Buka tab Pengelola untuk membuat pengumuman, mengelola akun, dan melihat rekap. Masuk sebagai mahasiswa untuk mencoba tampilan pribadi.</p><div class="row2"><button type="button" class="btn pri" data-view="pengelola">Buka Pengelola</button><button type="button" class="btn" data-act="open-login">Masuk</button></div></div>';
@@ -955,10 +956,10 @@ function renderHome(force){
     let li='';
     act.slice(0,6).forEach(t=>{li+='<li class="it"><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</span></div></li>';});
     h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3><p class="s">Daftar tugas yang masih berjalan dan perlu dipantau.</p>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+teamRadioPanel(anns)+'</div></div>';
-    h+='<div style="margin-top:14px">'+classArchivePanel()+'</div>';
+
   }else{
     $('homeLede').textContent='Lihat info kelas dan update terbaru. Yuk, cek dulu sebelum mulai!';
-    h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+teamRadioPanel(anns)+'<div style="margin-top:14px">'+classArchivePanel()+'</div>';
+    h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+teamRadioPanel(anns);
   }
   $('home').innerHTML=h;
 }
@@ -1015,6 +1016,17 @@ function classArchivePanel(){
   });
   return h+'</ul></div>';
 }
+function renderExhibition(){
+  const host=$('exhibition');if(!host)return;
+  const seminars=Object.keys(S.pc).map(id=>Object.assign({id:id},S.pc[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  let h='<div class="exhibition-sections"><section class="exhibition-section">'+superLicensePanel()+'</section><section class="exhibition-section">'+classArchivePanel()+'</section></div>';
+  h+='<section class="panel paddock-club" id="paddockClubPanel"><div class="paddock-club-head"><div><span class="constructor-kicker">ACADEMIC EVENTS</span><h2 class="ph3">Paddock Club</h2><p class="s">Pusat informasi seminar dan kegiatan akademik untuk membantu mengumpulkan poin KAK sebagai salah satu persiapan syarat sidang proposal skripsi.</p></div><span class="chip">'+seminars.length+' seminar</span></div>';
+  if(adm()&&ME&&AS)h+='<div class="seminar-admin"><h3 class="ph3">Tambah seminar</h3><div class="field"><label for="pc-title">Judul seminar</label><input id="pc-title" data-dr="pc-title" type="text" maxlength="160" value="'+esc(dv('pc-title',''))+'" placeholder="Masukkan judul seminar"></div><div class="field"><label for="pc-link">Link pendaftaran</label><input id="pc-link" data-dr="pc-link" type="url" inputmode="url" value="'+esc(dv('pc-link',''))+'" placeholder="https://..."></div><div class="row2"><label class="btn sm pickfile">'+(PEND.seminar?'Ganti poster':'Pilih poster')+'<input type="file" accept="image/jpeg,image/png,image/webp" data-file="seminar"></label><span class="s">'+(PEND.seminar?esc(PEND.seminar.name||'Poster siap diunggah'):'Poster JPG, PNG, atau WebP · maksimal 20 MB')+'</span></div><div class="row2"><button type="button" class="btn pri" data-act="seminar-save">Terbitkan seminar</button></div></div>';
+  if(!seminars.length)h+='<div class="seminar-empty"><b>Belum ada seminar yang ditambahkan.</b><span class="s">Informasi seminar akan ditampilkan di sini setelah dipublikasikan pengelola.</span></div>';
+  else{h+='<div class="seminar-list">';seminars.forEach(x=>{const poster=x.poster||{},src=poster.url||(poster.id?('/_blob/'+poster.id):'');h+='<article class="seminar-card"><div class="seminar-poster">'+(src?'<img src="'+esc(src)+'" alt="Poster '+esc(x.title||'seminar')+'" loading="lazy">':'<div class="seminar-poster-empty">POSTER<br>SEMINAR</div>')+'</div><div class="seminar-info"><span class="constructor-kicker">PADDOCK CLUB · SEMINAR</span><h3>'+esc(x.title||'Seminar tanpa judul')+'</h3><div class="seminar-actions">'+(okHttps(x.registrationUrl)?'<a class="btn pri" href="'+esc(x.registrationUrl)+'" target="_blank" rel="noopener noreferrer">Daftar <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Link pendaftaran belum tersedia.</span>')+(adm()?'<button type="button" class="btn sm" data-act="seminar-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</div></div></article>';});h+='</div>';}
+  h+='</section>';host.innerHTML=h;
+}
+
 function schedPanel(sched,dayN){
   let li='';
   sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
@@ -1128,7 +1140,7 @@ function renderAdmin(){
 
 function refreshAll(){
   cancelAnimationFrame(raf);
-  raf=requestAnimationFrame(()=>{renderHeader();renderStrip();renderStudents();renderConstructor();renderCourses();renderHome();renderAdmin();if(D)renderDialog(false);});
+  raf=requestAnimationFrame(()=>{renderHeader();renderStrip();renderStudents();renderConstructor();renderCourses();renderHome();renderExhibition();renderAdmin();if(D)renderDialog(false);});
 }
 
 /* ---------- dialog ---------- */
@@ -2052,6 +2064,23 @@ document.addEventListener('click',async e=>{
       await run(()=>upsertAkun(no,{hash:null,salt:null,resetReq:null}),'Password No. '+no+' kembali ke password bawaan');
       break;
     }
+    case 'seminar-save':{
+      if(!adm()||!ME||!PEND.seminar){toast('Masuk sebagai pengelola dan pilih poster seminar terlebih dahulu.');break;}
+      const title=($('pc-title').value||'').trim(),link=($('pc-link').value||'').trim();
+      if(!title){toast('Isi judul seminar terlebih dahulu.');break;}
+      if(!okHttps(link)){toast('Link pendaftaran harus menggunakan https://');break;}
+      const ok=await run(()=>db.collection('paddockClub').add({title:title.slice(0,160),registrationUrl:link,poster:PEND.seminar,createdAt:Date.now()}),'Seminar diterbitkan di Paddock Club');
+      if(ok){PEND.seminar=null;delete DR['pc-title'];delete DR['pc-link'];renderExhibition();}
+      break;
+    }
+    case 'seminar-del':{
+      if(!adm())break;
+      const item=S.pc[d.id];if(!item)break;
+      if(!confirm('Hapus seminar ini dari Paddock Club?'))break;
+      const ok=await run(()=>db.doc('paddockClub/'+d.id).delete(),'Seminar dihapus');
+      if(ok&&item.poster&&item.poster.id&&AS&&AS.delete)AS.delete(item.poster.id).catch(()=>{});
+      break;
+    }
     case 'archive-save':{
       if(!ME||!PEND.archive){toast('Masuk dan pilih foto terlebih dahulu.');break;}
       if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');break;}
@@ -2063,7 +2092,7 @@ document.addEventListener('click',async e=>{
         try{await db.collection('classArchive').add({judul:judul.slice(0,100),caption:caption.slice(0,300),photoKey:key,no:ME,at:Date.now()});}
         catch(err){try{await db.doc('media/'+key).delete();}catch(ignore){}throw err;}
       },'Foto ditambahkan ke Class Archive');
-      if(ok){PEND.archive=null;delete DR['archive-judul'];delete DR['archive-caption'];renderHome(true);}
+      if(ok){PEND.archive=null;delete DR['archive-judul'];delete DR['archive-caption'];renderExhibition();}
       break;
     }
     case 'archive-del':{
@@ -2072,7 +2101,7 @@ document.addEventListener('click',async e=>{
       const x=S.ca[d.id];if(!x)break;
       const ok=await run(()=>db.doc('classArchive/'+d.id).delete(),'Dokumentasi dihapus');
       if(ok&&x.photoKey){try{await db.doc('media/'+x.photoKey).delete();}catch(err){}}
-      renderHome(true);break;
+      renderExhibition();break;
     }
     case 'ber-save':{
       if(!ME)break;
@@ -2080,17 +2109,17 @@ document.addEventListener('click',async e=>{
       if(!PEND[j]){toast('Pilih berkas dulu.');break;}
       if(j==='ser'&&!judul){toast('Isi nama sertifikat dulu.');break;}
       const ok=await run(()=>db.collection('berkas').add({no:ME,jenis:j,judul:judul.slice(0,100),file:PEND[j],at:Date.now()}),j==='ser'?'Sertifikat disimpan':'Dokumentasi disimpan');
-      if(ok){PEND[j]=null;delete DR[j+'-judul'];renderHome(true);}
+      if(ok){PEND[j]=null;delete DR[j+'-judul'];if(j==='ser')renderExhibition();else renderHome(true);}
       break;
     }
-    case 'ber-del':berDel=d.id;renderHome(true);break;
-    case 'ber-del-no':berDel=null;renderHome(true);break;
+    case 'ber-del':berDel=d.id;renderExhibition();break;
+    case 'ber-del-no':berDel=null;renderExhibition();break;
     case 'ber-del-yes':{
       const x=S.be[d.id];
       if(!x||(!adm()&&x.no!==ME))break;
       const ok=await run(()=>db.doc('berkas/'+d.id).delete(),'Berkas dihapus');
       if(ok&&AS&&x.file&&x.file.id){try{await AS.delete(x.file.id);}catch(err){}}
-      berDel=null;renderHome(true);
+      berDel=null;renderExhibition();
       break;
     }
     case 'tk-del':tkDel=d.id;renderAdmin();break;
@@ -2158,10 +2187,16 @@ document.addEventListener('change',async e=>{
     const f=t.files&&t.files[0],kind=t.dataset.file,tid=t.dataset.id;
     t.value='';
     if(!f||!ME)return;
+    if(kind==='seminar'){
+      if(!adm()){toast('Hanya pengelola yang dapat menambahkan poster seminar.');return;}
+      if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih poster JPG, PNG, atau WebP.');return;}
+      await run(async()=>{PEND.seminar=await sendFile(f,'uploads');renderExhibition();},'Poster siap diterbitkan ke Paddock Club.');
+      return;
+    }
     if(kind==='archive'){
       if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');return;}
       if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih foto JPG, PNG, atau WebP.');return;}
-      await run(async()=>{PEND.archive=await sendFile(f,'media');renderHome(true);},'Foto siap ditambahkan ke Class Archive.');
+      await run(async()=>{PEND.archive=await sendFile(f,'media');renderExhibition();},'Foto siap ditambahkan ke Class Archive.');
       return;
     }
     if((kind==='bukti'||kind==='tugas')&&!D)return;
@@ -2170,7 +2205,7 @@ document.addEventListener('change',async e=>{
       const k=D.key,n=D.pert;
       await run(async()=>{const fo=await sendFile(f,'attendance');await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
     }else if(kind==='ser'||kind==='dok'){
-      await run(async()=>{PEND[kind]=await sendFile(f,kind==='ser'?'certificates':'uploads');renderHome(true);},'Berkas siap. Tekan Simpan.');
+      await run(async()=>{PEND[kind]=await sendFile(f,kind==='ser'?'certificates':'uploads');if(kind==='ser')renderExhibition();else renderHome(true);},'Berkas siap. Tekan Simpan.');
     }else if(kind==='tugas'){
       await run(async()=>{const fo=await sendFile(f,'uploads');D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
     }
@@ -2245,7 +2280,7 @@ setInterval(()=>{const s=today()+'|'+courseList().filter(c=>inSession(c)).map(c=
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();if(key==='tu'&&D&&D.kind==='hasil')loadHasil();refreshAll();
   },onErr);
-  sub('students','st');sub('courses','co');sub('constructors','cs');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
+  sub('students','st');sub('courses','co');sub('constructors','cs');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('paddockClub','pc');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
   if(AUTH){
     AUTH.me().then(m=>{ME=m&&m.no||null;if(ME){loadSektor();refreshAll();setTimeout(startGridClassTour,1100);}else refreshAll();});
   }else if(uid){
