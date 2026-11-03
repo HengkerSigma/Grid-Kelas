@@ -17,6 +17,7 @@ const storage = SERVICE_KEY ? supabase.storage.from(UPLOAD_BUCKET) : null;
 const certificateStore = SERVICE_KEY ? supabase.storage.from(CERTIFICATE_BUCKET) : null;
 const attendanceStore = SERVICE_KEY ? supabase.storage.from(ATTENDANCE_BUCKET) : null;
 const mediaStore = SERVICE_KEY ? supabase.storage.from(MEDIA_BUCKET) : null;
+const publicPosterUrlCache = new Map();
 function storeFor(bucket) { if (!SERVICE_KEY) return null; return bucket === MEDIA_BUCKET ? mediaStore : bucket === CERTIFICATE_BUCKET ? certificateStore : bucket === ATTENDANCE_BUCKET ? attendanceStore : bucket === UPLOAD_BUCKET ? storage : null; }
 function bucketFor(meta) { return meta && [MEDIA_BUCKET,CERTIFICATE_BUCKET,ATTENDANCE_BUCKET,UPLOAD_BUCKET].includes(meta.bucket) ? meta.bucket : UPLOAD_BUCKET; }
 const SUPA_ORIGIN = (() => { try { return new URL(SUPABASE_URL).origin; } catch (e) { return ''; } })();
@@ -460,6 +461,23 @@ async function view(p, data, sess) {
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
   if (root === 'students' || root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
+  if (root === 'paddockClub') {
+    const out = Object.assign({}, data), poster = isObj(data.poster) ? data.poster : null;
+    if (poster && /^[0-9a-f]{32}$/.test(poster.id || '')) {
+      const meta = await readMeta(poster.id), bucket = bucketFor(meta), target = storeFor(bucket);
+      if (meta && bucket === UPLOAD_BUCKET && target && /^image\/(jpeg|png|webp)$/.test(meta.type || '')) {
+        let cached = publicPosterUrlCache.get(poster.id);
+        if (!cached || cached.expiresAt <= Date.now() + 60000) {
+          const signed = await target.createSignedUrl(poster.id, 3600);
+          cached = !signed.error && signed.data ? { url: signed.data.signedUrl, expiresAt: Date.now() + 3500000 } : null;
+          if (cached) publicPosterUrlCache.set(poster.id, cached);
+          else publicPosterUrlCache.delete(poster.id);
+        }
+        out.poster = cached ? Object.assign({}, poster, { url: cached.url }) : null;
+      } else out.poster = null;
+    } else out.poster = null;
+    return out;
+  }
   if (root === 'course_updates') {
     if (!sess) return null;
     if (admin) return data;
@@ -829,6 +847,18 @@ async function decide(method, p, body, sess, existing) {
     const photo = await getDoc('media/' + photoKey);
     if (!photo || typeof photo.data !== 'string' || !photo.data.startsWith('https://')) return ERR_BAD('Foto arsip belum tersedia.');
     return { data: { judul: judul, caption: caption, photoKey: photoKey, no: sess.no, at: Date.now() } };
+  }
+
+  if (root === 'paddockClub') {
+    if (parts.length !== 2) return ERR_FORBID;
+    if (method === 'DELETE') return admin ? { del: true } : ERR_FORBID;
+    if (method !== 'POST' || !admin) return ERR_FORBID;
+    if (!isObj(body) || !onlyKeys(body, ['title', 'registrationUrl', 'poster', 'createdAt'])) return ERR_BAD('Data seminar tidak valid.');
+    const title = String(body.title || '').trim(), registrationUrl = String(body.registrationUrl || '').trim();
+    if (!title || title.length > 160 || !/^https:\/\//i.test(registrationUrl) || !isHttpUrl(registrationUrl)) return ERR_BAD('Judul seminar atau tautan pendaftaran tidak valid.');
+    const poster = await cleanFile(body.poster, sess, UPLOAD_BUCKET);
+    if (!poster || !/^image\/(jpeg|png|webp)$/.test(poster.type || '')) return ERR_BAD('Poster seminar harus berupa gambar JPG, PNG, atau WebP yang sudah diunggah.');
+    return { data: { title: title, registrationUrl: registrationUrl, poster: poster, createdAt: Date.now() } };
   }
 
   if (root === 'berkas') {
