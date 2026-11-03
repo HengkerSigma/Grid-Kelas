@@ -14,7 +14,7 @@ const okDrive=u=>{try{const x=new URL(String(u||'').trim());return x.protocol===
 /* Mata kuliah bertipe platform: doc platform/<k> berisi link khusus tempat absen diisi (hanya terlihat setelah masuk). */
 const okHttps=u=>{try{return new URL(String(u||'').trim()).protocol==='https:';}catch(e){return false;}};
 const platConfigOf=k=>S.pl[k]||null;
-const platOf=(k,meeting)=>{const d=platConfigOf(k),n=Number(meeting||defaultPert(k));return d&&okHttps(d.url)&&Number(d.meeting_number||0)===n?String(d.url).trim():'';};
+const platOf=(k,meeting)=>{const d=platConfigOf(k),n=Number(meeting||defaultPert(k)),mapped=d&&d.links&&d.links[n],legacy=d&&Number(d.meeting_number||0)===n?d.url:'';const u=mapped||legacy;return u&&okHttps(u)?String(u).trim():'';};
 const isPlatformCourse=c=>!!(c&&c.k&&S.pl[c.k]);
 const okId=i=>/^[0-9a-f]{32}$/.test(i||'');
 const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';
@@ -1455,7 +1455,7 @@ function settingsHtml(c){
     '<div class="field"><label for="f-jam">Jam</label><input id="f-jam" type="text" maxlength="20" value="'+esc(c.jam)+'"></div>'+
     '<div class="field"><label for="f-tipe">Tipe ruang</label><select id="f-tipe"><option value="ruangan"'+(plat?'':' selected')+'>Ruangan</option><option value="platform"'+(plat?' selected':'')+'>Platform</option></select></div>'+
     '<div class="field"><label for="f-ruang" id="f-ruang-l">'+(plat?'Nama platform':'Nama ruangan')+'</label><input id="f-ruang" type="text" maxlength="20" value="'+esc(c.ruang)+'" placeholder="'+(plat?'Contoh: Zoom':'Contoh: R.301')+'"></div>'+
-    '<div class="field" id="f-link-w" style="grid-column:1/-1;'+(plat?'':'display:none')+'"><label for="f-link-meeting">Pertemuan ke- untuk link absensi</label><select id="f-link-meeting">'+Array.from({length:PERT},(_,i)=>i+1).map(n=>'<option value="'+n+'"'+(Number(S.pl[c.k]&&S.pl[c.k].meeting_number||defaultPert(c.k))===n?' selected':'')+'>Pertemuan '+n+'</option>').join('')+'</select><label for="f-link">Link absensi platform</label><input id="f-link" type="url" inputmode="url" maxlength="500" placeholder="https://…" value="'+esc(S.pl[c.k]&&S.pl[c.k].url||'')+'"><span class="s">Link ini hanya berlaku untuk pertemuan yang dipilih. Tombol absen Senin–Jumat baru aktif setelah link untuk pertemuan berjalan diperbarui.</span></div>'+
+    '<div class="field" id="f-link-w" style="grid-column:1/-1;'+(plat?'':'display:none')+'"><label for="f-link-meeting">Pertemuan ke- untuk link absensi</label><select id="f-link-meeting">'+Array.from({length:PERT},(_,i)=>i+1).map(n=>'<option value="'+n+'"'+(Number(S.pl[c.k]&&S.pl[c.k].meeting_number||defaultPert(c.k))===n?' selected':'')+'>Pertemuan '+n+'</option>').join('')+'</select><label for="f-link">Link absensi platform</label><input id="f-link" type="url" inputmode="url" maxlength="500" placeholder="https://…" value="'+esc(platOf(c.k,Number(S.pl[c.k]&&S.pl[c.k].meeting_number||defaultPert(c.k)))||'')+'"><span class="s">Setiap pertemuan menyimpan link masing-masing. Pilih pertemuan untuk melihat atau memperbarui linknya.</span></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="f-drive">Folder Google Drive mata kuliah</label><input id="f-drive" type="url" inputmode="url" maxlength="500" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(driveOf(c.k))+'"><span class="s">Hanya terlihat oleh yang sudah masuk. Atur akses folder agar mahasiswa bisa menambah file (Editor) atau melihat (Viewer).</span></div>'+
     '<div class="field"><label for="f-warna">Warna kartu</label><input id="f-warna" type="color" value="'+colr(c.warna)+'"></div></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="save-course">Simpan perubahan</button></div>'+
@@ -1959,10 +1959,11 @@ document.addEventListener('click',async e=>{
       const platform=$('f-tipe').value==='platform',lnk=$('f-link').value.trim();
       const platformMeeting=Math.max(1,Math.min(PERT,parseInt($('f-link-meeting').value,10)||defaultPert(c.k)));
        if(platform&&!okHttps(lnk)){toast('Isi link absen platform yang diawali https://');break;}
+      const platformLinks=Object.assign({},(S.pl[c.k]&&S.pl[c.k].links)||{});if(platform)platformLinks[platformMeeting]=lnk;
       await run(async()=>{
         await db.doc('courses/'+c.k).update({nama:$('f-nama').value.trim()||c.nama,sks:sks,hari:h1,hariSampai:(h2&&h2!==h1?h2:''),jam:$('f-jam').value.trim(),ruang:$('f-ruang').value.trim(),warna:$('f-warna').value,dosen:$('f-dosen').value.trim()});
         if(drv)await db.doc('drives/'+c.k).set({url:drv});else await db.doc('drives/'+c.k).delete();
-        if(platform)await db.doc('platform/'+c.k).set({url:lnk,meeting_number:platformMeeting});else if(S.pl[c.k])await db.doc('platform/'+c.k).delete();
+        if(platform)await db.doc('platform/'+c.k).set({links:platformLinks,meeting_number:platformMeeting,url:lnk});else if(S.pl[c.k])await db.doc('platform/'+c.k).delete();
       },'Perubahan disimpan');
       break;
     }
@@ -2146,6 +2147,10 @@ document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.d
 document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;
+  if(t.id==='f-link-meeting'){
+    const course=D&&D.key&&S.pl[D.key],n=Number(t.value),url=course&&course.links&&course.links[n]||(course&&Number(course.meeting_number)===n?course.url:'');
+    $('f-link').value=url||'';return;
+  }
   if(t.id==='f-tipe'){
     const p=t.value==='platform';
     $('f-link-w').style.display=p?'':'none';
