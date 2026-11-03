@@ -1920,7 +1920,9 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const msg=String($('wa-preview').value||'').trim();
       if(!msg){toast('Susun atau isi pesan terlebih dahulu.');break;}
-      const waTab=window.open('about:blank','_blank');
+      const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const waUrl=isMobile?'https://wa.me/':'https://web.whatsapp.com/';
+      const waTab=window.open(waUrl,'_blank');
       if(!waTab){toast('Izinkan pop-up browser untuk membuka WhatsApp.');break;}
       let copied=false;
       try{
@@ -1934,8 +1936,7 @@ document.addEventListener('click',async e=>{
         try{copied=document.execCommand('copy');}catch(__){copied=false;}
         temp.remove();
       }
-      if(!copied){waTab.close();toast('Pesan belum berhasil disalin. Salin isi pratinjau secara manual.');break;}
-      waTab.location.href='https://wa.me/';
+      if(!copied){toast('WhatsApp sudah dibuka, tetapi pesan belum berhasil disalin. Salin isi pratinjau secara manual.');break;}
       toast('Pesan disalin. Pilih grup WhatsApp, lalu tempel dengan Ctrl + V.');break;
     }
    case 'forum-options':{
