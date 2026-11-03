@@ -50,14 +50,14 @@ function inSession(c,now){
   const p=jakartaParts(now),t=Number(p.hour)*60+Number(p.minute);
   return t>=r.s&&t<r.e;
 }
-const VIEWS=['beranda','exhibition','mahasiswa','mata-kuliah','pengelola'];
+const VIEWS=['beranda','mahasiswa','mata-kuliah','pengelola'];
 
 let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='loading';
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,ANN_EDIT=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null,seminar:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{}};
-let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',defaultConstructorSeedPromise=null;
+let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null;
@@ -415,9 +415,18 @@ function renderHeader(){
   if(view==='pengelola'&&!adm())setView('beranda');
   document.querySelectorAll('.nl[data-view]').forEach(b=>{if(b.dataset.view===view)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current');});
 }
+function setOverviewSubtab(tab){
+  OVERVIEW_SUBTAB=tab==='exhibition'?'exhibition':'overview';
+  const overview=$('homePanel'),exhibition=$('exhibitionPanel');
+  if(overview)overview.hidden=OVERVIEW_SUBTAB!=='overview';
+  if(exhibition)exhibition.hidden=OVERVIEW_SUBTAB!=='exhibition';
+  const lede=$('homeLede');if(lede)lede.textContent=OVERVIEW_SUBTAB==='exhibition'?'Ruang sertifikat, dokumentasi kelas, dan agenda seminar akademik.':'Ringkasan tugas, absensi, dan pengumuman kelas.';
+  document.querySelectorAll('#overviewSubtabs [data-act="overview-subtab"]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===OVERVIEW_SUBTAB)));
+}
 function setView(v,scroll){
   if(VIEWS.indexOf(v)<0||(v==='pengelola'&&!adm()))v='beranda';
   view=v;
+  if(v==='beranda')setOverviewSubtab('overview');
   toggleMobileNav(false);
   VIEWS.forEach(x=>{$('v-'+x).hidden=x!==v;});
   document.querySelectorAll('.nl[data-view]').forEach(b=>{if(b.dataset.view===v)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current');});
@@ -753,11 +762,12 @@ async function launchGridClassTour(force){
       {element:'#dlg .sector-overview',popover:{title:'19 · ABSENCE SECTOR',description:'Di tampilan sektor, bandingkan posisi dan progres absensi setiap mahasiswa. Warna sektor membantu membaca peringkat kehadiran.',side:'top',align:'center'},
        onNextClick:()=>{if(dlg.open)dlg.close();setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
       {element:'#home .schedule-panel',popover:{title:'20 · SCHEDULE',description:'Jadwal hari ini menampilkan kelas dan jam perkuliahan. Gunakan tombol Isi Absen saat sesi dibuka, atau buka riwayat absensi untuk mengecek catatan sebelumnya.',side:'top',align:'center'}},
-      {element:'#home .team-radio',popover:{title:'21 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'},onNextClick:()=>{setView('exhibition',true);setTimeout(()=>d.moveNext(),140);}},
-      {element:'#v-exhibition #superLicensePanel',popover:{title:'22 · SUPER LICENSE',description:'Simpan sertifikat yang kamu miliki di sini. Kamu bisa mengunggah berkas ke Super License atau membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
-      {element:'#v-exhibition #classArchivePanel',popover:{title:'23 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika fitur unggah tersedia untuk akunmu.',side:'top',align:'center'}},
-      {element:'#v-exhibition #paddockClubPanel',popover:{title:'24 · PADDOCK CLUB',description:'Pusat informasi seminar untuk membantumu menemukan kegiatan yang menyediakan poin KAK. Buka poster dan gunakan tombol Daftar untuk menuju formulir pendaftaran.',side:'top',align:'center'}},
-      {element:'#gkTourHelp',popover:{title:'25 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Kalau suatu saat lupa letak fitur atau cara menggunakan Grid Kelas, tekan tombol ini untuk membuka tutorial lagi.',side:'top',align:'center'}}
+      {element:'#home .team-radio',popover:{title:'21 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'},onNextClick:()=>{setView('beranda',true);setTimeout(()=>d.moveNext(),140);}},
+      {element:'#overviewSubtabs [data-tab="exhibition"]',popover:{title:'22 · EXHIBITION',description:'Exhibition berada tepat di samping heading Overview. Buka tab ini untuk melihat sertifikat, dokumentasi kelas, dan agenda seminar akademik tanpa meninggalkan halaman Overview.',side:'bottom',align:'start'},onNextClick:()=>{setOverviewSubtab('exhibition');setTimeout(()=>d.moveNext(),140);}},
+      {element:'#exhibitionPanel #superLicensePanel',popover:{title:'23 · SUPER LICENSE',description:'Simpan sertifikat pentingmu di Super License. Kamu juga dapat membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
+      {element:'#exhibitionPanel #classArchivePanel',popover:{title:'24 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika akunmu memiliki izin.',side:'top',align:'center'}},
+      {element:'#exhibitionPanel #paddockClubPanel',popover:{title:'25 · PADDOCK CLUB',description:'Pusat daftar seminar untuk mencari kegiatan yang menyediakan poin KAK. Periksa poster dan tekan Daftar untuk membuka tautan pendaftaran seminar.',side:'top',align:'center'}},
+      {element:'#gkTourHelp',popover:{title:'26 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Tekan untuk membuka tutorial Grid Kelas kembali jika kamu membutuhkan panduan.',side:'top',align:'center'}}
     ],
 
     onDestroyed:()=>{try{localStorage.setItem(tourKey(),'done');}catch(e){}GRID_TOUR_STARTED=false;GRID_TOUR_HELP_VISIBLE=true;renderTourHelp();}
@@ -795,7 +805,7 @@ function pitDlg(){
       const done=mineTasks.filter(x=>x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at);
       const late=mineTasks.filter(x=>isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
       const renderGroup=(items,status)=>items.map(({t,g})=>{const sub=t.groupSubs&&t.groupSubs[g.id],principal=Number(g.principal)===Number(ME),compound=constructorCompound(t),itemClass=status==='active'?'tire-'+compound:status;const marker=status==='done'?'<span class="pck">&#10003;</span>':status==='dnf'?'<span class="dnfb">DNF</span>':tireSvg(compound);return '<li class="pit-it '+itemClass+'">'+marker+'<div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?dueText(t):'Tanpa tenggat')+' · '+esc(g.name||'Constructor')+'</span><span class="s">'+(status==='done'?'Dikumpulkan '+fmtTime(sub.at):status==='dnf'?'Tenggat lewat':principal?'Siap dikumpulkan oleh Team Principal':'Menunggu Team Principal')+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(t.k)+'" data-tab="tugas">'+(status==='done'?'Lihat':'Buka tugas')+'</button>'+(status==='done'?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Lihat hasil</button>':'')+'</span></li>';}).join('');
-      if(active.length||late.length)h+='<ul class="pleg tire-legend" aria-label="Legenda waktu tugas"><li title="Tenggat kurang dari 1 hari">'+tireSvg('soft')+'<span><b>SOFT</b><small>Kurang dari 1 hari</small></span></li><li title="Tenggat 1 sampai kurang dari 3 hari">'+tireSvg('medium')+'<span><b>MEDIUM</b><small>1–2 hari</small></span></li><li title="Tenggat 3 hari atau lebih">'+tireSvg('hard')+'<span><b>HARD</b><small>3 hari atau lebih</small></span></li><li title="Lewat tenggat, belum dikumpulkan"><span class="dnfb">DNF</span><span><b>DNF</b><small>Tenggat lewat</small></span></li></ul>';
+      if(active.length||late.length)h+='<ul class="pleg tire-legend" aria-label="Legenda waktu tugas"><li title="Kurang dari 1 hari">'+tireSvg('soft')+'<span>Kurang dari 1 hari</span></li><li title="1 sampai kurang dari 3 hari">'+tireSvg('medium')+'<span>1 sampai kurang dari 3 hari</span></li><li title="3 hari atau lebih">'+tireSvg('hard')+'<span>3 hari atau lebih</span></li></ul>';
       if(active.length)h+='<h3 class="ph3">Tugas aktif</h3><ul class="plist">'+renderGroup(active,'active')+'</ul>';
       if(done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+renderGroup(done,'done')+'</ul>';
       if(late.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+renderGroup(late,'dnf')+'</ul>';
@@ -962,6 +972,7 @@ function renderHome(force){
     h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+teamRadioPanel(anns);
   }
   $('home').innerHTML=h;
+  if(OVERVIEW_SUBTAB==='exhibition')$('homeLede').textContent='Ruang sertifikat, dokumentasi kelas, dan agenda seminar akademik.';
 }
 function superLicensePanel(){
   const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
@@ -1774,7 +1785,8 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,d=b.dataset;
   switch(a){
-    case 'forum-options':{
+    case 'overview-subtab':{setOverviewSubtab(d.tab);break;}
+   case 'forum-options':{
       if(!ME){toast('Masuk sebagai mahasiswa untuk membuka forum.');break;}
             if(!S.co[d.k]){toast('Data mata kuliah tidak ditemukan. Muat ulang halaman.');break;}
       openD('course',d.k,'absen');break;

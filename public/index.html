@@ -19,7 +19,6 @@
     </a>
     <nav class="nav" id="mainNav" aria-label="Navigasi utama">
       <button type="button" class="nl" data-view="beranda">Overview</button>
-      <button type="button" class="nl" data-view="exhibition">Exhibition</button>
       <button type="button" class="nl" data-view="mahasiswa">Mahasiswa</button>
       <button type="button" class="nl" data-view="mata-kuliah">Mata Kuliah</button>
       <button type="button" class="nl" data-view="pengelola" id="navAdmin" hidden>Pengelola</button>
@@ -44,17 +43,14 @@
 <main>
   <section class="view" id="v-beranda">
     <div class="inner gut">
-      <h1 class="title">Overview</h1>
+      <div class="student-subtabs overview-subtabs" id="overviewSubtabs" role="tablist" aria-label="Bagian Overview">
+          <button type="button" class="student-subtab" data-act="overview-subtab" data-tab="overview" role="tab" aria-selected="true">OVERVIEW</button>
+          <span class="course-subtab-sep" aria-hidden="true">-</span>
+          <button type="button" class="student-subtab" data-act="overview-subtab" data-tab="exhibition" role="tab" aria-selected="false">EXHIBITION</button>
+      </div>
       <p class="lede" id="homeLede">Ringkasan tugas, absensi, dan pengumuman kelas.</p>
-      <div id="home"></div>
-    </div>
-  </section>
-
-  <section class="view" id="v-exhibition" hidden>
-    <div class="inner gut">
-      <h1 class="title">Exhibition</h1>
-      <p class="lede">Ruang apresiasi, dokumentasi kelas, sertifikat, dan agenda seminar akademik.</p>
-      <div id="exhibition"></div>
+      <div id="homePanel"><div id="home"></div></div>
+      <div id="exhibitionPanel" hidden><div id="exhibition"></div></div>
     </div>
   </section>
 
@@ -107,5 +103,5 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="diagnostic.js"></script>
 <script src="db.js"></script>
-<script src="app.js?v=exhibition-paddock-club-v1"></script></body>
+<script src="app.js?v=overview-exhibition-subtabs-v2"></script></body>
 </html>
