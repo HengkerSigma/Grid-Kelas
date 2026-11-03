@@ -58,7 +58,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,ANN_EDIT=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null,seminar:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{}};
-let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
+let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null;
@@ -1062,26 +1062,26 @@ function buildWhatsAppTemplate(){
   const category=($('wa-category')||{}).value||'tasks',course=($('wa-course')||{}).value||'all';
   const meeting=Number(($('wa-meeting')||{}).value)||1,date=($('wa-date')||{}).value||today();
   const combine=!!(($('wa-combine')||{}).checked),selected=course==='all'?null:[course];
-  const lines=['*GRID-KELAS · TEAM RADIO*','*'+fmtDate(date)+'*',''];
+  const lines=['🏁 *GRID-KELAS · INFORMASI KELAS*','📅 '+fmtDate(date),''];
   const includeTasks=category==='tasks'||(combine&&category==='attendance');
   const includeAttendance=category==='attendance'||(combine&&category==='tasks');
   if(includeTasks){
     const rows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.task_title&&(!selected||selected.includes(x.course_code))).sort((a,b)=>String(a.deadline||'9999').localeCompare(String(b.deadline||'9999')));
-    lines.push('*PEMBARUAN TUGAS*');
-    if(rows.length)rows.forEach(x=>{lines.push('• '+cname(x.course_code)+' · Pertemuan '+x.meeting_number+': '+x.task_title);if(x.deadline)lines.push('  Tenggat: '+fmtDate(x.deadline));if(okHttps(x.task_url))lines.push('  Materi/soal: '+x.task_url);if(okHttps(x.submission_url))lines.push('  Pengumpulan: '+x.submission_url);});
+    lines.push('📚 *PEMBARUAN TUGAS & MATERI*');
+    if(rows.length)rows.forEach(x=>{lines.push('• *'+cname(x.course_code)+' · Pertemuan '+x.meeting_number+'*','  '+x.task_title);if(x.deadline)lines.push('  Tenggat: '+fmtDate(x.deadline));if(okHttps(x.task_url))lines.push('  📎 Buka materi/soal: '+x.task_url);if(okHttps(x.submission_url))lines.push('  📤 Buka pengumpulan: '+x.submission_url);});
     else lines.push('Belum ada tugas untuk pilihan ini.');lines.push('');
   }
   if(includeAttendance){
     const rows=[];(selected||Object.keys(S.pl)).forEach(k=>{const d=S.pl[k]||{};if(d.enabled===false)return;const url=(d.links||{})[meeting]||((Number(d.meeting_number)===meeting)?d.url:'');if(okHttps(url))rows.push({course:k,url:url});});
-    lines.push('*PEMBARUAN ABSENSI · PERTEMUAN '+meeting+'*');
-    if(rows.length)rows.forEach(x=>lines.push('• '+cname(x.course)+': '+x.url));else lines.push('Belum ada tautan absensi untuk pilihan ini.');lines.push('');
+    lines.push('🗓️ *PEMBARUAN ABSENSI · PERTEMUAN '+meeting+'*');
+    if(rows.length)rows.forEach(x=>lines.push('• *'+cname(x.course)+'*','  👉 Buka forum absensi: '+x.url));else lines.push('Belum ada tautan absensi untuk pilihan ini.');lines.push('');
   }
   if(category==='seminar'){
     const rows=Object.keys(S.pc).map(id=>S.pc[id]).filter(x=>!x.createdAt||new Date(x.createdAt).toISOString().slice(0,10)===date).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    lines.push('*PEMBARUAN SEMINAR*');
-    if(rows.length)rows.forEach(x=>{lines.push('• '+(x.title||'Seminar'));if(okHttps(x.registrationUrl))lines.push('  Pendaftaran: '+x.registrationUrl);});else lines.push('Belum ada seminar pada tanggal yang dipilih.');lines.push('');
+    lines.push('🎓 *PEMBARUAN SEMINAR*');
+    if(rows.length)rows.forEach(x=>{lines.push('• '+(x.title||'Seminar'));if(okHttps(x.registrationUrl))lines.push('  🎟️ Daftar seminar: '+x.registrationUrl);});else lines.push('Belum ada seminar pada tanggal yang dipilih.');lines.push('');
   }
-  lines.push('Buka Grid-Kelas: '+location.origin);return lines.join('\n').trim();
+  lines.push('Silakan buka tautan yang diperlukan dan perhatikan tenggat atau jadwalnya.','', '🌐 Grid-Kelas: '+location.origin);return lines.join('\n').trim();
 }
 
 function renderAdmin(){
@@ -1106,7 +1106,10 @@ function renderAdmin(){
     '<div class="tile'+(nReq?' warn':'')+'"><div class="v">'+nReq+'</div><div class="l">Minta reset password</div></div>'+
     '<div class="tile"><div class="v">'+(pct(totH,totT)==null?'—':pct(totH,totT)+'%')+'</div><div class="l">Kehadiran kelas</div></div></div>';
   if(!PLATFORM_FORM_COURSE&&cl.length)PLATFORM_FORM_COURSE=cl[0].k;
-  h+='<section class="panel notification-center" id="notification-update-center"><div class="notification-center-head"><div><span class="constructor-kicker">TEAM RADIO · ADMIN CONTROL</span><h3 class="ph3">Notification Update Center</h3><p class="s">Pusat pengelolaan pembaruan tugas, tautan absensi, dan seminar. Pengiriman WhatsApp dilakukan manual oleh pengelola.</p></div></div>'+
+  h+='<div class="student-subtabs admin-main-tabs" role="tablist" aria-label="Bagian pengelola">'+
+    '<button type="button" class="student-subtab" data-act="admin-main-tab" data-tab="academic" role="tab" aria-selected="'+(ADMIN_MAIN_TAB==='academic')+'">AKADEMIK</button>'+
+    '<span class="course-subtab-sep" aria-hidden="true">-</span>'+
+    '<button type="button" class="student-subtab" data-act="admin-main-tab" data-tab="students" role="tab" aria-selected="'+(ADMIN_MAIN_TAB==='students')+'">MAHASISWA</button></div><div id="admin-academic"'+(ADMIN_MAIN_TAB==='academic'?'':' hidden')+'><section class="panel notification-center" id="notification-update-center"><div class="notification-center-head"><div><span class="constructor-kicker">TEAM RADIO · ADMIN CONTROL</span><h3 class="ph3">Notification Update Center</h3><p class="s">Pusat pengelolaan pembaruan tugas, tautan absensi, dan seminar. Pengiriman WhatsApp dilakukan manual oleh pengelola.</p></div></div>'+
     '<div class="notification-tabs" role="tablist" aria-label="Jenis pembaruan">'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="tasks" aria-selected="'+(ADMIN_NOTIFY_TAB==='tasks')+'">Tugas &amp; Mata Kuliah</button>'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="attendance" aria-selected="'+(ADMIN_NOTIFY_TAB==='attendance')+'">Absensi</button>'+
@@ -1178,6 +1181,7 @@ function renderAdmin(){
     '<div class="field"><label for="an-k">Perihal</label><select id="an-k" data-dr="an-k"><option value="general"'+((annEdit?annEdit.k:dv('an-k','general'))==='general'?' selected':'')+'>General</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((annEdit?annEdit.k:dv('an-k','general'))===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">'+(annEdit?'Simpan perubahan':'Kirim pengumuman')+'</button>'+(annEdit?'<button type="button" class="btn" data-act="ann-edit-cancel">Batal edit</button>':'')+'</div></div>'+
     (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
+  h+='</div><div id="admin-students"'+(ADMIN_MAIN_TAB==='students'?'':' hidden')+'>';
   // akun
   let ar='';
   for(let n=1;n<=N;n++){
@@ -1189,8 +1193,9 @@ function renderAdmin(){
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
   h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Atur NIM, akses admin, izin Class Archive, dan reset password langsung dari daftar ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
-  h+='<div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><p class="s">Lihat ringkasan absensi dan tugas dari tiap mata kuliah.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
+  h+='</div><div id="admin-academic-recap"'+(ADMIN_MAIN_TAB==='academic'?'':' hidden')+'><div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><p class="s">Lihat ringkasan absensi dan tugas dari tiap mata kuliah.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
+  h+='</div><div id="admin-student-recap"'+(ADMIN_MAIN_TAB==='students'?'':' hidden')+'>';
   const cs={},cd={};Object.values(S.be).forEach(x=>{if(x.jenis==='ser')cs[x.no]=(cs[x.no]||0)+1;else if(x.jenis==='dok')cd[x.no]=(cd[x.no]||0)+1;});
   let rows='';
   for(let n=1;n<=N;n++){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);rows+='<tr><td class="num">'+n+'</td><td><button type="button" class="lnk" data-act="open-student" data-no="'+n+'">'+esc(nameOf(n))+'</button></td><td class="num">'+(p==null?'—':p+'%')+'</td><td class="num">'+t.a+'/'+t.b+'</td><td class="num">'+(t.b-t.a)+'</td><td class="num">'+(cs[n]||0)+'</td><td class="num">'+(cd[n]||0)+'</td></tr>';}
@@ -1827,6 +1832,10 @@ document.addEventListener('click',async e=>{
   const a=b.dataset.act,d=b.dataset;
   switch(a){
     case 'overview-subtab':{setOverviewSubtab(d.tab);break;}
+    case 'admin-main-tab':{
+      if(!adm()||!['academic','students'].includes(d.tab))break;
+      ADMIN_MAIN_TAB=d.tab;renderAdmin();break;
+    }
     case 'notify-tab':{
       if(!adm()||!['tasks','attendance','seminar'].includes(d.tab))break;
       ADMIN_NOTIFY_TAB=d.tab;renderAdmin();break;
