@@ -1213,7 +1213,7 @@ function renderAdmin(force=false){
     '<div class="field"><label for="an-k">Perihal</label><select id="an-k" data-dr="an-k"><option value="general"'+((annEdit?annEdit.k:dv('an-k','general'))==='general'?' selected':'')+'>General</option>'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((annEdit?annEdit.k:dv('an-k','general'))===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="ann-save">'+(annEdit?'Simpan perubahan':'Kirim pengumuman')+'</button>'+(annEdit?'<button type="button" class="btn" data-act="ann-edit-cancel">Batal edit</button>':'')+'</div></div>'+
     (al?'<div style="margin-top:18px">'+al+'</div>':'')+'</div></div>';
-  h+='</div><div id="admin-students"'+(ADMIN_MAIN_TAB==='students'?'':' hidden')+'>';
+  h+='</div></div><div id="admin-students"'+(ADMIN_MAIN_TAB==='students'?'':' hidden')+'>';
   // akun
   let ar='';
   for(let n=1;n<=N;n++){
