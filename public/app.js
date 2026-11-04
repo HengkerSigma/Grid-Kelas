@@ -76,8 +76,12 @@ function formatDateTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone
 function fmtDate(s){if(!s)return '';const p=String(s).split('-');if(p.length!==3)return esc(s);try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric'}).format(new Date(Date.UTC(+p[0],+p[1]-1,+p[2],12)));}catch(e){return esc(s);}}
 function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms));}catch(e){return '';}}
 function meetingDate(n){const p=SEMESTER_ANCHOR_DATE.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]-(SEMESTER_ANCHOR_MEETING-Number(n))*7));return d.toISOString().slice(0,10);}
-function attendanceIsPast(meeting,se){const date=se&&se.tanggal?se.tanggal:meetingDate(meeting);return !!date&&date<today();}
-function attendanceMissingStatus(meeting,se,student){if(se&&se.closed)return 'Absensi ditutup pengelola';if(attendanceIsPast(meeting,se))return 'Absensi sudah terlewat';if(!se||!Object.keys(se).length)return 'Absensi belum dibuka';return student?'Belum mengisi':'Belum diisi';}
+function attendanceIsPast(meeting,se,courseCode){
+ const k=courseCode||(se&&se.k);
+ // Link pertemuan aktif platform mengalahkan tanggal kalender fallback; tanggal aktual pengelola tetap dihormati.
+ if(!(se&&se.tanggal)&&k&&platConfigOf(k)&&Number(meeting)===defaultPert(k)&&platOf(k,meeting))return false;
+ const date=se&&se.tanggal?se.tanggal:meetingDate(meeting);return !!date&&date<today();}
+function attendanceMissingStatus(meeting,se,student,courseCode){if(se&&se.closed)return 'Absensi ditutup pengelola';if(attendanceIsPast(meeting,se,courseCode))return 'Absensi sudah terlewat';if(!se||!Object.keys(se).length)return 'Absensi belum dibuka';return student?'Belum mengisi':'Belum diisi';}
 function greetingText(name){const p=jakartaParts(),minutes=Number(p.hour)*60+Number(p.minute),n=esc(name||'Mahasiswa');if(minutes>=240&&minutes<=600)return{title:'Selamat Pagi, '+n,subtitle:'Semangat menjalani hari!'};if(minutes>=601&&minutes<=899)return{title:'Selamat Siang, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=900&&minutes<=1079)return{title:'Selamat Sore, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=1080&&minutes<=1319)return{title:'Selamat Malam, '+n,subtitle:'Kerja bagus hari ini, jangan lupa istirahat, ya!'};return{title:n,subtitle:'Ini waktunya tidur!'};}
 function semesterMeetingNow(){const p=today().split('-').map(Number),a=SEMESTER_ANCHOR_DATE.split('-').map(Number),weeks=Math.floor((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(a[0],a[1]-1,a[2]))/604800000);return Math.max(1,Math.min(PERT,SEMESTER_ANCHOR_MEETING+weeks));}
 function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'';}
@@ -1423,7 +1427,7 @@ function buildCourseRecap(segment,format){
       const se=S.se[c.k+'_'+PAD(meeting)]||{},present=se.present||{},proof=se.bukti||{};
       studentNos.forEach(no=>{
         const status=present[no]||'',file=proof[no]||{};
-        rows.push([c.nama,'Pertemuan '+meeting,se.tanggal||meetingDate(meeting),no,nameOf(no),status?(LBL[status]||status):attendanceMissingStatus(meeting,se,false),file.name||(file.id?'Bukti terlampir':'—')]);
+        rows.push([c.nama,'Pertemuan '+meeting,se.tanggal||meetingDate(meeting),no,nameOf(no),status?(LBL[status]||status):attendanceMissingStatus(meeting,se,false,c.k),file.name||(file.id?'Bukti terlampir':'—')]);
       });
     });
   }else{
@@ -1584,9 +1588,9 @@ function pertPicker(c,mode){
 function absenStudent(c,scheduleMode){
   const n=D.pert,se=S.se[c.k+'_'+PAD(n)]||{},p=se.present||{},mine=ME?(p[ME]||''):'';
   let h=scheduleMode?'':pertPicker(c,'mhs');
-  if(se.tanggal||se.topik||attendanceIsPast(n,se))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se.tanggal||meetingDate(n))+(se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
+  if(se.tanggal||se.topik||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se.tanggal||meetingDate(n))+(se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
-  const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):attendanceMissingStatus(n,se,true);
+  const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):attendanceMissingStatus(n,se,true,c.k);
   h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+(bk&&bk.id?'<div><b class="s">Bukti absensi</b>'+fileHtml(bk)+'</div>':'<span class="s">Tidak ada bukti yang dilampirkan pada pertemuan ini.</span>')+'</div>';
   const a=stats(ME).by[c.k]||{h:0,t:0};
   h+='<p class="sum"><span>Hadir '+a.h+' dari '+a.t+' pertemuan terisi</span></p>';
@@ -1599,12 +1603,12 @@ function absenAdmin(c){
   const rec=cnt.H+cnt.I+cnt.S+cnt.A+cnt.K;
   let h=pertPicker(c,'adm');
    h+='<div class="row2 manager-task-actions"><span class="s">'+(se&&se.closed?'Absensi ditutup pengelola':'Absensi terbuka')+'</span><button type="button" class="btn sm" data-act="attendance-close-toggle" data-k="'+esc(c.k)+'" data-n="'+n+'" data-closed="'+(se&&se.closed?'true':'false')+'">'+(se&&se.closed?'Buka kembali absensi':'Tutup Absensi')+'</button></div>';
-  if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
-  if(!se)h+='<p class="empty"><b>'+(attendanceIsPast(n,se)?'Absensi sudah terlewat.':'Absensi belum dibuka.')+'</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
+  if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
+  if(!se)h+='<p class="empty"><b>'+(attendanceIsPast(n,se,c.k)?'Absensi sudah terlewat.':'Absensi belum dibuka.')+'</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
-    const status=p[i]?(LBL[p[i]]||p[i]):attendanceMissingStatus(n,se,false);
+    const status=p[i]?(LBL[p[i]]||p[i]):attendanceMissingStatus(n,se,false,c.k);
     h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span></li>';
   }
   return h+'</ol>';
