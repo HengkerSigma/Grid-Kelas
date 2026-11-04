@@ -94,6 +94,7 @@ const cname=k=>S.co[k]?S.co[k].nama:k;
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},4200);}
 const ERRMAP={unauthenticated:'Sesi berakhir. Silakan masuk lagi.',too_large:'Berkas terlalu besar. Maksimal 20 MB.',unsupported_type:'Format belum didukung. Kirim foto (JPG, PNG, WebP) atau PDF.',quota_or_state:'Penyimpanan berkas penuh. Hubungi pengelola.',rate_limited:'Terlalu sering. Coba lagi sebentar lagi.',not_granted:'Akun ini belum boleh mengunggah berkas.',invalid_argument:'Perubahan ditolak server. Periksa izin akun atau format data yang dikirim.'};
 let pendingRuns=0,busyButtons=[];
+let TOUR_DEMO_ACTIVE=false,TOUR_DEMO_SNAPSHOT=null;
 function loadingLabel(msg){
   const s=String(msg||'').toLowerCase();
   if(s.includes('constructor'))return s.includes('dibuat')?'Sedang membuat Constructor…':'Sedang memperbarui anggota Constructor…';
@@ -127,6 +128,7 @@ function hideLoading(){
   if(typeof dlg!=='undefined'&&dlg)dlg.inert=false;
 }
 async function run(fn,okMsg){
+  if(TOUR_DEMO_ACTIVE){toast('Mode tutorial: perubahan data dinonaktifkan.');return false;}
   pendingRuns++;
   if(pendingRuns===1){
     busyButtons=Array.from(document.querySelectorAll('button[data-act]')).map(b=>({el:b,disabled:b.disabled}));
@@ -162,7 +164,7 @@ function stats(no){
   });
   return{by:by,tot:tot};
 }
-function tugasStat(no){let a=0,b=0;taskList().forEach(t=>{b++;if(t.subs&&t.subs[no])a++;});return{a:a,b:b};}
+function tugasStat(no){let a=0,b=0;(TOUR_DEMO_ACTIVE?Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])):taskList()).forEach(t=>{b++;if(t.subs&&t.subs[no])a++;});return{a:a,b:b};}
 const pct=(h,t)=>t?Math.round(h/t*100):null;
 function fileHtml(f,sm){
   if(!f||!okId(f.id))return '';
@@ -308,6 +310,7 @@ function groupTowerHtml(r){
   return h+'</tbody></table></div>';
 }
 async function ensureDefaultConstructors(){
+ if(TOUR_DEMO_ACTIVE)return;
  if(!adm()||!db||!loaded.co||!loaded.cs||defaultConstructorSeedPromise)return;
  defaultConstructorSeedPromise=(async()=>{
   for(const c of courseList()){
@@ -454,7 +457,7 @@ function missingOf(no){
  * tanpa server, dihitung dari data yang terlihat. */
 let SK=null,skTimer=null;
 function loadSektor(){
-  if(!ME||!AUTH||!AUTH.sektor)return;
+  if(TOUR_DEMO_ACTIVE||!ME||!AUTH||!AUTH.sektor)return;
   clearTimeout(skTimer);
   skTimer=setTimeout(async()=>{try{SK=await AUTH.sektor();refreshAll();}catch(e){/* tetap pakai data lokal */}},400);
 }
@@ -519,6 +522,71 @@ function homeTiles(no){
 }
 
 /* ---------- Grid Class Rookie Lap · tutorial pengguna ---------- */
+/* ---------- data simulasi khusus tutorial (tidak pernah ditulis ke database) ---------- */
+function tourDateOffset(days){
+  const p=jakartaParts(),d=new Date(Date.UTC(+p.year,+p.month-1,+p.day-days,12));
+  return d.toISOString().slice(0,10);
+}
+function beginTourDemo(){
+  if(TOUR_DEMO_ACTIVE)return;
+  const course=courseList()[0];
+  if(!course)return;
+  const me=Number(ME)||1,others=Array.from({length:N},(_,i)=>i+1).filter(n=>n!==me);
+  const first=others[0]||((me%N)+1),second=others[1]||((me+1)%N+1),third=others[2]||((me+2)%N+1);
+  const now=Date.now(),earlyAt=now-7200000,challengerAt=now-3600000;
+  const groups=[
+    {id:'TOUR_TEAM_1',courseCode:course.k,name:'Apex Racing',members:[me,first],principal:me,createdAt:now},
+    {id:'TOUR_TEAM_2',courseCode:course.k,name:'Velocity GP',members:[second,third],principal:second,createdAt:now},
+    {id:'TOUR_TEAM_3',courseCode:course.k,name:'Quantum Motorsport',members:[...others.slice(3,5)],principal:others[3]||third,createdAt:now}
+  ];
+  const taskDate=tourDateOffset(2);
+  const tasks={
+    TOUR_EARLY_BIRD:{k:course.k,judul:'Tugas Percontohan · Early Bird',tenggat:taskDate,deskripsi:'Data simulasi tutorial untuk memperlihatkan posisi P1.',link:'',mode:'individual',subs:{[me]:{at:earlyAt},[first]:{at:earlyAt+90000},[second]:{at:earlyAt+180000}},groupSubs:{},dibuat:now-86400000},
+    TOUR_CHALLENGER:{k:course.k,judul:'Tugas Percontohan · Challenger',tenggat:taskDate,deskripsi:'Data simulasi tutorial untuk memperlihatkan posisi P2.',link:'',mode:'individual',subs:{[first]:{at:challengerAt-60000},[me]:{at:challengerAt}},groupSubs:{},dibuat:now-86400000},
+    TOUR_DNF:{k:course.k,judul:'Tugas Percontohan · DNF',tenggat:taskDate,deskripsi:'Tugas contoh yang tidak dikumpulkan oleh mahasiswa ini.',link:'',mode:'individual',subs:{[first]:{at:now-1800000},[second]:{at:now-900000}},groupSubs:{},dibuat:now-86400000},
+    TOUR_GROUP:{k:course.k,judul:'Tugas Constructor Percontohan',tenggat:taskDate,deskripsi:'Data simulasi Time Tower Constructor.',link:'',mode:'group',subs:{},groupSubs:{TOUR_TEAM_2:{at:now-2400000}},dibuat:now-86400000}
+  };
+  const present1={},present2={};
+  present1[me]='H';present2[me]='H';
+  others.slice(0,4).forEach((n,i)=>{present1[n]=i<2?'H':'A';present2[n]=i===0?'H':'A';});
+  const sessions={
+    [course.k+'_08']:{k:course.k,n:8,tanggal:tourDateOffset(14),topik:'Pertemuan percontohan 8',rec:true,present:present1,bukti:{}},
+    [course.k+'_09']:{k:course.k,n:9,tanggal:tourDateOffset(7),topik:'Pertemuan percontohan 9',rec:true,present:present2,bukti:{}}
+  };
+  const h={};h[me]=2;others.forEach((n,i)=>{h[n]=i===0?2:i<4?1:0;});
+  TOUR_DEMO_SNAPSHOT={
+    tu:S.tu,se:S.se,cs:S.cs,hs:HS,hsGroup:HS_GROUP,sk:SK,
+    live:{}
+  };
+  TOUR_DEMO_ACTIVE=true;
+  S.tu=tasks;
+  S.se=sessions;
+  const kept={};Object.keys(S.cs).forEach(id=>{if(S.cs[id].courseCode!==course.k)kept[id]=S.cs[id];});
+  groups.forEach(g=>{kept[g.id]=g;});
+  S.cs=kept;
+  HS={
+    TOUR_EARLY_BIRD:{[me]:earlyAt,[first]:earlyAt+90000,[second]:earlyAt+180000},
+    TOUR_CHALLENGER:{[first]:challengerAt-60000,[me]:challengerAt},
+    TOUR_DNF:{[first]:now-1800000,[second]:now-900000},
+    TOUR_GROUP:{}
+  };
+  HS_GROUP={TOUR_GROUP:{TOUR_TEAM_2:now-2400000}};
+  SK={courses:{}};SK.courses[course.k]={t:2,h:h};
+  refreshAll();
+}
+function endTourDemo(){
+  if(!TOUR_DEMO_ACTIVE||!TOUR_DEMO_SNAPSHOT)return;
+  const snap=TOUR_DEMO_SNAPSHOT;
+  S.tu=snap.live.tu||snap.tu;
+  S.se=snap.live.se||snap.se;
+  S.cs=snap.live.cs||snap.cs;
+  HS=snap.hs;HS_GROUP=snap.hsGroup;SK=snap.sk;
+  TOUR_DEMO_ACTIVE=false;TOUR_DEMO_SNAPSHOT=null;
+  refreshAll();
+  loadSektor();loadHasil(true);
+}
+const TOUR_SAFE_ACTIONS=new Set(['overview-subtab','student-subtab','constructor-subtab','constructor-course-toggle','course-subtab','open-student','open-hasil','open-group-hasil','open-pit','hub-task-tab','pit-history-toggle','open-sektor','tab','close']);
+
 var GRID_TOUR_STARTED=false;
 var GRID_TOUR_HELP_VISIBLE=true;
 var GRID_DRIVER_PROMISE=null;
@@ -706,6 +774,7 @@ async function launchGridClassTour(force){
   if(!force&&tourDone()){renderTourHelp();return false;}
   await loadGridDriver();
   if(GRID_TOUR_STARTED)return false;
+  beginTourDemo();
   const d=window.driver.js.driver({
     animate:true,showProgress:true,showButtons:['previous','next','close'],
     nextBtnText:'Lanjutkan',prevBtnText:'Kembali',doneBtnText:'Mulai balapan',
@@ -760,7 +829,7 @@ async function launchGridClassTour(force){
       {element:'#gkTourHelp',popover:{title:'26 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Tekan untuk membuka tutorial Grid Kelas kembali jika kamu membutuhkan panduan.',side:'top',align:'center'}}
     ],
 
-    onDestroyed:()=>{try{localStorage.setItem(tourKey(),'done');}catch(e){}GRID_TOUR_STARTED=false;GRID_TOUR_HELP_VISIBLE=true;renderTourHelp();}
+    onDestroyed:()=>{try{localStorage.setItem(tourKey(),'done');}catch(e){}GRID_TOUR_STARTED=false;GRID_TOUR_HELP_VISIBLE=true;endTourDemo();renderTourHelp();}
   });
   GRID_TOUR_STARTED=true;
   GRID_TOUR_HELP_VISIBLE=false;
@@ -808,7 +877,7 @@ function pitDlg(){
 /* Waktu kumpul semua mahasiswa dari server (/api/hasil: hanya waktu, tanpa tautan/berkas). Tanpa server, dari data yang terlihat. */
 let HS=null,HS_GROUP=null,hsTimer=null;
 function loadHasil(now){
-  if(!(ME||adm())||!AUTH||!AUTH.hasil)return;
+  if(TOUR_DEMO_ACTIVE||!(ME||adm())||!AUTH||!AUTH.hasil)return;
   clearTimeout(hsTimer);
   hsTimer=setTimeout(async()=>{try{const r=await AUTH.hasil();HS=r&&r.tugas||null;HS_GROUP=r&&r.groupTugas||null;if(D&&(D.kind==='hasil'||D.kind==='group-hasil'||D.kind==='student'||D.kind==='pit'))renderDialog(true);if(STUDENT_SUBTAB==='constructor'&&CONSTRUCTOR_SUBTAB==='standings')renderConstructor();}catch(e){/* tetap pakai data lokal */}},now?0:400);
 }
@@ -1945,6 +2014,7 @@ document.addEventListener('click',async e=>{
   }
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,d=b.dataset;
+  if(TOUR_DEMO_ACTIVE&&!TOUR_SAFE_ACTIONS.has(a)){e.preventDefault();e.stopPropagation();toast('Mode tutorial: aksi perubahan data dinonaktifkan.');return;}
   switch(a){
     case 'overview-subtab':{setOverviewSubtab(d.tab);break;}
     case 'admin-main-tab':{
@@ -2553,6 +2623,7 @@ setInterval(()=>{const s=today()+'|'+courseList().filter(c=>inSession(c)).map(c=
   const onErr=err=>{console.error(err);dbState='err';refreshAll();};
   const sub=(path,key)=>db.collection(path).onSnapshot(snap=>{
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
+    if(TOUR_DEMO_ACTIVE&&TOUR_DEMO_SNAPSHOT&&['tu','se','cs'].includes(key)){TOUR_DEMO_SNAPSHOT.live[key]=o;return;}
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();if(key==='tu'&&D&&D.kind==='hasil')loadHasil();refreshAll();
   },onErr);
   sub('students','st');sub('courses','co');sub('constructors','cs');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('paddockClub','pc');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
