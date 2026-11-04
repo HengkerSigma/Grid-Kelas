@@ -774,6 +774,7 @@ async function launchGridClassTour(force){
   if(!force&&tourDone()){renderTourHelp();return false;}
   await loadGridDriver();
   if(GRID_TOUR_STARTED)return false;
+  if(!loaded.co||!courseList().length){toast('Data mata kuliah masih dimuat. Coba buka tutorial beberapa saat lagi.');return false;}
   beginTourDemo();
   const d=window.driver.js.driver({
     animate:true,showProgress:true,showButtons:['previous','next','close'],
