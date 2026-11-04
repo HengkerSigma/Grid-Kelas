@@ -1329,9 +1329,27 @@ function tabsHtml(list){
   return '<div class="tabs" role="tablist">'+list.map(t=>'<button type="button" role="tab" class="tab" data-course-tab="'+t[0]+'" aria-selected="'+(D.tab===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
 }
 function defaultPert(k){
+  // Nomor pertemuan ditentukan per mata kuliah, bukan dipaksa mengikuti kalender semester.
   let m=0;
-  Object.values(S.se).forEach(se=>{if(se.k===k&&(se.tanggal||se.topik||se.rec===true||Object.values(se.present||{}).some(Boolean))&&se.n>m)m=se.n;});
-  return Math.max(m,semesterMeetingNow());
+  Object.values(S.se||{}).forEach(se=>{
+    const n=Number(se&&se.n);
+    if(se&&se.k===k&&Number.isInteger(n)&&n>=1&&n<=PERT&&
+      (se.tanggal||se.topik||se.rec===true||Object.values(se.present||{}).some(Boolean)))m=Math.max(m,n);
+  });
+  // Pembaruan mata kuliah (termasuk tugas) menjadi petunjuk pertemuan terbaru mata kuliah tersebut.
+  Object.values(S.cu||{}).forEach(update=>{
+    const n=Number(update&&update.meeting_number);
+    if(update&&update.course_code===k&&Number.isInteger(n)&&n>=1&&n<=PERT)m=Math.max(m,n);
+  });
+  // Untuk mata kuliah platform, tautan pertemuan yang tersimpan juga menentukan pertemuan aktif.
+  const platform=S.pl&&S.pl[k];
+  if(platform&&platform.links&&typeof platform.links==='object'){
+    Object.keys(platform.links).forEach(key=>{
+      const n=Number(key);
+      if(Number.isInteger(n)&&n>=1&&n<=PERT&&platform.links[key])m=Math.max(m,n);
+    });
+  }
+  return m||1;
 }
 function openD(kind,key,tab,pert){
   D={kind:kind,key:key,tab:tab||(kind==='course'||kind==='attendance'?'absen':kind==='student'?'kehadiran':'main'),pert:(kind==='course'||kind==='attendance')?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
