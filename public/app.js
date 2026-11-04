@@ -225,8 +225,8 @@ function renderCourses(){
     if(!history.length){host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat. Nikmati dulu track yang masih berjalan!</li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
     const byCourse=new Map();history.forEach(t=>{if(!byCourse.has(t.k))byCourse.set(t.k,[]);byCourse.get(t.k).push(t);});
     host.innerHTML=Array.from(byCourse.entries()).map(([k,tasks])=>'<li class="history-course-group"><section class="panel"><div class="history-course-heading"><span class="constructor-kicker">MATA KULIAH</span><h3 class="ph3">'+esc(cname(k))+'</h3><span class="chip">'+tasks.length+' tugas</span></div><div class="history-course-list">'+tasks.map(t=>{
-      if(t.mode==='group'){const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,ids=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(id=>ids.includes(id)).length,total=ids.length,status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';return '<article class="tcard history-item"><div class="history-top"><div><span class="history-course">KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">'+(t.closed?'Ditutup pengelola':'Lewat · '+fmtDate(t.tenggat))+'+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';}
-      const mine=ME&&t.subs?t.subs[ME]:null,count=Object.keys(t.subs||{}).length,status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
+      if(t.mode==='group'){const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,ids=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(id=>ids.includes(id)).length,total=ids.length,status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';return '<article class="tcard history-item"><div class="history-top"><div><span class="history-course">KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">'+(t.closed?'Ditutup pengelola':'Lewat · '+fmtDate(t.tenggat))+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';}
+      const mine=ME&&t.subs?t.subs[ME]:null,count=Object.keys(t.subs||{}).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).length,status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
       return '<article class="tcard history-item"><div class="history-top"><h3>'+esc(t.judul)+'</h3><span class="chip late">'+(t.closed?'Ditutup pengelola':'Lewat · '+fmtDate(t.tenggat))+'+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';
     }).join('')+'</div></section></li>').join('');
     host.setAttribute('aria-busy',String(!loaded.co));return;
@@ -1509,7 +1509,7 @@ function absenAdmin(c){
 
 /* Tombol absensi pada jadwal menjadi satu-satunya pintu pengisian absensi. */
 function scheduleAttendanceState(c,now){
-  const currentSession=S.se[c.k+'_'+PAD(defaultPert(c.k))];if(currentSession&&currentSession.closed)return 'passed';
+  const currentSession=S.se[c.k+'_'+PAD(defaultPert(c.k))];if(currentSession&&currentSession.closed)return 'closed';
   now=now||new Date();
   if(!onDay(c,jakartaWeekday(now)))return 'future';
   const r=jamRange(c);if(!r)return 'open';
@@ -1520,7 +1520,7 @@ function absenBtn(c){
   if(!ME)return '';
   const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
    const range=hariRange(c),weekdayPlatform=!!platConfigOf(c.k)&&range.a==='Senin'&&range.b==='Jumat';
-   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
+   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='closed')return '<button type="button" class="btn sm" disabled>Absensi ditutup pengelola</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
   if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   if(!session)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
   if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
@@ -1596,7 +1596,7 @@ function tugasAdmin(c){
   let h='';
   if(!list.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   const renderTask=t=>{
-    const subs=t.subs||{},cnt=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\\d|3[0-2])$/.test(no)).length,late=isLocked(t),closeControl=(!late||t.closed)?'<button type="button" class="btn sm" data-act="task-close-toggle" data-id="'+esc(t.id)+'" data-closed="'+(t.closed?'true':'false')+'">'+(t.closed?'Buka kembali':'Tutup Tugas')+'</button>':'';
+    const subs=t.subs||{},cnt=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).length,late=isLocked(t),closeControl=(!late||t.closed)?'<button type="button" class="btn sm" data-act="task-close-toggle" data-id="'+esc(t.id)+'" data-closed="'+(t.closed?'true':'false')+'">'+(t.closed?'Buka kembali':'Tutup Tugas')+'</button>':'';
     const taskUrl=(t.link&&okUrl(t.link))?t.link:(isPlatformCourse(c)?platOf(c.k):'');
     const taskAction=taskUrl?'<a class="btn sm" href="'+esc(taskUrl)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Tautan instruksi belum diatur.</span>';
     if(t.mode==='group'){
@@ -1610,11 +1610,11 @@ function tugasAdmin(c){
       const ownGroup=ME?myConstructor(ME,t.k):null,ownSub=ownGroup&&t.groupSubs?t.groupSubs[ownGroup.id]:null;
       return '<div class="admin-task-stack">'+managerCard+(ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+groupTaskCard(t,ownGroup,ownSub,!!(ownGroup&&Number(ownGroup.principal)===Number(ME)))+'</div>':'')+'</div>';
     }
-    const keys=Object.keys(subs).map(Number).sort((a,b)=>a-b);
+    const keys=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).map(Number).sort((a,b)=>a-b);
     const mine=ME&&subs[ME]?subs[ME]:null;
     const ownActions=ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+taskActions(t,mine)+'</div>':'';
     return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3>'+
-      (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Riwayat · ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
+      (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(t.closed?'Ditutup pengelola':late?'Riwayat · ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
       (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
       '<div class="row2 manager-task-actions">'+taskAction+closeControl+'</div>'+
       '<div><div class="track" aria-hidden="true"><i style="width:'+Math.round(cnt/N*100)+'%"></i></div><span class="s">'+cnt+' dari '+N+' mahasiswa sudah mengumpulkan</span></div>'+
