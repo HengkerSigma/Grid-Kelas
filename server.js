@@ -514,7 +514,7 @@ async function view(p, data, sess) {
     const present = isObj(data.present) ? data.present : {};
     const rec = Object.keys(present).some((k) => !!present[k]);
     if (admin) return Object.assign({}, data, { rec: rec });
-    const out = { k: data.k, n: data.n, tanggal: data.tanggal || '', topik: data.topik || '', rec: rec, present: {}, bukti: {} };
+    const out = { k: data.k, n: data.n, tanggal: data.tanggal || '', topik: data.topik || '', rec: rec, closed: data.closed === true, present: {}, bukti: {} };
     if (me) {
       if (present[me]) out.present[me] = present[me];
       if (isObj(data.bukti) && data.bukti[me]) out.bukti[me] = data.bukti[me];
@@ -720,6 +720,7 @@ async function decide(method, p, body, sess, existing) {
     const me = String(sess.no);
     if (method === 'PUT' && existing) return ERR_FORBID;
     if (method === 'PATCH' && !existing) return ERR_MISSING;
+    if (existing && existing.closed) return ERR_FORBID;
     if (!onlyKeys(body, method === 'PUT' ? ['k', 'n', 'tanggal', 'topik', 'present', 'bukti'] : ['present', 'bukti'])) return ERR_FORBID;
     const out = existing ? clone(existing) : { k: m[1], n: Number(m[2]), tanggal: '', topik: '', present: {}, bukti: {} };
     if (!isObj(out.present)) out.present = {};
