@@ -926,12 +926,13 @@ function sektorDlg(){
 
 function renderHomeSkeleton(){
   const block='<span class="sk-line"></span>';
-  $('homeLede').textContent='Memuat ringkasan kelas…';
+  $('homeLede').textContent='Lihat info kelas dan update terbaru. Yuk, cek dulu sebelum mulai!';
+  // Skeleton mengikuti susunan Overview tamu (panel sambutan + Team Radio),
+  // bukan layout mahasiswa yang jauh lebih tinggi dan kemudian menyusut saat data siap.
   $('home').innerHTML=
-    '<div class="home-skeleton" aria-hidden="true">'+
-      '<section class="panel sk-home-welcome"><div class="sk-avatar"></div><div class="sk-home-copy">'+block+block+'</div></section>'+
-      '<div class="sk-home-tiles"><div class="panel sk-tile">'+block+block+'</div><div class="panel sk-tile">'+block+block+'</div><div class="panel sk-tile">'+block+block+'</div></div>'+
-      '<div class="cols"><div class="col"><section class="panel sk-home-panel">'+block+block+block+block+'</section></div><div class="col"><section class="panel sk-home-panel">'+block+block+block+'</section></div></div>'+
+    '<div class="home-skeleton home-skeleton-guest" aria-hidden="true">'+
+      '<section class="panel sk-home-welcome"><div class="sk-home-copy">'+block+block+'</div></section>'+
+      '<section class="panel sk-home-panel" style="min-height:260px">'+block+block+block+'</section>'+
     '</div>';
 }
 function renderHome(force){
