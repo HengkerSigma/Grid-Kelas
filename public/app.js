@@ -210,7 +210,7 @@ function renderStudents(){
   $('sgrid').innerHTML=h;
   $('sgrid').setAttribute('aria-busy',String(!loaded.st));
 }
-function aktifCount(k){const td=today();let c=0;Object.values(S.tu).forEach(t=>{if(t.k===k&&(!t.tenggat||t.tenggat>=td))c++;});return c;}
+function aktifCount(k){let c=0;Object.values(S.tu).forEach(t=>{if(t.k===k&&!isLocked(t))c++;});return c;}
 function dosenHtml(c){
   const nm=dn(c).trim();if(!nm)return '';
   const p=nm.split(/\s+/);let txt;
@@ -222,7 +222,7 @@ function renderCourses(){
   if(COURSE_SUBTAB==='history'){
     if(!ME&&!adm()){host.innerHTML='<li class="history-empty"><b>Riwayat tugas mata kuliah</b><p class="s">Masuk sebagai mahasiswa untuk melihat riwayat tugas setiap mata kuliah.</p></li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
     const history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(isLocked).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
-    if(!history.length){host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat. Nikmati dulu track yang masih berjalan!</li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
+    if(!history.length){host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat atau ditutup pengelola. Nikmati dulu track yang masih berjalan!</li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
     const byCourse=new Map();history.forEach(t=>{if(!byCourse.has(t.k))byCourse.set(t.k,[]);byCourse.get(t.k).push(t);});
     host.innerHTML=Array.from(byCourse.entries()).map(([k,tasks])=>'<li class="history-course-group"><section class="panel"><div class="history-course-heading"><span class="constructor-kicker">MATA KULIAH</span><h3 class="ph3">'+esc(cname(k))+'</h3><span class="chip">'+tasks.length+' tugas</span></div><div class="history-course-list">'+tasks.map(t=>{
       if(t.mode==='group'){const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,ids=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(id=>ids.includes(id)).length,total=ids.length,status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';return '<article class="tcard history-item"><div class="history-top"><div><span class="history-course">KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">'+(t.closed?'Ditutup pengelola':'Lewat · '+fmtDate(t.tenggat))+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';}
@@ -269,13 +269,13 @@ function constructorGroups(courseCode){return Object.keys(S.cs).map(id=>Object.a
 function myConstructor(no,courseCode){if(!no)return null;return constructorGroups(courseCode).find(g=>Number(g.principal)===Number(no)||(Array.isArray(g.members)&&g.members.map(Number).includes(Number(no))))||null;}
 function groupTaskCard(t,g,sub,principal){
   const id=t.id,locked=isLocked(t),done=!!(sub&&sub.at),late=t.tenggat&&t.tenggat<today(),open=D.subOpen===id;
-  let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?'Lewat tenggat':'Tugas kelompok')+'</span></div>'+
+  let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?(t.closed?'Ditutup pengelola':'Lewat tenggat'):'Tugas kelompok')+'</span></div>'+
     '<p class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</p>'+
     (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'');
   if(!g)h+='<p class="empty">Kamu belum terdaftar dalam Constructor.</p>';
   else h+='<p class="s">Constructor: <b>'+esc(g.name||'Kelompok')+'</b> · Team Principal: '+esc(g.principal?nameOf(g.principal):'Belum ditetapkan')+'</p>';
   if(done)h+='<p class="tdone"><b>&#10003; Sudah selesai untuk seluruh anggota kelompok.</b><br><span class="s">Dikumpulkan '+fmtTime(sub.at)+'</span></p>';
-  else if(locked)h+='<p class="s"><span class="dnfb">DNF</span> Tenggat sudah lewat dan belum dikumpulkan.</p>';
+  else if(locked)h+='<p class="s"><span class="dnfb">'+(t.closed?'DITUTUP':'DNF')+'</span> '+(t.closed?'Tugas ditutup pengelola.':'Tenggat sudah lewat dan belum dikumpulkan.')+'</p>';
   else if(g&&principal&&canWrite){
     h+='<div class="row2"><button type="button" class="btn sm pri" data-act="tsub-group-open" data-id="'+esc(id)+'">'+(open?'Tutup form':'Kumpulkan sebagai Team Principal')+'</button></div>';
     if(open){
@@ -734,7 +734,7 @@ async function launchGridClassTour(force){
        onNextClick:()=>{const b=document.querySelector('#constructorPanel .constructor-subtabs [data-tab="standings"]');if(b)b.click();setTimeout(()=>d.moveNext(),220);}},
       {element:()=>document.querySelector('#constructorPanel .constructor-standing .tower')||document.querySelector('#constructorPanel .constructor-standing')||document.querySelector('#constructorPanel .constructor-empty'),popover:{title:'11 · CONSTRUCTOR TIME TOWER',description:'Inilah Time Tower Constructor. Urutan P1, P2, dan seterusnya ditentukan oleh waktu pengumpulan tugas kelompok. Kolom WAKTU menunjukkan waktu submit, INTERVAL menunjukkan selisih dengan Constructor di atasnya, dan GAP KE P1 menunjukkan selisih dari posisi pertama. Tim yang belum mengumpulkan akan tampil sebagai NO TIME atau DNF setelah tenggat.',side:'top',align:'center'},
        onNextClick:()=>{setView('mata-kuliah',true);setTimeout(()=>d.moveNext(),140);}},
-      {element:'#v-mata-kuliah .course-subtabs',popover:{title:'12 · GRAND PRIX & HISTORY',description:'GRAND PRIX berisi kartu mata kuliah aktif. HISTORY menyimpan tugas yang sudah melewati tenggat. Pilih tab untuk mengganti tampilan.',side:'bottom',align:'start'},
+      {element:'#v-mata-kuliah .course-subtabs',popover:{title:'12 · GRAND PRIX & HISTORY',description:'GRAND PRIX berisi kartu mata kuliah aktif. HISTORY menyimpan tugas yang melewati tenggat atau ditutup pengelola. Pilih tab untuk mengganti tampilan.',side:'bottom',align:'start'},
        onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="grand-prix"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
       {element:'#cgrid .course',popover:{title:'13 · GRAND PRIX',description:'Setiap kartu mewakili satu mata kuliah. Buka kartu untuk melihat informasi perkuliahan, absensi, materi, dan tugas yang terhubung dengan mata kuliah tersebut.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="history"]');if(b)b.click();setTimeout(()=>d.moveNext(),160);}},
@@ -1561,7 +1561,7 @@ function taskActions(t,mine){
     else if(can)h+='<p class="s"><b>Apakah kamu sudah mengerjakan pre-test sampai kuesioner Mentari?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="platform-task-done" data-id="'+esc(id)+'">Ya</button><button type="button" class="btn sm" data-act="platform-task-not-done" data-id="'+esc(id)+'">Belum</button></div>';
     return h+'</div>';
   }
-  let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">DNF</span><span class="s">Tenggat sudah lewat. Pengumpulan ditutup'+'.</span>':'');
+  let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">'+(t.closed?'DITUTUP':'DNF')+'</span><span class="s">'+(t.closed?'Tugas ditutup pengelola.':'Tenggat sudah lewat. Pengumpulan ditutup.')+'</span>':'');
   if((ME||adm())&&!locked)h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Soal belum ditautkan oleh dosen.</span>');
   if(can)h+='<button type="button" class="btn sm pri" data-act="tsub-open" data-id="'+esc(id)+'" aria-expanded="'+open+'">'+(mine?'Ubah pengumpulan':'Kumpulkan')+'</button>';
   h+='</div>';
@@ -1586,7 +1586,7 @@ function tugasStudent(c){
   const all=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k),active=taskList().filter(t=>t.k===c.k),history=all.filter(t=>isLocked(t)).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
   if(!active.length&&!history.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   let h='';if(!ME)h+='<div class="mine"><div><b>Masuk untuk mengerjakan dan mengumpulkan tugas</b><span class="s">Pilih nomor absen Anda terlebih dahulu.</span></div><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>';
-  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);return groupTaskCard(t,g,sub,principal);}return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+(late?'':taskActions(t,mine))+'</article>';};
+  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);return groupTaskCard(t,g,sub,principal);}return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(t.closed?'Ditutup pengelola · ':'')+(late&&!t.closed?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+(late?'':taskActions(t,mine))+'</article>';};
   if(active.length)h+='<h3 class="ph3">Tugas aktif</h3>'+active.map(renderTask).join('');else h+='<p class="empty">Tidak ada tugas aktif.</p>';
   if(!ME)return h;
   if(history.length)h+='<details class="task-history"><summary>Riwayat tugas ('+history.length+')</summary>'+history.map(renderTask).join('')+'</details>';return h;
@@ -1603,7 +1603,7 @@ function tugasAdmin(c){
     if(t.mode==='group'){
       const groups=constructorGroups(t.k),gc=groups.length,done=Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).length;
       const managerCard='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">Kelompok</span></div>'+
-        (late?'<span class="chip late">Masuk riwayat</span>':'')+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+
+        (late?'<span class="chip late">'+(t.closed?'Ditutup pengelola':'Masuk riwayat')+'</span>':'')+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+
         (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
         '<div><div class="track"><i style="width:'+Math.round((gc?done/gc:0)*100)+'%"></i></div><span class="s">'+done+' dari '+gc+' Constructor sudah mengumpulkan</span></div>'+
         '<div class="row2 manager-task-actions">'+taskAction+closeControl+'</div>'+
@@ -1615,7 +1615,7 @@ function tugasAdmin(c){
     const mine=ME&&subs[ME]?subs[ME]:null;
     const ownActions=ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+taskActions(t,mine)+'</div>':'';
     return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3>'+
-      (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(t.closed?'Ditutup pengelola':late?'Riwayat · ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
+      (t.closed?'<span class="chip late">Ditutup pengelola</span>':t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Riwayat · ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
       (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
       '<div class="row2 manager-task-actions">'+taskAction+closeControl+'</div>'+
       '<div><div class="track" aria-hidden="true"><i style="width:'+Math.round(cnt/N*100)+'%"></i></div><span class="s">'+cnt+' dari '+N+' mahasiswa sudah mengumpulkan</span></div>'+
