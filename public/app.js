@@ -81,7 +81,20 @@ function attendanceIsPast(meeting,se,courseCode){
  // Link pertemuan aktif platform mengalahkan tanggal kalender fallback; tanggal aktual pengelola tetap dihormati.
  if(!(se&&se.tanggal)&&k&&platConfigOf(k)&&Number(meeting)===defaultPert(k)&&platOf(k,meeting))return false;
  const date=se&&se.tanggal?se.tanggal:meetingDate(meeting);return !!date&&date<today();}
-function attendanceMissingStatus(meeting,se,student,courseCode){if(se&&se.closed)return 'Absensi ditutup pengelola';if(attendanceIsPast(meeting,se,courseCode))return 'Absensi sudah terlewat';if(!se||!Object.keys(se).length)return 'Absensi belum dibuka';return student?'Belum mengisi':'Belum diisi';}
+function attendanceMissingStatus(meeting,se,student,courseCode){
+ const k=courseCode||(se&&se.k),n=Number(meeting),active=k?defaultPert(k):0,hasSession=!!(se&&Object.keys(se).length);
+ if(se&&se.closed)return 'Absensi ditutup pengelola';
+ if(!hasSession){
+  // Pertemuan aktif platform dapat dikonfirmasi meski sesi belum pernah dibuat.
+  if(k&&n===active&&platConfigOf(k)&&platOf(k,n))return student?'Belum mengisi':'Belum diisi';
+  // Pertemuan sebelum nomor aktif tanpa sesi tidak boleh dianggap belum dibuka atau sudah diabsen.
+  if(k&&n<active)return 'Data absensi tidak tersedia';
+  if(attendanceIsPast(n,se,k))return 'Absensi sudah terlewat';
+  return 'Absensi belum dibuka';
+ }
+ if(attendanceIsPast(n,se,k))return 'Absensi sudah terlewat';
+ return student?'Belum mengisi':'Belum diisi';
+}
 function greetingText(name){const p=jakartaParts(),minutes=Number(p.hour)*60+Number(p.minute),n=esc(name||'Mahasiswa');if(minutes>=240&&minutes<=600)return{title:'Selamat Pagi, '+n,subtitle:'Semangat menjalani hari!'};if(minutes>=601&&minutes<=899)return{title:'Selamat Siang, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=900&&minutes<=1079)return{title:'Selamat Sore, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=1080&&minutes<=1319)return{title:'Selamat Malam, '+n,subtitle:'Kerja bagus hari ini, jangan lupa istirahat, ya!'};return{title:n,subtitle:'Ini waktunya tidur!'};}
 function semesterMeetingNow(){const p=today().split('-').map(Number),a=SEMESTER_ANCHOR_DATE.split('-').map(Number),weeks=Math.floor((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(a[0],a[1]-1,a[2]))/604800000);return Math.max(1,Math.min(PERT,SEMESTER_ANCHOR_MEETING+weeks));}
 function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'';}
@@ -1606,7 +1619,7 @@ function absenAdmin(c){
   let h=pertPicker(c,'adm');
    h+='<div class="row2 manager-task-actions"><span class="s">'+(se&&se.closed?'Absensi ditutup pengelola':'Absensi terbuka')+'</span><button type="button" class="btn sm" data-act="attendance-close-toggle" data-k="'+esc(c.k)+'" data-n="'+n+'" data-closed="'+(se&&se.closed?'true':'false')+'">'+(se&&se.closed?'Buka kembali absensi':'Tutup Absensi')+'</button></div>';
   if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
-  if(!se)h+='<p class="empty"><b>'+(attendanceIsPast(n,se,c.k)?'Absensi sudah terlewat.':'Absensi belum dibuka.')+'</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
+  if(!se)h+='<p class="empty"><b>'+esc(attendanceMissingStatus(n,se,false,c.k))+'.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
