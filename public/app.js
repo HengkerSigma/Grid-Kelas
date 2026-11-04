@@ -1379,15 +1379,68 @@ function buildCourseRecap(segment,format){
   toast('Rekap berhasil diunduh.');
 }
 
+// Library ekspor hanya dimuat ketika format terkait benar-benar digunakan.
+const exportScriptPromises = new Map();
+
+function loadExportScript(src, isReady) {
+  if (isReady()) return Promise.resolve();
+  if (exportScriptPromises.has(src)) return exportScriptPromises.get(src);
+
+  const promise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => {
+      if (isReady()) resolve();
+      else {
+        exportScriptPromises.delete(src);
+        script.remove();
+        reject(new Error('Library tidak terinisialisasi: ' + src));
+      }
+    };
+    script.onerror = () => {
+      exportScriptPromises.delete(src);
+      script.remove();
+      reject(new Error('Gagal memuat library: ' + src));
+    };
+    document.head.appendChild(script);
+  });
+
+  exportScriptPromises.set(src, promise);
+  return promise;
+}
+
+async function loadExportLibrary(format) {
+  if (format === 'xlsx') {
+    await loadExportScript(
+      'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+      () => !!window.XLSX
+    );
+    return;
+  }
+
+  if (format === 'pdf') {
+    await loadExportScript(
+      'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
+      () => !!window.jspdf?.jsPDF
+    );
+    await loadExportScript(
+      'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js',
+      () => !!window.jspdf?.jsPDF?.API?.autoTable
+    );
+  }
+}
+
 async function exportCourseRecap(segment,format){
   showLoading('Menyiapkan file rekap…');
   try{
-    // Beri browser dua frame agar modal loading sempat tampil sebelum pembuatan file yang sinkron.
+    // Beri browser dua frame agar modal loading sempat tampil.
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    if(format==='xlsx'||format==='pdf') await loadExportLibrary(format);
     buildCourseRecap(segment,format);
   }catch(e){
     console.error('Gagal mengekspor rekap:',e);
-    toast('Gagal membuat file rekap. Coba lagi.');
+    toast('Gagal memuat pustaka atau membuat file rekap. Periksa koneksi dan coba lagi.');
   }finally{
     hideLoading();
   }
