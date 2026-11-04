@@ -771,7 +771,7 @@ async function decide(method, p, body, sess, existing) {
         return { data: out };
       }
       if (onlyKeys(body, ['subs'])) {
-        if (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0) return ERR_BAD('Tenggat sudah lewat. Pengumpulan ditutup.');
+        if (existing.closed || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_BAD('Tugas sudah ditutup atau tenggat sudah lewat. Pengumpulan ditutup.');
         const me = String(sess.no);
         if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me]) || existing.mode === 'group') return ERR_FORBID;
         const s = body.subs[me], tautan = String(s.tautan || '').trim().slice(0, 500);
@@ -787,7 +787,7 @@ async function decide(method, p, body, sess, existing) {
         out.subs[me] = { tautan, catatan, berkas, at: Date.now(), ...(platformConfirmation ? { platformConfirmation: true } : {}) }; return { data: out };
       }
       if (onlyKeys(body, ['groupSubs'])) {
-        if (existing.mode !== 'group' || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_FORBID;
+        if (existing.mode !== 'group' || existing.closed || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_FORBID;
         if (!isObj(body.groupSubs) || Object.keys(body.groupSubs).length !== 1) return ERR_FORBID;
         const gid = Object.keys(body.groupSubs)[0], s = body.groupSubs[gid];
         if (!/^[A-Za-z0-9_-]{1,40}$/.test(gid) || !isObj(s)) return ERR_FORBID;
