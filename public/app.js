@@ -1560,7 +1560,7 @@ function courseDlg(){
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
   const head='<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button>'+
     '<div class="dk">'+esc(c.k)+' · '+esc(c.sks)+' SKS</div><h2 id="dtitle">'+esc(c.nama)+'</h2>'+
-    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+platBtn(c)+driveBtn(c.k)+'</div>';
+    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+driveBtn(c.k)+'</div>';
   const tabs=[['absen','Absen'],['tugas','Tugas']];
   if(adm())tabs.push(['set','Pengaturan']);
   if(D.tab==='set'&&!adm())D.tab='absen';
@@ -1591,7 +1591,9 @@ function absenStudent(c,scheduleMode){
   if(se.tanggal||se.topik||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se.tanggal||meetingDate(n))+(se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
   const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):attendanceMissingStatus(n,se,true,c.k);
-  h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+(bk&&bk.id?'<div><b class="s">Bukti absensi</b>'+fileHtml(bk)+'</div>':'<span class="s">Tidak ada bukti yang dilampirkan pada pertemuan ini.</span>')+'</div>';
+  h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+
+    (isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n)?'<div class="drv"><p class="s"><b>Sudah Mengerjakan Forum Diskusi?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div></div>':'')+
+    (bk&&bk.id?'<div><b class="s">Bukti absensi</b>'+fileHtml(bk)+'</div>':'<span class="s">Tidak ada bukti yang dilampirkan pada pertemuan ini.</span>')+'</div>';
   const a=stats(ME).by[c.k]||{h:0,t:0};
   h+='<p class="sum"><span>Hadir '+a.h+' dari '+a.t+' pertemuan terisi</span></p>';
   return h;
@@ -1641,11 +1643,6 @@ async function saveScheduleAttendance(k){
   const current=S.se[id]||{k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}};
   S.se[id]=Object.assign({},current,{present:Object.assign({},current.present||{},{[ME]:'H'})});
   refreshAll();
-}
-function platBtn(c){
-  if(!isPlatformCourse(c)||!(ME||adm())||!inSession(c))return '';
-  const u=platOf(c.k);if(!u)return '<p class="s">Link forum belum diatur oleh admin.</p>';
-  return '<div class="drv"><a class="btn sm" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Buka Forum Diskusi Mentari <span aria-hidden="true">&#8599;</span></a>'+(ME?'<p class="s">Sudah Mengerjakan Forum Diskusi?</p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div>':'')+'</div>';
 }
 /* Folder Google Drive tiap mata kuliah (hanya terlihat setelah masuk). */
 function driveBtn(k){
