@@ -770,9 +770,13 @@ async function decide(method, p, body, sess, existing) {
         const berkas = await cleanFile(s.berkas, sess, UPLOAD_BUCKET), catatan = String(s.catatan || '').slice(0, 500);
         if (berkas === undefined) return ERR_BAD('Berkas tidak valid. Unggah ulang berkasnya.');
         if (tautan && !(/^https:\/\//i.test(tautan) && isHttpUrl(tautan))) return ERR_BAD('Tautan harus diawali https://');
-        if (!tautan && !berkas) return ERR_BAD('Unggah berkas atau isi tautan tugas.');
+        const platformConfirmation = s.platformConfirmation === true;
+        if (platformConfirmation) {
+          const platform = await getDoc('platform/' + existing.k);
+          if (existing.mode === 'group' || !platform || platform.enabled === false || tautan || berkas) return ERR_FORBID;
+        } else if (!tautan && !berkas) return ERR_BAD('Unggah berkas atau isi tautan tugas.');
         const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
-        out.subs[me] = { tautan, catatan, berkas, at: Date.now() }; return { data: out };
+        out.subs[me] = { tautan, catatan, berkas, at: Date.now(), ...(platformConfirmation ? { platformConfirmation: true } : {}) }; return { data: out };
       }
       if (onlyKeys(body, ['groupSubs'])) {
         if (existing.mode !== 'group' || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_FORBID;
