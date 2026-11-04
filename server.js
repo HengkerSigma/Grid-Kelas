@@ -767,7 +767,7 @@ async function decide(method, p, body, sess, existing) {
       if (!existing) return ERR_MISSING;
       if (onlyKeys(body, ['closed']) && typeof body.closed === 'boolean') {
         if (!admin) return ERR_FORBID;
-        const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
+        const out = clone(existing); out.closed = body.closed; if (!isObj(out.subs)) out.subs = {};
         out.subs.__meta = Object.assign({}, out.subs.__meta || {}, { closed: body.closed });
         return { data: out };
       }
