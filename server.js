@@ -186,10 +186,11 @@ async function deleteDoc(p) {
 
 function taskFromCourseUpdate(row) {
   if (!row || !row.task_title) return null;
+  const subs = isObj(row.task_submissions) ? row.task_submissions : {};
   return { k: row.course_code, judul: row.task_title, tenggat: row.deadline || '',
     deskripsi: row.task_description || '', link: row.task_url || '',
-    mode: row.task_mode === 'group' ? 'group' : 'individual',
-    subs: isObj(row.task_submissions) ? row.task_submissions : {},
+    mode: row.task_mode === 'group' ? 'group' : 'individual', closed: !!(subs.__meta && subs.__meta.closed),
+    subs: subs,
     groupSubs: isObj(row.task_group_submissions) ? row.task_group_submissions : {},
     dibuat: Number(row.task_created_at) || Date.parse(row.created_at || '') || Date.now() };
 }
@@ -706,12 +707,13 @@ async function decide(method, p, body, sess, existing) {
       if (method === 'PATCH') {
         if (!existing) return ERR_MISSING;
         const b = Object.assign(clone(existing), pick(body, ['tanggal', 'topik']));
+        if (typeof body.closed === 'boolean') b.closed = body.closed;
         if (isObj(body.present)) b.present = Object.assign({}, b.present, body.present);
         if (isObj(body.bukti)) b.bukti = Object.assign({}, b.bukti, body.bukti);
         if (Object.keys(isObj(b.present)?b.present:{}).some((no)=>b.present[no]==='K'&&!(b.bukti&&b.bukti[no]&&b.bukti[no].id))) return ERR_BAD('Kelas Berjalan memerlukan file bukti mahasiswa tersebut.');
         return { data: b };
       }
-      const created = { k: m[1], n: Number(m[2]), tanggal: String(body.tanggal || ''), topik: String(body.topik || '').slice(0, 120), present: isObj(body.present) ? body.present : {}, bukti: isObj(body.bukti) ? body.bukti : {} };
+      const created = { k: m[1], n: Number(m[2]), tanggal: String(body.tanggal || ''), topik: String(body.topik || '').slice(0, 120), present: isObj(body.present) ? body.present : {}, bukti: isObj(body.bukti) ? body.bukti : {}, closed: body.closed === true };
       if (Object.keys(created.present).some((no)=>created.present[no]==='K'&&!(created.bukti[no]&&created.bukti[no].id))) return ERR_BAD('Kelas Berjalan memerlukan file bukti mahasiswa tersebut.');
       return { data: created };
     }
@@ -762,6 +764,12 @@ async function decide(method, p, body, sess, existing) {
     }
     if (method === 'PATCH') {
       if (!existing) return ERR_MISSING;
+      if (onlyKeys(body, ['closed']) && typeof body.closed === 'boolean') {
+        if (!admin) return ERR_FORBID;
+        const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
+        out.subs.__meta = Object.assign({}, out.subs.__meta || {}, { closed: body.closed });
+        return { data: out };
+      }
       if (onlyKeys(body, ['subs'])) {
         if (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0) return ERR_BAD('Tenggat sudah lewat. Pengumpulan ditutup.');
         const me = String(sess.no);
