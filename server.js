@@ -657,7 +657,9 @@ async function decide(method, p, body, sess, existing) {
     if (method === 'DELETE') return { del: true };
     if (method !== 'PUT' && method !== 'PATCH') return ERR_FORBID;
     if (isObj(body) && onlyKeys(body, ['url']) && isStr(body.url, 500) && /^https:\/\//i.test(body.url.trim()) && isHttpUrl(body.url)) return { data: { url: body.url.trim() } };
-    if (!isObj(body) || !onlyKeys(body, ['links', 'meeting_number', 'url']) || !isObj(body.links)) return ERR_BAD('Data link absensi pertemuan tidak valid.');
+    if (!isObj(body) || !onlyKeys(body, ['links', 'meeting_number', 'url', 'enabled', 'updatedAt']) || !isObj(body.links)) return ERR_BAD('Data link absensi pertemuan tidak valid.');
+    if (body.enabled !== undefined && typeof body.enabled !== 'boolean') return ERR_BAD('Status tautan absensi tidak valid.');
+    if (body.updatedAt !== undefined && (!Number.isFinite(body.updatedAt) || body.updatedAt < 0)) return ERR_BAD('Waktu pembaruan tautan absensi tidak valid.');
     const links = {};
     for (const meeting of Object.keys(body.links)) {
       const url = body.links[meeting];
@@ -666,7 +668,7 @@ async function decide(method, p, body, sess, existing) {
     }
     const meetingNumber = Number(body.meeting_number);
     if (!Number.isInteger(meetingNumber) || meetingNumber < 1 || meetingNumber > 32 || !links[meetingNumber]) return ERR_BAD('Pilih pertemuan yang memiliki link absensi.');
-    return { data: { links: links, meeting_number: meetingNumber, url: links[meetingNumber] } };
+    return { data: { links: links, meeting_number: meetingNumber, url: links[meetingNumber], enabled: body.enabled === undefined ? true : body.enabled, updatedAt: body.updatedAt === undefined ? Date.now() : body.updatedAt } };
   }
 
   if (root === 'media') {
