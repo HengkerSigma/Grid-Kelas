@@ -77,7 +77,7 @@ function fmtDate(s){if(!s)return '';const p=String(s).split('-');if(p.length!==3
 function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms));}catch(e){return '';}}
 function meetingDate(n){const p=SEMESTER_ANCHOR_DATE.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]-(SEMESTER_ANCHOR_MEETING-Number(n))*7));return d.toISOString().slice(0,10);}
 function attendanceIsPast(meeting,se){const date=se&&se.tanggal?se.tanggal:meetingDate(meeting);return !!date&&date<today();}
-function attendanceMissingStatus(meeting,se,student){if(attendanceIsPast(meeting,se))return 'Absensi sudah terlewat';if(!se||!Object.keys(se).length)return 'Absensi belum dibuka';return student?'Belum mengisi':'Belum diisi';}
+function attendanceMissingStatus(meeting,se,student){if(se&&se.closed)return 'Absensi ditutup pengelola';if(attendanceIsPast(meeting,se))return 'Absensi sudah terlewat';if(!se||!Object.keys(se).length)return 'Absensi belum dibuka';return student?'Belum mengisi':'Belum diisi';}
 function greetingText(name){const p=jakartaParts(),minutes=Number(p.hour)*60+Number(p.minute),n=esc(name||'Mahasiswa');if(minutes>=240&&minutes<=600)return{title:'Selamat Pagi, '+n,subtitle:'Semangat menjalani hari!'};if(minutes>=601&&minutes<=899)return{title:'Selamat Siang, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=900&&minutes<=1079)return{title:'Selamat Sore, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=1080&&minutes<=1319)return{title:'Selamat Malam, '+n,subtitle:'Kerja bagus hari ini, jangan lupa istirahat, ya!'};return{title:n,subtitle:'Ini waktunya tidur!'};}
 function semesterMeetingNow(){const p=today().split('-').map(Number),a=SEMESTER_ANCHOR_DATE.split('-').map(Number),weeks=Math.floor((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(a[0],a[1]-1,a[2]))/604800000);return Math.max(1,Math.min(PERT,SEMESTER_ANCHOR_MEETING+weeks));}
 function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'';}
@@ -87,7 +87,7 @@ const stu=n=>S.st[PAD(n)]||null;
 const nameOf=n=>{const s=stu(n);return s?((s.depan||'')+' '+(s.belakang||'')).trim():'Mahasiswa '+n;};
 const courseList=()=>Object.values(S.co).sort((a,b)=>(a.urut||0)-(b.urut||0));
 const dn=c=>Array.isArray(c.dosen)?(c.dosen[0]||''):(c.dosen||'');
-const isLocked=t=>{const d=dayDiff(t.tenggat);return d!==null&&d<0;};
+const isLocked=t=>{if(t&&t.closed===true)return true;const d=dayDiff(t&&t.tenggat);return d!==null&&d<0;};
 const taskList=()=>Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>!isLocked(t)).sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
 const cname=k=>S.co[k]?S.co[k].nama:k;
 
@@ -210,7 +210,7 @@ function renderStudents(){
   $('sgrid').innerHTML=h;
   $('sgrid').setAttribute('aria-busy',String(!loaded.st));
 }
-function aktifCount(k){const td=today();let c=0;Object.values(S.tu).forEach(t=>{if(t.k===k&&(!t.tenggat||t.tenggat>=td))c++;});return c;}
+function aktifCount(k){let c=0;Object.values(S.tu).forEach(t=>{if(t.k===k&&!isLocked(t))c++;});return c;}
 function dosenHtml(c){
   const nm=dn(c).trim();if(!nm)return '';
   const p=nm.split(/\s+/);let txt;
@@ -221,13 +221,13 @@ function renderCourses(){
   const host=$('cgrid');
   if(COURSE_SUBTAB==='history'){
     if(!ME&&!adm()){host.innerHTML='<li class="history-empty"><b>Riwayat tugas mata kuliah</b><p class="s">Masuk sebagai mahasiswa untuk melihat riwayat tugas setiap mata kuliah.</p></li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
-    const td=today(),history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.tenggat&&t.tenggat<td).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
-    if(!history.length){host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat. Nikmati dulu track yang masih berjalan!</li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
+    const history=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(isLocked).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
+    if(!history.length){host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat atau ditutup pengelola. Nikmati dulu track yang masih berjalan!</li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
     const byCourse=new Map();history.forEach(t=>{if(!byCourse.has(t.k))byCourse.set(t.k,[]);byCourse.get(t.k).push(t);});
     host.innerHTML=Array.from(byCourse.entries()).map(([k,tasks])=>'<li class="history-course-group"><section class="panel"><div class="history-course-heading"><span class="constructor-kicker">MATA KULIAH</span><h3 class="ph3">'+esc(cname(k))+'</h3><span class="chip">'+tasks.length+' tugas</span></div><div class="history-course-list">'+tasks.map(t=>{
-      if(t.mode==='group'){const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,ids=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(id=>ids.includes(id)).length,total=ids.length,status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';return '<article class="tcard history-item"><div class="history-top"><div><span class="history-course">KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';}
-      const mine=ME&&t.subs?t.subs[ME]:null,count=Object.keys(t.subs||{}).length,status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
-      return '<article class="tcard history-item"><div class="history-top"><h3>'+esc(t.judul)+'</h3><span class="chip late">Lewat · '+fmtDate(t.tenggat)+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';
+      if(t.mode==='group'){const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,ids=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(id=>ids.includes(id)).length,total=ids.length,status=ME?(sub?'<span class="chip done">Sudah selesai</span>':'<span class="chip late">Belum selesai</span>'):'<span class="chip late">Tenggat lewat</span>';return '<article class="tcard history-item"><div class="history-top"><div><span class="history-course">KELOMPOK</span><h3>'+esc(t.judul)+'</h3></div><span class="chip late">'+(t.closed?'Ditutup pengelola':'Lewat · '+fmtDate(t.tenggat))+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';}
+      const mine=ME&&t.subs?t.subs[ME]:null,count=Object.keys(t.subs||{}).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).length,status=ME?(mine?'<span class="chip done">Sudah dikumpulkan</span>':'<span class="chip late">Belum dikumpulkan</span>'):'<span class="chip late">Tenggat lewat</span>';
+      return '<article class="tcard history-item"><div class="history-top"><h3>'+esc(t.judul)+'</h3><span class="chip late">'+(t.closed?'Ditutup pengelola':'Lewat · '+fmtDate(t.tenggat))+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+'<div class="history-bottom">'+status+'<span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></article>';
     }).join('')+'</div></section></li>').join('');
     host.setAttribute('aria-busy',String(!loaded.co));return;
   }
@@ -268,14 +268,14 @@ function constructorColor(id){return (CONSTRUCTOR_COLORS.find(c=>c.id===id)||CON
 function constructorGroups(courseCode){return Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).filter(g=>!courseCode||g.courseCode===courseCode).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));}
 function myConstructor(no,courseCode){if(!no)return null;return constructorGroups(courseCode).find(g=>Number(g.principal)===Number(no)||(Array.isArray(g.members)&&g.members.map(Number).includes(Number(no))))||null;}
 function groupTaskCard(t,g,sub,principal){
-  const id=t.id,locked=isLocked(t),done=!!(sub&&sub.at),late=t.tenggat&&t.tenggat<today(),open=D.subOpen===id;
-  let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?'Lewat tenggat':'Tugas kelompok')+'</span></div>'+
+  const id=t.id,locked=isLocked(t),done=!!(sub&&sub.at),late=locked,open=D.subOpen===id;
+  let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?(t.closed?'Ditutup pengelola':'Lewat tenggat'):'Tugas kelompok')+'</span></div>'+
     '<p class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</p>'+
     (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'');
   if(!g)h+='<p class="empty">Kamu belum terdaftar dalam Constructor.</p>';
   else h+='<p class="s">Constructor: <b>'+esc(g.name||'Kelompok')+'</b> · Team Principal: '+esc(g.principal?nameOf(g.principal):'Belum ditetapkan')+'</p>';
   if(done)h+='<p class="tdone"><b>&#10003; Sudah selesai untuk seluruh anggota kelompok.</b><br><span class="s">Dikumpulkan '+fmtTime(sub.at)+'</span></p>';
-  else if(locked)h+='<p class="s"><span class="dnfb">DNF</span> Tenggat sudah lewat dan belum dikumpulkan.</p>';
+  else if(locked)h+='<p class="s"><span class="dnfb">'+(t.closed?'DITUTUP':'DNF')+'</span> '+(t.closed?'Tugas ditutup pengelola.':'Tenggat sudah lewat dan belum dikumpulkan.')+'</p>';
   else if(g&&principal&&canWrite){
     h+='<div class="row2"><button type="button" class="btn sm pri" data-act="tsub-group-open" data-id="'+esc(id)+'">'+(open?'Tutup form':'Kumpulkan sebagai Team Principal')+'</button></div>';
     if(open){
@@ -734,12 +734,13 @@ async function launchGridClassTour(force){
        onNextClick:()=>{const b=document.querySelector('#constructorPanel .constructor-subtabs [data-tab="standings"]');if(b)b.click();setTimeout(()=>d.moveNext(),220);}},
       {element:()=>document.querySelector('#constructorPanel .constructor-standing .tower')||document.querySelector('#constructorPanel .constructor-standing')||document.querySelector('#constructorPanel .constructor-empty'),popover:{title:'11 · CONSTRUCTOR TIME TOWER',description:'Inilah Time Tower Constructor. Urutan P1, P2, dan seterusnya ditentukan oleh waktu pengumpulan tugas kelompok. Kolom WAKTU menunjukkan waktu submit, INTERVAL menunjukkan selisih dengan Constructor di atasnya, dan GAP KE P1 menunjukkan selisih dari posisi pertama. Tim yang belum mengumpulkan akan tampil sebagai NO TIME atau DNF setelah tenggat.',side:'top',align:'center'},
        onNextClick:()=>{setView('mata-kuliah',true);setTimeout(()=>d.moveNext(),140);}},
-      {element:'#v-mata-kuliah .course-subtabs',popover:{title:'12 · GRAND PRIX & HISTORY',description:'GRAND PRIX berisi kartu mata kuliah aktif. HISTORY menyimpan tugas yang sudah melewati tenggat. Pilih tab untuk mengganti tampilan.',side:'bottom',align:'start'},
+      {element:'#v-mata-kuliah .course-subtabs',popover:{title:'12 · GRAND PRIX & HISTORY',description:'GRAND PRIX berisi kartu mata kuliah aktif. HISTORY menyimpan tugas yang melewati tenggat atau ditutup pengelola. Pilih tab untuk mengganti tampilan.',side:'bottom',align:'start'},
        onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="grand-prix"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
       {element:'#cgrid .course',popover:{title:'13 · GRAND PRIX',description:'Setiap kartu mewakili satu mata kuliah. Buka kartu untuk melihat informasi perkuliahan, absensi, materi, dan tugas yang terhubung dengan mata kuliah tersebut.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="history"]');if(b)b.click();setTimeout(()=>d.moveNext(),160);}},
       {element:()=>document.querySelector('#cgrid .history-item .tcard')||document.querySelector('#cgrid .history-empty')||document.querySelector('#cgrid'),popover:{title:'14 · HISTORY & TIME TOWER',description:'HISTORY menyimpan tugas yang sudah melewati tenggat. Setiap kartu arsip dibatasi oleh kotak yang sama dengan kontennya. Tekan Time Tower untuk melihat rekap pengumpulan dan posisi mahasiswa atau Constructor.',side:'top',align:'center'},
-       onNextClick:()=>{setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
+       onNextClick:()=>{const b=document.querySelector('#cgrid .history-item [data-act="open-hasil"],#cgrid .history-item [data-act="open-group-hasil"]');if(b)b.click();else setView('beranda',true);setTimeout(()=>d.moveNext(),180);}},
+      {element:()=>document.querySelector('#dlg .tower')||document.querySelector('#dlg .db')||document.querySelector('#cgrid .history-empty'),popover:{title:'14A · TIME TOWER PERCONTOHAN',description:'Ini Time Tower dari tugas percontohan yang sudah masuk History. Urutan P1, P2, dan seterusnya mengikuti waktu pengumpulan. Mahasiswa yang tidak mengumpulkan setelah tenggat akan tercatat DNF. Tutup tugas aktif dari mode pengelola untuk menjadikannya arsip contoh.',side:'top',align:'center'},onNextClick:()=>{if(dlg.open)dlg.close();setView('beranda',true);setTimeout(()=>d.moveNext(),120);}},
       {element:'#home .tiles',popover:{title:'15 · TELEMETRY HUB',description:'Hub Tugas merangkum tugas individu dan Constructor. Sektor Absensi menunjukkan progres kehadiran dan posisi sektormu di kelas.',side:'bottom',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#home [data-act="open-pit"]');if(b)b.click();setTimeout(()=>d.moveNext(),180);}},
       {element:'#dlg [data-act="hub-task-tab"][data-tab="individual"]',popover:{title:'16 · PIT TUGAS',description:'PIT TUGAS adalah jalur pengumpulan individu. Di sini kamu bisa melihat tugas yang perlu dikerjakan, yang sudah terkumpul, dan tugas yang berstatus DNF.',side:'top',align:'center'},
@@ -1494,6 +1495,7 @@ function absenAdmin(c){
   for(let i=1;i<=N;i++){if(cnt[p[i]]!==undefined)cnt[p[i]]++;}
   const rec=cnt.H+cnt.I+cnt.S+cnt.A+cnt.K;
   let h=pertPicker(c,'adm');
+   h+='<div class="row2 manager-task-actions"><span class="s">'+(se&&se.closed?'Absensi ditutup pengelola':'Absensi terbuka')+'</span><button type="button" class="btn sm" data-act="attendance-close-toggle" data-k="'+esc(c.k)+'" data-n="'+n+'" data-closed="'+(se&&se.closed?'true':'false')+'">'+(se&&se.closed?'Buka kembali absensi':'Tutup Absensi')+'</button></div>';
   if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!se)h+='<p class="empty"><b>'+(attendanceIsPast(n,se)?'Absensi sudah terlewat.':'Absensi belum dibuka.')+'</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
@@ -1507,6 +1509,7 @@ function absenAdmin(c){
 
 /* Tombol absensi pada jadwal menjadi satu-satunya pintu pengisian absensi. */
 function scheduleAttendanceState(c,now){
+  const currentSession=S.se[c.k+'_'+PAD(defaultPert(c.k))];if(currentSession&&currentSession.closed)return 'closed';
   now=now||new Date();
   if(!onDay(c,jakartaWeekday(now)))return 'future';
   const r=jamRange(c);if(!r)return 'open';
@@ -1517,10 +1520,11 @@ function absenBtn(c){
   if(!ME)return '';
   const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
    const range=hariRange(c),weekdayPlatform=!!platConfigOf(c.k)&&range.a==='Senin'&&range.b==='Jumat';
-   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
+   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='closed')return '<button type="button" class="btn sm" disabled>Absensi ditutup pengelola</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
   if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   if(!session)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
   if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
+  if(state==='closed')return '<button type="button" class="btn sm" disabled>Absensi ditutup pengelola</button>';
   if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';
   return '<button type="button" class="btn sm pri" data-act="schedule-attendance" data-k="'+esc(c.k)+'">Isi absen</button>';
 }
@@ -1557,7 +1561,7 @@ function taskActions(t,mine){
     else if(can)h+='<p class="s"><b>Apakah kamu sudah mengerjakan pre-test sampai kuesioner Mentari?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="platform-task-done" data-id="'+esc(id)+'">Ya</button><button type="button" class="btn sm" data-act="platform-task-not-done" data-id="'+esc(id)+'">Belum</button></div>';
     return h+'</div>';
   }
-  let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">DNF</span><span class="s">Tenggat sudah lewat. Pengumpulan ditutup'+'.</span>':'');
+  let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">'+(t.closed?'DITUTUP':'DNF')+'</span><span class="s">'+(t.closed?'Tugas ditutup pengelola.':'Tenggat sudah lewat. Pengumpulan ditutup.')+'</span>':'');
   if((ME||adm())&&!locked)h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Soal belum ditautkan oleh dosen.</span>');
   if(can)h+='<button type="button" class="btn sm pri" data-act="tsub-open" data-id="'+esc(id)+'" aria-expanded="'+open+'">'+(mine?'Ubah pengumpulan':'Kumpulkan')+'</button>';
   h+='</div>';
@@ -1582,7 +1586,7 @@ function tugasStudent(c){
   const all=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k),active=taskList().filter(t=>t.k===c.k),history=all.filter(t=>isLocked(t)).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
   if(!active.length&&!history.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   let h='';if(!ME)h+='<div class="mine"><div><b>Masuk untuk mengerjakan dan mengumpulkan tugas</b><span class="s">Pilih nomor absen Anda terlebih dahulu.</span></div><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>';
-  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);return groupTaskCard(t,g,sub,principal);}return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+(late?'':taskActions(t,mine))+'</article>';};
+  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);return groupTaskCard(t,g,sub,principal);}return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(t.closed?'Ditutup pengelola · ':'')+(late&&!t.closed?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+(late?'':taskActions(t,mine))+'</article>';};
   if(active.length)h+='<h3 class="ph3">Tugas aktif</h3>'+active.map(renderTask).join('');else h+='<p class="empty">Tidak ada tugas aktif.</p>';
   if(!ME)return h;
   if(history.length)h+='<details class="task-history"><summary>Riwayat tugas ('+history.length+')</summary>'+history.map(renderTask).join('')+'</details>';return h;
@@ -1593,27 +1597,27 @@ function tugasAdmin(c){
   let h='';
   if(!list.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   const renderTask=t=>{
-    const subs=t.subs||{},cnt=Object.keys(subs).length,late=isLocked(t);
+    const subs=t.subs||{},cnt=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).length,late=isLocked(t),closeControl=(!late||t.closed)?'<button type="button" class="btn sm" data-act="task-close-toggle" data-id="'+esc(t.id)+'" data-closed="'+(t.closed?'true':'false')+'">'+(t.closed?'Buka kembali':'Tutup Tugas')+'</button>':'';
     const taskUrl=(t.link&&okUrl(t.link))?t.link:(isPlatformCourse(c)?platOf(c.k):'');
     const taskAction=taskUrl?'<a class="btn sm" href="'+esc(taskUrl)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Tautan instruksi belum diatur.</span>';
     if(t.mode==='group'){
       const groups=constructorGroups(t.k),gc=groups.length,done=Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).length;
       const managerCard='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">Kelompok</span></div>'+
-        (late?'<span class="chip late">Masuk riwayat</span>':'')+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+
+        (late?'<span class="chip late">'+(t.closed?'Ditutup pengelola':'Masuk riwayat')+'</span>':'')+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+
         (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
         '<div><div class="track"><i style="width:'+Math.round((gc?done/gc:0)*100)+'%"></i></div><span class="s">'+done+' dari '+gc+' Constructor sudah mengumpulkan</span></div>'+
-        '<div class="row2 manager-task-actions">'+taskAction+'</div>'+
+        '<div class="row2 manager-task-actions">'+taskAction+closeControl+'</div>'+
         '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).map(gid=>{const g=S.cs[gid]||{},principal=Number(g.principal)||null,sub=t.groupSubs[gid];return '<li><b>'+esc(g.name||gid)+'</b> · Team Principal: '+esc(principal?nameOf(principal):'—')+' · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka pengumpulan</a>':(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+'</li>';}).join('')+'</ul></details></article>';
       const ownGroup=ME?myConstructor(ME,t.k):null,ownSub=ownGroup&&t.groupSubs?t.groupSubs[ownGroup.id]:null;
       return '<div class="admin-task-stack">'+managerCard+(ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+groupTaskCard(t,ownGroup,ownSub,!!(ownGroup&&Number(ownGroup.principal)===Number(ME)))+'</div>':'')+'</div>';
     }
-    const keys=Object.keys(subs).map(Number).sort((a,b)=>a-b);
+    const keys=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).map(Number).sort((a,b)=>a-b);
     const mine=ME&&subs[ME]?subs[ME]:null;
     const ownActions=ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+taskActions(t,mine)+'</div>':'';
     return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3>'+
-      (t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Riwayat · ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
+      (t.closed?'<span class="chip late">Ditutup pengelola</span>':t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(late?'Riwayat · ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+'</div>'+
       (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
-      '<div class="row2 manager-task-actions">'+taskAction+'</div>'+
+      '<div class="row2 manager-task-actions">'+taskAction+closeControl+'</div>'+
       '<div><div class="track" aria-hidden="true"><i style="width:'+Math.round(cnt/N*100)+'%"></i></div><span class="s">'+cnt+' dari '+N+' mahasiswa sudah mengumpulkan</span></div>'+
       ownActions+
       '<details><summary>Lihat pengumpulan ('+cnt+')</summary><ul class="subs" style="margin-top:8px">'+
@@ -1763,7 +1767,7 @@ async function writeSession(k,n,patch){
   const ref=db.doc('sessions/'+k+'_'+PAD(n));
   try{await ref.update(patch);}
   catch(e){
-    const base={k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}};
+    const base={k:k,n:n,tanggal:'',topik:'',present:{},bukti:{},closed:false};
     const o=Object.assign({},base,patch);
     if(patch.present)o.present=Object.assign({},base.present,patch.present);
     if(patch.bukti)o.bukti=Object.assign({},base.bukti,patch.bukti);
@@ -2126,7 +2130,7 @@ document.addEventListener('click',async e=>{
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
-      if(D.kind==='attendance'&&(!ME||scheduleAttendanceState(S.co[D.key])!=='open')){toast('Waktu pengisian absensi sudah ditutup.');break;}
+      if(D.kind==='attendance'&&(!ME||scheduleAttendanceState(S.co[D.key])!=='open'||(S.se[D.key+'_'+PAD(D.pert)]&&S.se[D.key+'_'+PAD(D.pert)].closed))){toast('Waktu pengisian absensi sudah ditutup.');break;}
       const no=+d.no,c=D.key,session=S.se[c+'_'+PAD(D.pert)]||{},cur=(session.present||{})[no]||'';
       if(!adm()&&no!==ME)break;
       if(d.st==='K'&&!(session.bukti&&session.bukti[no]&&session.bukti[no].id)){alert('Berkas bukti belum dikirim. Silakan unggah foto atau PDF bukti absensi terlebih dahulu sebelum memilih status Kelas Berjalan.');break;}
@@ -2142,7 +2146,22 @@ document.addEventListener('click',async e=>{
       await run(()=>writeSession(D.key,D.pert,{present:p}),'Semua ditandai hadir');
       break;
     }
-    case 'tnew-toggle':D.newOpen=!D.newOpen;renderDialog(true);break;
+    case 'attendance-close-toggle':{
+       if(!adm())break;
+       const k=d.k||D.key,n=Number(d.n)||D.pert,se=S.se[k+'_'+PAD(n)]||{};
+       const close=d.closed!=='true';
+       if(close&&!confirm('Tutup absensi pertemuan '+n+' untuk mata kuliah '+k+'? Mahasiswa tidak dapat mengisi setelah ditutup.'))break;
+       const ok=await run(()=>writeSession(k,n,{closed:close}),close?'Absensi ditutup':'Absensi dibuka kembali');
+       if(ok){S.se[k+'_'+PAD(n)]=Object.assign({k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}},se,{closed:close});renderDialog(true);refreshAll();}break;
+     }
+     case 'task-close-toggle':{
+       if(!adm())break;
+       const close=d.closed!=='true';
+       if(close&&!confirm('Tutup tugas ini dan pindahkan ke History? Pengumpulan baru akan dihentikan.'))break;
+       const ok=await run(()=>db.doc('tugas/'+d.id).update({closed:close}),close?'Tugas ditutup dan dipindahkan ke History':'Tugas dibuka kembali');
+       if(ok){if(S.tu[d.id])S.tu[d.id].closed=close;renderDialog(true);renderCourses();refreshAll();}break;
+     }
+     case 'tnew-toggle':D.newOpen=!D.newOpen;renderDialog(true);break;
     case 'tnew-save':{
       if(!adm())break;
       const judul=$('tn-judul').value.trim();

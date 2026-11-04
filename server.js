@@ -186,10 +186,11 @@ async function deleteDoc(p) {
 
 function taskFromCourseUpdate(row) {
   if (!row || !row.task_title) return null;
+  const subs = isObj(row.task_submissions) ? row.task_submissions : {};
   return { k: row.course_code, judul: row.task_title, tenggat: row.deadline || '',
     deskripsi: row.task_description || '', link: row.task_url || '',
-    mode: row.task_mode === 'group' ? 'group' : 'individual',
-    subs: isObj(row.task_submissions) ? row.task_submissions : {},
+    mode: row.task_mode === 'group' ? 'group' : 'individual', closed: !!(subs.__meta && subs.__meta.closed),
+    subs: subs,
     groupSubs: isObj(row.task_group_submissions) ? row.task_group_submissions : {},
     dibuat: Number(row.task_created_at) || Date.parse(row.created_at || '') || Date.now() };
 }
@@ -513,7 +514,7 @@ async function view(p, data, sess) {
     const present = isObj(data.present) ? data.present : {};
     const rec = Object.keys(present).some((k) => !!present[k]);
     if (admin) return Object.assign({}, data, { rec: rec });
-    const out = { k: data.k, n: data.n, tanggal: data.tanggal || '', topik: data.topik || '', rec: rec, present: {}, bukti: {} };
+    const out = { k: data.k, n: data.n, tanggal: data.tanggal || '', topik: data.topik || '', rec: rec, closed: data.closed === true, present: {}, bukti: {} };
     if (me) {
       if (present[me]) out.present[me] = present[me];
       if (isObj(data.bukti) && data.bukti[me]) out.bukti[me] = data.bukti[me];
@@ -706,18 +707,20 @@ async function decide(method, p, body, sess, existing) {
       if (method === 'PATCH') {
         if (!existing) return ERR_MISSING;
         const b = Object.assign(clone(existing), pick(body, ['tanggal', 'topik']));
+        if (typeof body.closed === 'boolean') b.closed = body.closed;
         if (isObj(body.present)) b.present = Object.assign({}, b.present, body.present);
         if (isObj(body.bukti)) b.bukti = Object.assign({}, b.bukti, body.bukti);
         if (Object.keys(isObj(b.present)?b.present:{}).some((no)=>b.present[no]==='K'&&!(b.bukti&&b.bukti[no]&&b.bukti[no].id))) return ERR_BAD('Kelas Berjalan memerlukan file bukti mahasiswa tersebut.');
         return { data: b };
       }
-      const created = { k: m[1], n: Number(m[2]), tanggal: String(body.tanggal || ''), topik: String(body.topik || '').slice(0, 120), present: isObj(body.present) ? body.present : {}, bukti: isObj(body.bukti) ? body.bukti : {} };
+      const created = { k: m[1], n: Number(m[2]), tanggal: String(body.tanggal || ''), topik: String(body.topik || '').slice(0, 120), present: isObj(body.present) ? body.present : {}, bukti: isObj(body.bukti) ? body.bukti : {}, closed: body.closed === true };
       if (Object.keys(created.present).some((no)=>created.present[no]==='K'&&!(created.bukti[no]&&created.bukti[no].id))) return ERR_BAD('Kelas Berjalan memerlukan file bukti mahasiswa tersebut.');
       return { data: created };
     }
     const me = String(sess.no);
     if (method === 'PUT' && existing) return ERR_FORBID;
     if (method === 'PATCH' && !existing) return ERR_MISSING;
+    if (existing && existing.closed) return ERR_FORBID;
     if (!onlyKeys(body, method === 'PUT' ? ['k', 'n', 'tanggal', 'topik', 'present', 'bukti'] : ['present', 'bukti'])) return ERR_FORBID;
     const out = existing ? clone(existing) : { k: m[1], n: Number(m[2]), tanggal: '', topik: '', present: {}, bukti: {} };
     if (!isObj(out.present)) out.present = {};
@@ -762,8 +765,14 @@ async function decide(method, p, body, sess, existing) {
     }
     if (method === 'PATCH') {
       if (!existing) return ERR_MISSING;
+      if (onlyKeys(body, ['closed']) && typeof body.closed === 'boolean') {
+        if (!admin) return ERR_FORBID;
+        const out = clone(existing); out.closed = body.closed; if (!isObj(out.subs)) out.subs = {};
+        out.subs.__meta = Object.assign({}, out.subs.__meta || {}, { closed: body.closed });
+        return { data: out };
+      }
       if (onlyKeys(body, ['subs'])) {
-        if (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0) return ERR_BAD('Tenggat sudah lewat. Pengumpulan ditutup.');
+        if (existing.closed || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_BAD('Tugas sudah ditutup atau tenggat sudah lewat. Pengumpulan ditutup.');
         const me = String(sess.no);
         if (!isObj(body.subs) || !onlyKeys(body.subs, [me]) || !isObj(body.subs[me]) || existing.mode === 'group') return ERR_FORBID;
         const s = body.subs[me], tautan = String(s.tautan || '').trim().slice(0, 500);
@@ -779,7 +788,7 @@ async function decide(method, p, body, sess, existing) {
         out.subs[me] = { tautan, catatan, berkas, at: Date.now(), ...(platformConfirmation ? { platformConfirmation: true } : {}) }; return { data: out };
       }
       if (onlyKeys(body, ['groupSubs'])) {
-        if (existing.mode !== 'group' || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_FORBID;
+        if (existing.mode !== 'group' || existing.closed || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_FORBID;
         if (!isObj(body.groupSubs) || Object.keys(body.groupSubs).length !== 1) return ERR_FORBID;
         const gid = Object.keys(body.groupSubs)[0], s = body.groupSubs[gid];
         if (!/^[A-Za-z0-9_-]{1,40}$/.test(gid) || !isObj(s)) return ERR_FORBID;
