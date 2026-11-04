@@ -2152,14 +2152,14 @@ document.addEventListener('click',async e=>{
        const close=d.closed!=='true';
        if(close&&!confirm('Tutup absensi pertemuan '+n+' untuk mata kuliah '+k+'? Mahasiswa tidak dapat mengisi setelah ditutup.'))break;
        const ok=await run(()=>writeSession(k,n,{closed:close}),close?'Absensi ditutup':'Absensi dibuka kembali');
-       if(ok)renderDialog(true);break;
+       if(ok){S.se[k+'_'+PAD(n)]=Object.assign({k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}},se,{closed:close});renderDialog(true);refreshAll();}break;
      }
      case 'task-close-toggle':{
        if(!adm())break;
        const close=d.closed!=='true';
        if(close&&!confirm('Tutup tugas ini dan pindahkan ke History? Pengumpulan baru akan dihentikan.'))break;
        const ok=await run(()=>db.doc('tugas/'+d.id).update({closed:close}),close?'Tugas ditutup dan dipindahkan ke History':'Tugas dibuka kembali');
-       if(ok){renderDialog(true);renderCourses();refreshAll();}break;
+       if(ok){if(S.tu[d.id])S.tu[d.id].closed=close;renderDialog(true);renderCourses();refreshAll();}break;
      }
      case 'tnew-toggle':D.newOpen=!D.newOpen;renderDialog(true);break;
     case 'tnew-save':{
