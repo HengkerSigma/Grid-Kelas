@@ -1378,18 +1378,23 @@ function scheduleAttendanceDlg(){
 }
 function exportTools(segment){
   if(!ME&&!adm())return '';
-  let opts='<option value="all">Seluruh pertemuan</option>';
+  let opts='<option value="all">Seluruh pertemuan</option><option value="range">Rentang pertemuan</option>';
   for(let i=1;i<=PERT;i++)opts+='<option value="'+i+'">Pertemuan '+i+'</option>';
+  let rangeOpts='';
+  for(let i=1;i<=PERT;i++)rangeOpts+='<option value="'+i+'">Pertemuan '+i+'</option>';
   const title=segment==='absen'?'Rekap absensi':'Rekap pengumpulan tugas';
   const ownerScope=adm()&&ME?'<label class="export-scope">Data<select data-export-owner="'+segment+'"><option value="class">Seluruh kelas</option><option value="personal">Data pribadi saya</option></select></label>':'';
   return '<section class="export-tools" aria-label="'+title+'">'+
     '<div class="export-tools-head"><b>'+title+'</b><span class="s">'+(adm()?'Pengelola dapat memilih rekap kelas atau data pribadinya':'Ekspor data pribadi')+'</span></div>'+
     '<div class="export-tools-controls">'+ownerScope+'<label class="export-scope">Cakupan<select data-export-scope="'+segment+'">'+opts+'</select></label>'+
+    '<div data-export-range="'+segment+'" hidden style="display:none;gap:12px;flex-wrap:wrap;align-items:end">'+
+    '<label class="export-scope">Dari<select data-export-start="'+segment+'">'+rangeOpts+'</select></label>'+
+    '<label class="export-scope">Sampai<select data-export-end="'+segment+'" selected>'+rangeOpts+'</select></label></div>'+
     '<div class="export-formats" aria-label="Format unduhan">'+
     '<button type="button" class="btn sm" data-export-segment="'+segment+'" data-export-format="xlsx">XLSX</button>'+
     '<button type="button" class="btn sm" data-export-segment="'+segment+'" data-export-format="csv">CSV</button>'+
     '<button type="button" class="btn sm" data-export-segment="'+segment+'" data-export-format="pdf">PDF</button></div></div>'+
-    '<p class="s export-note">Pilih satu pertemuan atau seluruh pertemuan. Mahasiswa hanya dapat mengekspor datanya sendiri.</p></section>';
+    '<p class="s export-note">Pilih seluruh pertemuan, satu pertemuan, atau rentang pertemuan. Mahasiswa hanya dapat mengekspor datanya sendiri.</p></section>';
 }
 function buildCourseRecap(segment,format){
   if(!D||D.kind!=='course'||!['absen','tugas'].includes(segment))return;
@@ -1397,6 +1402,15 @@ function buildCourseRecap(segment,format){
   if(!c){toast('Mata kuliah tidak ditemukan.');return;}
   const select=dlg.querySelector('[data-export-scope="'+segment+'"]');
   const scope=select?select.value:'all',admin=adm();
+  const startSelect=dlg.querySelector('[data-export-start="'+segment+'"]');
+  const endSelect=dlg.querySelector('[data-export-end="'+segment+'"]');
+  const rangeStart=Number(startSelect&&startSelect.value||1);
+  const rangeEnd=Number(endSelect&&endSelect.value||PERT);
+  if(scope==='range'&&(!Number.isInteger(rangeStart)||!Number.isInteger(rangeEnd)||rangeStart<1||rangeEnd>PERT||rangeStart>rangeEnd)){
+    toast('Rentang tidak valid. Pastikan pertemuan awal tidak lebih besar dari pertemuan akhir.');return;
+  }
+  const scopeLabel=scope==='all'?'Seluruh pertemuan':scope==='range'?'Pertemuan '+rangeStart+'–'+rangeEnd:'Pertemuan '+scope;
+  const includesMeeting=meeting=>scope==='all'||(scope==='range'?meeting!==null&&meeting>=rangeStart&&meeting<=rangeEnd:meeting===Number(scope));
   const ownerSelect=admin?dlg.querySelector('[data-export-owner="'+segment+'"]'):null;
   const personalExport=!!(admin&&ME&&ownerSelect&&ownerSelect.value==='personal');
   const exportAll=admin&&!personalExport;
@@ -1404,7 +1418,7 @@ function buildCourseRecap(segment,format){
   let headers=[],rows=[];
   if(segment==='absen'){
     headers=['Mata Kuliah','Pertemuan Ke-','Tanggal Pertemuan','No. Absen','Nama Mahasiswa','Status Kehadiran','Bukti Absensi'];
-    const meetings=scope==='all'?Array.from({length:PERT},(_,i)=>i+1):[Number(scope)];
+    const meetings=scope==='all'?Array.from({length:PERT},(_,i)=>i+1):scope==='range'?Array.from({length:rangeEnd-rangeStart+1},(_,i)=>rangeStart+i):[Number(scope)];
     meetings.forEach(meeting=>{
       const se=S.se[c.k+'_'+PAD(meeting)]||{},present=se.present||{},proof=se.bukti||{};
       studentNos.forEach(no=>{
@@ -1428,7 +1442,7 @@ function buildCourseRecap(segment,format){
     };
     tasks.forEach(t=>{
       const meeting=meetingOf(t);
-      if(scope!=='all'&&meeting!==Number(scope))return;
+      if(!includesMeeting(meeting))return;
       if(t.mode==='group'){
         constructorGroups(c.k).forEach(g=>{
           const sub=(t.groupSubs||{})[g.id]||null;
@@ -1440,9 +1454,10 @@ function buildCourseRecap(segment,format){
       }
     });
   }
-  if(!rows.length){toast(scope==='all'?'Belum ada data untuk diekspor.':'Tidak ada data pada pertemuan yang dipilih.');return;}
+  if(!rows.length){toast(scope==='all'?'Belum ada data untuk diekspor.':scope==='range'?'Tidak ada data pada rentang pertemuan yang dipilih.':'Tidak ada data pada pertemuan yang dipilih.');return;}
   const safe=s=>String(s||'').replace(/[^a-z0-9_-]+/gi,'-').replace(/^-+|-+$/g,'');
-  const filename='Rekap-'+(segment==='absen'?'Absensi':'Pengumpulan-Tugas')+'-'+safe(c.k)+'-'+(scope==='all'?'Seluruh-Pertemuan':'Pertemuan-'+scope)+(personalExport?'-Data-Pribadi':'');
+  const scopeFile=scope==='all'?'Seluruh-Pertemuan':scope==='range'?'Pertemuan-'+rangeStart+'-sampai-'+rangeEnd:'Pertemuan-'+scope;
+  const filename='Rekap-'+(segment==='absen'?'Absensi':'Pengumpulan-Tugas')+'-'+safe(c.k)+'-'+scopeFile+(personalExport?'-Data-Pribadi':'');
   if(format==='csv'){
     const csv=[headers].concat(rows).map(row=>row.map(value=>'"'+String(value==null?'':value).replace(/"/g,'""')+'"').join(',')).join('\\r\\n');
     const blob=new Blob(['\\ufeff',csv],{type:'text/csv;charset=utf-8;'});
@@ -1462,7 +1477,7 @@ function buildCourseRecap(segment,format){
     doc.setFont('helvetica','bold');doc.setFontSize(13);
     doc.text(segment==='absen'?'Rekap Absensi':'Rekap Pengumpulan Tugas',14,13);
     doc.setFont('helvetica','normal');doc.setFontSize(8);
-    doc.text('Mata kuliah: '+c.nama+' ('+c.k+') · '+(scope==='all'?'Seluruh pertemuan':'Pertemuan '+scope)+' · Diekspor '+formatDateTime(Date.now()),14,19);
+    doc.text('Mata kuliah: '+c.nama+' ('+c.k+') · '+scopeLabel+' · Diekspor '+formatDateTime(Date.now()),14,19);
     doc.autoTable({startY:23,head:[headers],body:rows,theme:'grid',styles:{font:'helvetica',fontSize:7,cellPadding:1.8,overflow:'linebreak'},headStyles:{fontSize:7},margin:{left:10,right:10,bottom:12},horizontalPageBreak:true,horizontalPageBreakRepeat:0});
     doc.save(filename+'.pdf');
   }
@@ -2518,6 +2533,11 @@ document.addEventListener('click',async e=>{
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;});
 document.addEventListener('change',async e=>{
   const t=e.target;
+  if(t.matches&&t.matches('select[data-export-scope]')){
+    const range=dlg&&dlg.querySelector('[data-export-range="'+t.dataset.exportScope+'"]');
+    if(range){range.hidden=t.value!=='range';range.style.display=t.value==='range'?'flex':'none';}
+    return;
+  }
   if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;
   if(['wa-category','wa-course','wa-meeting','wa-date','wa-combine'].includes(t.id)){const p=$('wa-preview');if(p){p.value=buildWhatsAppTemplate();DR['wa-preview']=p.value;}return;}
   if(t.id==='f-tipe'){
