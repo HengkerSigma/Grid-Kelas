@@ -268,7 +268,7 @@ function constructorColor(id){return (CONSTRUCTOR_COLORS.find(c=>c.id===id)||CON
 function constructorGroups(courseCode){return Object.keys(S.cs).map(id=>Object.assign({id:id},S.cs[id])).filter(g=>!courseCode||g.courseCode===courseCode).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));}
 function myConstructor(no,courseCode){if(!no)return null;return constructorGroups(courseCode).find(g=>Number(g.principal)===Number(no)||(Array.isArray(g.members)&&g.members.map(Number).includes(Number(no))))||null;}
 function groupTaskCard(t,g,sub,principal){
-  const id=t.id,locked=isLocked(t),done=!!(sub&&sub.at),late=t.tenggat&&t.tenggat<today(),open=D.subOpen===id;
+  const id=t.id,locked=isLocked(t),done=!!(sub&&sub.at),late=locked,open=D.subOpen===id;
   let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?(t.closed?'Ditutup pengelola':'Lewat tenggat'):'Tugas kelompok')+'</span></div>'+
     '<p class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</p>'+
     (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'');
