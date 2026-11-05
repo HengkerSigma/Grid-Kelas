@@ -525,11 +525,14 @@ function homeTiles(no){
   const groupTotal=mineGroupTasks.length,tires={soft:0,medium:0,hard:0};
   groupOpen.forEach(x=>tires[constructorCompound(x.t)]++);
   const pp=[];if(pit.open.length)pp.push(pit.open.length+' belum dikumpulkan');if(pit.dnf.length)pp.push(pit.dnf.length+' DNF');
-  const pitD=pit.b?(pp.length?pp.join(' · '):'Semua tugas individu sudah dikumpulkan'):'Belum ada tugas individu';
+  const hasIndividual=pit.b>0,hasConstructor=groupTotal>0;
+  const pitSummary=pit.b?(pp.length?pp.join(' · '):'Semua tugas individu selesai'):'';
+  const groupSummary=groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai'+(groupDnf?' · '+groupDnf+' DNF':''):'';
+  const hubSummary=!hasIndividual&&!hasConstructor?'Belum ada tugas individu atau Constructor':!hasIndividual?'Belum ada tugas individu':!hasConstructor?'Belum ada tugas Constructor':pitSummary+' · '+groupSummary;
   const flags=(pit.open.length||pit.dnf.length)?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+(pit.dnf.length?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+pit.dnf.length+'</span>':'')+'</span>':'';
   const paddock=(groupOpen.length||groupDnf)?'<span class="pflags paddock-tires">'+['soft','medium','hard'].filter(c=>tires[c]).map(c=>'<span class="pfl">'+tireSvg(c)+tires[c]+'</span>').join('')+(groupDnf?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+groupDnf+'</span>':'')+'</span>':'';
   return '<div class="tiles">'+
-    '<button type="button" class="tile tilebtn tile-hub'+((pit.open.length||pit.dnf.length||groupOpen.length||groupDnf)?' task-alert':'')+'" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">Individu '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' Constructor</div><div class="l">Hub Tugas</div><div class="d">'+pitD+' · '+(groupTotal?groupDone+' dari '+groupTotal+' tugas Constructor selesai'+(groupDnf?' · '+groupDnf+' DNF':''):'Belum ada tugas Constructor untuk kelompokmu')+'</div>'+flags+paddock+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
+    '<button type="button" class="tile tilebtn tile-hub'+((pit.open.length||pit.dnf.length||groupOpen.length||groupDnf)?' task-alert':'')+'" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">Individu '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' Constructor</div><div class="l">Hub Tugas</div><div class="d">'+hubSummary+'</div>'+flags+paddock+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
     '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
@@ -861,19 +864,17 @@ function pitDlg(){
   const tab=D.taskTab==='group'?'group':'individual';
   const groupTasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
   const individual=pitData(ME);
-  let h=dlgHead('HUB TUGAS','Pusat Tugas','Pilih kategori tugas yang ingin kamu lihat.','#e10600');
+  let h='<div class="dh" style="--tc:#e10600"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">HUB TUGAS</div></div>';
   h+='<div class="db"><div class="constructor-subtabs hub-task-tabs" role="tablist" aria-label="Kategori tugas"><button type="button" class="student-subtab" data-act="hub-task-tab" data-tab="individual" aria-selected="'+(tab==='individual')+'">PIT TUGAS · INDIVIDU</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="hub-task-tab" data-tab="group" aria-selected="'+(tab==='group')+'">PADDOCK CONSTRUCTOR · KELOMPOK</button></div>';
   if(tab==='individual'){
-    h+='<p class="s">Tugas yang harus kamu kerjakan dan kumpulkan sendiri.</p>';if(individual.open.length||individual.dnf.length)h+='<ul class="pleg"><li>'+flagSvg('r')+'Kurang dari 1 hari</li><li>'+flagSvg('y')+'Kurang dari 3 hari</li><li>'+flagSvg('g')+'3 hari atau lebih</li><li><span class="dnfb">DNF</span>Lewat tenggat, tidak terselesaikan</li></ul>';
+    if(individual.open.length||individual.dnf.length)h+='<ul class="pleg"><li>'+flagSvg('r')+'Kurang dari 1 hari</li><li>'+flagSvg('y')+'Kurang dari 3 hari</li><li>'+flagSvg('g')+'3 hari atau lebih</li><li><span class="dnfb">DNF</span>Lewat tenggat, tidak terselesaikan</li></ul>';
     if(individual.open.length)h+='<ul class="plist">'+individual.open.map(x=>{const f=flagOf(x.t);return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Kumpulkan</button>'+hasilBtn(x.t)+'</span></li>';}).join('')+'</ul>';
     else h+='<p class="empty">Tidak ada tugas individu yang sedang menunggu pengumpulan.</p>';
     if(individual.dnf.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+individual.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact">'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
     if(individual.done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+individual.done.map(x=>'<li class="pit-it done"><span class="pck">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
   }else{
-    h+='<p class="s hub-task-intro">Daftar tugas kelompok dari Constructor kamu di setiap mata kuliah. Pengumpulan dilakukan oleh Team Principal masing-masing kelompok.</p>';
     const mineTasks=groupTasks.map(t=>({t:t,g:myConstructor(ME,t.k)})).filter(x=>x.g);
-    if(!mineTasks.length)h+='<p class="empty">Kamu belum terdaftar dalam Constructor di mata kuliah mana pun.</p>';
-    else{
+    if(mineTasks.length){
       const active=mineTasks.filter(x=>!isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
       const done=mineTasks.filter(x=>x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at);
       const late=mineTasks.filter(x=>isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
