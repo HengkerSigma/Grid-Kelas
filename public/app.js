@@ -102,6 +102,7 @@ function updateLiveClock(){const el=$('liveClock');if(!el)return;const now=new D
 const photo=key=>{const m=S.md[key],src=m&&(m.url||m.data);return src&&((m.url&&/^https:\/\//.test(src))||okImg(src))?'<img src="'+esc(src)+'" alt="">':SIL;};
 const stu=n=>S.st[PAD(n)]||null;
 const nameOf=n=>{const s=stu(n);return s?((s.depan||'')+' '+(s.belakang||'')).trim():'Mahasiswa '+n;};
+const nicknameOf=s=>{if(!s)return'Mahasiswa';const code=String(s.kode||'').trim().toLocaleUpperCase();const full=((s.depan||'')+' '+(s.belakang||'')).trim();if(code.length===3){const word=full.split(/\s+/).find(part=>part.toLocaleUpperCase().includes(code));if(word)return word;}return String(s.depan||full||'Mahasiswa').trim();};
 const courseList=()=>Object.values(S.co).sort((a,b)=>(a.urut||0)-(b.urut||0));
 const dn=c=>Array.isArray(c.dosen)?(c.dosen[0]||''):(c.dosen||'');
 const isLocked=t=>{if(t&&t.closed===true)return true;const d=dayDiff(t&&t.tenggat);return d!==null&&d<0;};
@@ -1039,7 +1040,7 @@ function renderHome(force){
     missing.sort((a2,b2)=>(a2.tanggal||'').localeCompare(b2.tanggal||''));
     const s0=stu(ME),ak=S.ak[PAD(ME)];
     $('homeLede').textContent='Cek jadwal, tugas, dan kabar terbaru kelasmu di sini.';
-    const greeting=greetingText(s0&&s0.depan?s0.depan:'Mahasiswa');
+    const greeting=greetingText(nicknameOf(s0));
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
     if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password akunmu masih yang bawaan. Yuk, ganti sekarang biar akunmu lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
     h+=homeTiles(ME);
