@@ -1130,7 +1130,17 @@ const server = http.createServer(async (req, res) => {
       }
       if (method === 'DELETE') {
         const d = await decide('DELETE', dp, {}, sess, docData);
-        return commit(res, dp, d);
+        const result = await commit(res, dp, d);
+        // Saat sesi absensi dihapus, bersihkan juga bukti unggahan yang hanya direferensikan sesi tersebut.
+        if (d.del && dp.startsWith('sessions/')) {
+          const proofIds = Object.values(isObj(docData && docData.bukti) ? docData.bukti : {})
+            .map((file) => file && file.id).filter((id) => /^[0-9a-f]{32}$/.test(id || ''));
+          for (const fid of proofIds) {
+            if (attendanceStore) { try { await attendanceStore.remove([fid]); } catch (e) { /* berkas mungkin sudah tidak ada */ } }
+            try { await deleteDoc('upl:' + fid); } catch (e) { console.error('Gagal membersihkan metadata bukti absensi', e); }
+          }
+        }
+        return result;
       }
     }
 
