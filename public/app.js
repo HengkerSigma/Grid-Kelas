@@ -77,17 +77,12 @@ function fmtDate(s){if(!s)return '';const p=String(s).split('-');if(p.length!==3
 function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms));}catch(e){return '';}}
 function meetingDate(n){const p=SEMESTER_ANCHOR_DATE.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]-(SEMESTER_ANCHOR_MEETING-Number(n))*7));return d.toISOString().slice(0,10);}
 function attendanceIsPast(meeting,se,courseCode){
- const k=courseCode||(se&&se.k);
- // Link pertemuan aktif platform mengalahkan tanggal kalender fallback; tanggal aktual pengelola tetap dihormati.
- if(!(se&&se.tanggal)&&k&&platConfigOf(k)&&Number(meeting)===defaultPert(k)&&platOf(k,meeting))return false;
  const date=se&&se.tanggal?se.tanggal:meetingDate(meeting);return !!date&&date<today();}
 function attendanceMissingStatus(meeting,se,student,courseCode){
  const k=courseCode||(se&&se.k),n=Number(meeting),active=k?defaultPert(k):0,hasSession=!!(se&&Object.keys(se).length);
  if(se&&se.closed)return 'Absensi ditutup pengelola';
  if(!hasSession){
-  // Pertemuan aktif platform dapat dikonfirmasi meski sesi belum pernah dibuat.
-  if(k&&n===active&&platConfigOf(k)&&platOf(k,n))return student?'Belum mengisi':'Belum diisi';
-  // Pertemuan sebelum nomor aktif tanpa sesi tidak boleh dianggap belum dibuka atau sudah diabsen.
+  // Tautan platform saja tidak membuka absensi; sesi harus benar-benar tersedia.
   if(k&&n<active)return 'Data absensi tidak tersedia';
   if(attendanceIsPast(n,se,k))return 'Absensi sudah terlewat';
   return 'Absensi belum dibuka';
@@ -1625,7 +1620,7 @@ function absenStudent(c,scheduleMode){
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
   const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):attendanceMissingStatus(n,se,true,c.k);
   h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+
-    (isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n)?'<div class="drv"><p class="s"><b>Sudah Mengerjakan Forum Diskusi?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div></div>':'')+
+    (se&&Object.keys(se).length&&!se.closed&&isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n)?'<div class="drv"><p class="s"><b>Sudah Mengerjakan Forum Diskusi?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div></div>':'')+
     (bk&&bk.id?'<div><b class="s">Bukti absensi</b>'+fileHtml(bk)+'</div>':'<span class="s">Tidak ada bukti yang dilampirkan pada pertemuan ini.</span>')+'</div>';
   const a=stats(ME).by[c.k]||{h:0,t:0};
   h+='<p class="sum"><span>Hadir '+a.h+' dari '+a.t+' pertemuan terisi</span></p>';
@@ -1641,11 +1636,11 @@ function absenAdmin(c){
   if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!se)h+='<p class="empty"><b>'+esc(attendanceMissingStatus(n,se,false,c.k))+'.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
-  if(ME&&n===defaultPert(c.k)&&isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n)){
+  if(ME&&se&&n===defaultPert(c.k)&&!se.closed&&isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n)){
     const ownStatus=p[ME]?(LBL[p[ME]]||p[ME]):attendanceMissingStatus(n,se,true,c.k);
     h+='<div class="tcard manager-forum-check"><div><b>Sudah Mengerjakan Forum Diskusi?</b><br><span class="s">Konfirmasi forum diskusi untuk akun pengelola sendiri · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status absensi saya: <b>'+esc(ownStatus)+'</b></span></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div></div>';
   }
-  const canConfirmPlatform=isPlatformCourse(c)&&n===defaultPert(c.k)&&inSession(c)&&!!platOf(c.k,n);
+  const canConfirmPlatform=!!(se&&!se.closed&&isPlatformCourse(c)&&n===defaultPert(c.k)&&inSession(c)&&platOf(c.k,n));
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
     const status=p[i]?(LBL[p[i]]||p[i]):attendanceMissingStatus(n,se,false,c.k);
@@ -1686,7 +1681,7 @@ function absenBtn(c){
   if(!ME)return '';
   const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
    const range=hariRange(c),weekdayPlatform=!!platConfigOf(c.k)&&range.a==='Senin'&&range.b==='Jumat';
-   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='closed')return '<button type="button" class="btn sm" disabled>Absensi ditutup pengelola</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<button type="button" class="btn sm pri" data-act="platform-attendance-open" data-k="'+esc(c.k)+'" data-n="'+n+'">Isi absen <span aria-hidden="true">&#8599;</span></button>';}
+   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(!session||!Object.keys(session).length)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='closed')return '<button type="button" class="btn sm" disabled>Absensi ditutup pengelola</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<button type="button" class="btn sm pri" data-act="platform-attendance-open" data-k="'+esc(c.k)+'" data-n="'+n+'">Isi absen <span aria-hidden="true">&#8599;</span></button>';}
   if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   if(!session)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
   if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
