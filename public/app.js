@@ -1008,6 +1008,31 @@ function sektorDlg(){
   return h+'</div>';
 }
 
+let DEFAULT_PASSWORD_ALERT_SHOWN=false;
+function showDefaultPasswordAlert(){
+  if(DEFAULT_PASSWORD_ALERT_SHOWN||!ME)return;
+  const account=S.ak&&S.ak[PAD(ME)];
+  if(!account||account.hash)return;
+  DEFAULT_PASSWORD_ALERT_SHOWN=true;
+  let alert=document.getElementById('gkDefaultPasswordAlert');
+  if(!alert){
+    alert=document.createElement('dialog');
+    alert.id='gkDefaultPasswordAlert';
+    alert.className='gk-password-alert';
+    alert.setAttribute('aria-labelledby','gkDefaultPasswordTitle');
+    alert.innerHTML='<div class="gk-password-alert-card"><div class="gk-password-alert-mark" aria-hidden="true">!</div><div class="gk-password-alert-kicker">GRID KELAS · KEAMANAN AKUN</div><h2 id="gkDefaultPasswordTitle">Password masih bawaan</h2><p>Password kamu masih bawaan, mau diganti sekarang biar lebih aman?</p><div class="gk-password-alert-actions"><button type="button" class="btn" data-password-alert="later">Nanti</button><button type="button" class="btn pri" data-password-alert="change">Ganti</button></div></div>';
+    document.body.appendChild(alert);
+    alert.addEventListener('click',e=>{
+      const action=e.target.closest('[data-password-alert]');
+      if(!action)return;
+      const choice=action.dataset.passwordAlert;
+      if(alert.open)alert.close();
+      if(choice==='change')openLogin(ME);
+    });
+    alert.addEventListener('cancel',e=>{e.preventDefault();if(alert.open)alert.close();});
+  }
+  if(!alert.open&&typeof alert.showModal==='function')alert.showModal();
+}
 function renderHomeSkeleton(){
   const block='<span class="sk-line"></span>';
   $('homeLede').textContent='Lihat info kelas dan update terbaru. Yuk, cek dulu sebelum mulai!';
@@ -1057,6 +1082,7 @@ function renderHome(force){
     h+='<div class="panel welcome"><p>Masuk dengan nomor absen, NIM, dan password untuk mengisi absen, mengumpulkan tugas, serta menyimpan sertifikat dan dokumentasi.</p><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>'+teamRadioPanel(anns);
   }
   $('home').innerHTML=h;
+  if(ME)showDefaultPasswordAlert();
   if(OVERVIEW_SUBTAB==='exhibition')$('homeLede').textContent='Ruang sertifikat, dokumentasi kelas, dan agenda seminar akademik.';
 }
 function superLicensePanel(){
