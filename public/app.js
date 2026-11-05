@@ -2139,11 +2139,23 @@ document.addEventListener('click',async e=>{
       const sessionSnapshot=Object.assign({},S.se[id]);
       const platformSnapshot=S.pl[k]?Object.assign({},S.pl[k],{links:Object.assign({},S.pl[k].links||{})}):null;
       const links=Object.assign({},platformSnapshot&&platformSnapshot.links||{});
-      if(platformSnapshot&&platformSnapshot.url&&Number(platformSnapshot.meeting_number)>0&&!links[platformSnapshot.meeting_number])links[platformSnapshot.meeting_number]=platformSnapshot.url;
-      delete links[String(n)];
-      const remaining=Object.keys(links).sort((a,b)=>Number(a)-Number(b));
-      const latest=remaining.length?Number(remaining[remaining.length-1]):0;
-      const nextPlatform=remaining.length?Object.assign({},platformSnapshot||{},{links:links,enabled:true,meeting_number:latest,url:links[latest],updatedAt:Date.now()}):null;
+      const legacyMeeting=Number(platformSnapshot&&platformSnapshot.meeting_number||0);
+      // Jangan migrasikan URL legacy jika URL tersebut milik sesi yang sedang dihapus.
+      if(platformSnapshot&&platformSnapshot.url&&legacyMeeting>0&&legacyMeeting!==n&&
+         !Object.keys(links).some(key=>Number(key)===legacyMeeting)){
+        links[String(legacyMeeting)]=platformSnapshot.url;
+      }
+      // Hapus semua variasi key untuk pertemuan yang sama, misalnya "9" dan "09".
+      Object.keys(links).forEach(key=>{
+        if(Number(key)===n)delete links[key];
+      });
+      const remaining=Object.keys(links).filter(key=>Number.isInteger(Number(key))&&Number(key)>0)
+        .sort((a,b)=>Number(a)-Number(b));
+      const latestKey=remaining.length?remaining[remaining.length-1]:'';
+      const latest=latestKey?Number(latestKey):0;
+      const nextPlatform=remaining.length
+        ?Object.assign({},platformSnapshot||{},{links:links,enabled:true,meeting_number:latest,url:links[latestKey],updatedAt:Date.now()})
+        :null;
       const ok=await run(async()=>{
         await db.doc('sessions/'+id).delete();
         try{
