@@ -992,7 +992,7 @@ function hasilDlg(){
 function sektorDlg(){
   if(!ME)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Sektor Absensi.</p></div>';
   const sx=sektorData(),me=sx.byNo[ME],miss=missingOf(ME);
-  let h=dlgHead('SEKTOR ABSENSI',sx.t?'Anda peringkat '+me.rank+' dari '+N+' · '+Math.round(me.p*100)+'%':'Belum ada absensi tercatat','Setiap mata kuliah adalah satu sektor. Diurutkan menurut kehadiran keseluruhan.','#7b2ff7');
+  let h=dlgHead('SEKTOR ABSENSI',sx.t?'Anda peringkat '+me.rank+' dari '+N+' · '+Math.round(me.p*100)+'%':'Belum ada absensi tercatat','Setiap mata kuliah dihitung satu sektor. Diurutkan menurut kecepatan serta kehadiran keseluruhan.','#7b2ff7');
   h+='<div class="db sector-dialog-content"><ul class="pleg"><li><i class="sxc p"></i>Sektor ungu · 5 teratas</li><li><i class="sxc g"></i>Sektor hijau · 10 berikutnya</li><li><i class="sxc y"></i>Sektor kuning · sisanya</li></ul>';
   h+='<div class="sector-overview">';
   if(sx.t){
