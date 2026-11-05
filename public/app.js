@@ -1279,6 +1279,16 @@ function renderAdmin(force=false){
     '<div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div>'+
     '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="6" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div>'+taskPanel+'</div>';
   }
+  const attendanceRows=Object.keys(S.se).map(id=>Object.assign({id:id},S.se[id])).filter(x=>x.k&&Number(x.n)>0).sort((a,b)=>String(b.tanggal||'').localeCompare(String(a.tanggal||''))||String(a.k).localeCompare(String(b.k))||Number(b.n)-Number(a.n));
+  const attendanceList=attendanceRows.map(x=>{
+    const n=Number(x.n),k=x.k,id=x.id,course=cl.find(c=>c.k===k),present=x.present||{},proof=x.bukti||{};
+    const count=Object.values(present).filter(Boolean).length,proofCount=Object.values(proof).filter(v=>v&&v.id).length;
+    const pending=ATTENDANCE_SESSION_DELETE===id;
+    return '<li class="it"><div><b>'+esc(course?course.nama:cname(k))+' · Pertemuan '+n+'</b><span class="s">'+(x.tanggal?fmtDate(x.tanggal):'Tanggal belum diatur')+' · '+count+' status kehadiran · '+proofCount+' bukti</span></div>'+
+      (pending?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(k)+'" data-n="'+n+'">Hapus</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></span>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(k)+'" data-n="'+n+'">Hapus</button>')+'</li>';
+  }).join('');
+  const attendancePanel='<div class="task-management-inline"><h4 class="ph3">Daftar absensi aktif</h4><p class="s">Kelola sesi absensi yang tersimpan. Menghapus sesi juga menghapus status, bukti, dan tautan absensi untuk pertemuan tersebut.</p>'+
+    (attendanceList?'<ul>'+attendanceList+'</ul>':'<p class="empty">Belum ada sesi absensi aktif.</p>')+'</div>';
   if(ADMIN_NOTIFY_TAB==='attendance'){
     const chosenCourse=cl.find(c=>c.k===PLATFORM_FORM_COURSE)||cl[0]||null;
     const chosenMeeting=Math.max(1,Math.min(PERT,Number(PLATFORM_FORM_MEETING)||defaultPert(chosenCourse&&chosenCourse.k||'')));
@@ -1298,6 +1308,7 @@ function renderAdmin(force=false){
     h+='<div class="panel"><h3 class="ph3">Kelola sesi absensi</h3><p class="s">Hapus sesi absensi untuk mata kuliah dan pertemuan yang sedang dipilih. Semua status kehadiran dan bukti pada sesi tersebut akan ikut dihapus.</p>'+
       (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi</p>'+
         (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Hapus sesi absensi pertemuan '+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi absensi tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>')+'</div>';
+    h+=attendancePanel;
     const configured=[];
     cl.forEach(c=>{const d=S.pl[c.k]||{},links=d.links||{};Object.keys(links).sort((a,b)=>Number(a)-Number(b)).forEach(n=>{if(okHttps(links[n]))configured.push('<li><b>'+esc(c.nama)+'</b> · Pertemuan '+esc(n)+' · <a href="'+esc(links[n])+'" target="_blank" rel="noopener">Buka tautan</a></li>');});});
     h+='<div class="panel"><h3 class="ph3">Tautan tersimpan</h3>'+(configured.length?'<ul class="notification-link-list">'+configured.join('')+'</ul>':'<p class="empty">Belum ada tautan platform yang tersimpan.</p>')+'</div>';
