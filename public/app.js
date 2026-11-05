@@ -1638,11 +1638,30 @@ function scheduleAttendanceState(c,now){
   const p=jakartaParts(now),t=Number(p.hour)*60+Number(p.minute);
   return t<r.s?'future':t>=r.e?'passed':'open';
 }
+let EXTERNAL_REDIRECT=null;
+function openExternalRedirect(url,activity,courseCode,meeting,detail){
+  if(!url||!okHttps(url)){toast('Link Mentari belum tersedia atau tidak valid.');return;}
+  const course=S.co[courseCode];if(!course){toast('Data mata kuliah tidak ditemukan.');return;}
+  const n=Number(meeting)||defaultPert(courseCode),title=detail?String(detail):'';
+  EXTERNAL_REDIRECT={url:url};
+  let modal=document.getElementById('externalRedirectDialog');
+  if(!modal){
+    modal=document.createElement('dialog');modal.id='externalRedirectDialog';
+    modal.setAttribute('aria-labelledby','externalRedirectTitle');
+    modal.style.cssText='width:min(460px,calc(100% - 32px));max-width:460px;border:0;border-radius:18px;padding:0;color:var(--text,#20242b);background:var(--panel,#fff);box-shadow:0 24px 80px rgba(0,0,0,.28);';
+    modal.addEventListener('click',e=>{if(e.target===modal){modal.close();EXTERNAL_REDIRECT=null;}});
+    modal.addEventListener('cancel',()=>{EXTERNAL_REDIRECT=null;});
+    document.body.appendChild(modal);
+    const style=document.createElement('style');style.textContent='#externalRedirectDialog::backdrop{background:rgba(8,12,20,.66);backdrop-filter:blur(3px)}#externalRedirectDialog .erd-body{padding:24px}#externalRedirectDialog .erd-kicker{font-size:11px;letter-spacing:.12em;font-weight:800;color:var(--muted,#68717f)}#externalRedirectDialog h2{font-size:21px;line-height:1.25;margin:8px 0 14px}#externalRedirectDialog p{font-size:14px;line-height:1.6;margin:0 0 12px}#externalRedirectDialog .erd-note{padding:12px;border-radius:12px;background:var(--soft,#f3f5f7);font-size:13px}#externalRedirectDialog .erd-actions{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}#externalRedirectDialog .erd-actions button{min-height:42px}';document.head.appendChild(style);
+  }
+  modal.innerHTML='<div class="erd-body"><div class="erd-kicker">SEBELUM MELANJUTKAN</div><h2 id="externalRedirectTitle">Konfirmasi sebelum membuka Mentari</h2><p>Kamu akan diarahkan ke <b>Mentari</b> untuk '+esc(activity)+(title?' <b>'+esc(title)+'</b>':'')+' pada mata kuliah <b>'+esc(course.nama)+'</b> (Pertemuan ke-'+n+').</p><p class="erd-note">Jangan lupa kembali ke website ini untuk konfirmasi ulang pengerjaan kamu, ya. Agar data dan riwayat pengerjaan kamu memiliki bukti dan backup di sini.</p><div class="erd-actions"><button type="button" class="btn" data-act="external-redirect-cancel">Kembali</button><button type="button" class="btn pri" data-act="external-redirect-continue">Setuju dan lanjutkan ke Mentari</button></div></div>';
+  if(!modal.open)modal.showModal();
+}
 function absenBtn(c){
   if(!ME)return '';
   const state=scheduleAttendanceState(c),n=defaultPert(c.k),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
    const range=hariRange(c),weekdayPlatform=!!platConfigOf(c.k)&&range.a==='Senin'&&range.b==='Jumat';
-   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='closed')return '<button type="button" class="btn sm" disabled>Absensi ditutup pengelola</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<a class="btn sm pri" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Buka link absen <span aria-hidden="true">&#8599;</span></a>';}
+   if(weekdayPlatform){const link=platOf(c.k,n);if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(!link)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';if(state==='closed')return '<button type="button" class="btn sm" disabled>Absensi ditutup pengelola</button>';if(state==='passed')return '<button type="button" class="btn sm" disabled>Absensi sudah terlewat</button>';return '<button type="button" class="btn sm pri" data-act="platform-attendance-open" data-k="'+esc(c.k)+'" data-n="'+n+'">Isi absen <span aria-hidden="true">&#8599;</span></button>';}
   if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
   if(!session)return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
   if(state==='future')return '<button type="button" class="btn sm" disabled>Absensi belum dibuka</button>';
@@ -2158,7 +2177,8 @@ document.addEventListener('click',async e=>{
       const t=S.tu[d.id];
       if(!t||t.mode==='group'||!isPlatformCourse(S.co[t.k])){toast('Tugas platform tidak ditemukan.');break;}
       const url=(t.link&&okUrl(t.link))?t.link:platOf(t.k);
-      if(url)window.open(url,'_blank','noopener,noreferrer');
+      const meeting=Number(t.meeting_number||t.pertemuan||t.meeting)||defaultPert(t.k);
+      if(url)openExternalRedirect(url,'mengerjakan tugas',t.k,meeting,t.judul||t.title||'');
       else toast('Link tugas atau platform belum diatur oleh pengelola.');
       break;
     }
@@ -2167,7 +2187,25 @@ document.addEventListener('click',async e=>{
       if(!canWrite){toast('Absensi belum dapat disimpan. Periksa koneksi atau izin akun.');break;}
       const k=d.k;await run(()=>saveScheduleAttendance(k),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
-    case 'forum-not-done':{const u=platOf(d.k);if(u)window.open(u,'_blank','noopener,noreferrer');else toast('Link forum belum diatur oleh admin.');break;}
+    case 'forum-not-done':{const u=platOf(d.k),n=defaultPert(d.k);if(u)openExternalRedirect(u,'mengerjakan forum diskusi',d.k,n);else toast('Link forum belum diatur oleh admin.');break;}
+    case 'platform-attendance-open':{
+      if(!ME||!canWrite)break;
+      const k=d.k,n=Number(d.n)||defaultPert(k),u=platOf(k,n);
+      if(!S.co[k]||n!==defaultPert(k)){toast('Pertemuan aktif berubah. Muat ulang halaman sebelum melanjutkan.');break;}
+      if(u)openExternalRedirect(u,'mengisi absensi',k,n);else toast('Link absensi Mentari belum diatur.');
+      break;
+    }
+    case 'external-redirect-cancel':{
+      const modal=document.getElementById('externalRedirectDialog');if(modal&&modal.open)modal.close();EXTERNAL_REDIRECT=null;break;
+    }
+    case 'external-redirect-continue':{
+      const pending=EXTERNAL_REDIRECT,modal=document.getElementById('externalRedirectDialog');
+      if(!pending||!pending.url){toast('Tautan tujuan tidak tersedia.');break;}
+      if(modal&&modal.open)modal.close();EXTERNAL_REDIRECT=null;
+      const tab=window.open(pending.url,'_blank','noopener,noreferrer');
+      if(!tab)toast('Pop-up diblokir browser. Izinkan pop-up untuk membuka Mentari.');
+      break;
+    }
     case 'constructor-subtab':{CONSTRUCTOR_SUBTAB=d.tab==='standings'?'standings':'list';if(CONSTRUCTOR_SUBTAB==='standings')loadHasil(true);renderConstructor();break;}
     case 'student-subtab':{
       STUDENT_SUBTAB=d.tab==='constructor'?'constructor':'line-up';
