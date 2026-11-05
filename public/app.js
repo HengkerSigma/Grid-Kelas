@@ -1590,7 +1590,7 @@ function courseDlg(){
   if(D.tab==='tugas')body=adm()?tugasAdmin(c):tugasStudent(c);
   else if(D.tab==='set'&&adm())body=settingsHtml(c);
   else body=adm()?absenAdmin(c):absenStudent(c);
-  if(D.tab==='absen'||D.tab==='tugas')body=exportTools(D.tab)+body;
+  if(D.tab==='absen'||D.tab==='tugas')body=adm()?exportTools(D.tab)+body:body+exportTools(D.tab);
   return head+tabsHtml(tabs)+'<div class="db">'+body+'</div>';
 }
 function pertPicker(c,mode){
