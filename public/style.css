@@ -1067,3 +1067,23 @@ button.is-busy{cursor:wait;opacity:.65}
   #home .greet{order:-2}
   #home .team-radio{order:-1;width:100%;box-sizing:border-box}
 }
+
+/* Default-password reminder: native modal styled to match Grid Kelas. */
+dialog.gk-password-alert{
+  width:min(430px,calc(100% - 32px));
+  max-height:calc(100% - 32px);
+  border-radius:16px;
+  border:1px solid var(--line);
+  background:var(--surface);
+  color:var(--fg);
+  box-shadow:0 24px 80px rgba(0,0,0,.28);
+}
+dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:blur(3px)}
+.gk-password-alert-card{display:grid;justify-items:center;gap:12px;padding:26px 24px 22px;text-align:center}
+.gk-password-alert-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:color-mix(in srgb,var(--accent) 14%,var(--surface-2));border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));color:var(--accent);font-family:var(--f-disp);font-size:1.55rem;font-weight:900}
+.gk-password-alert-kicker{font-family:var(--f-disp);font-size:.7rem;font-weight:800;letter-spacing:.12em;color:var(--muted)}
+.gk-password-alert-card h2{margin:0;font-family:var(--f-disp);font-size:clamp(1.15rem,4vw,1.4rem);font-weight:800;text-transform:uppercase}
+.gk-password-alert-card p{max-width:32ch;margin:0;color:var(--muted);line-height:1.55}
+.gk-password-alert-actions{display:flex;justify-content:center;gap:10px;width:100%;margin-top:6px}
+.gk-password-alert-actions .btn{min-width:112px}
+@media(max-width:480px){.gk-password-alert-card{padding:24px 18px 20px}.gk-password-alert-actions .btn{flex:1}}
