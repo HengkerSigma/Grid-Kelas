@@ -1062,7 +1062,6 @@ function renderHome(force){
     $('homeLede').textContent='Cek jadwal, tugas, dan kabar terbaru kelasmu di sini.';
     const greeting=greetingText(nicknameOf(s0));
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
-    if(ak&&!ak.hash)h+='<div class="panel welcome" style="margin-bottom:14px"><p>Password akunmu masih yang bawaan. Yuk, ganti sekarang biar akunmu lebih aman.</p><button type="button" class="btn pri" data-act="open-login">Ganti password</button></div>';
     h+=homeTiles(ME);
     const left=[],right=[];
     left.push(schedPanel(sched,dayN));
