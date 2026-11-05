@@ -1657,11 +1657,11 @@ function openExternalRedirect(url,activity,courseCode,meeting,detail){
   if(!modal){
     modal=document.createElement('dialog');modal.id='externalRedirectDialog';
     modal.setAttribute('aria-labelledby','externalRedirectTitle');
-    modal.style.cssText='width:min(460px,calc(100% - 32px));max-width:460px;border:0;border-radius:18px;padding:0;color:var(--text,#20242b);background:var(--panel,#fff);box-shadow:0 24px 80px rgba(0,0,0,.28);';
+    modal.style.cssText='width:min(460px,calc(100% - 32px));max-width:460px;border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:14px;padding:0;color:var(--fg);background:var(--surface);box-shadow:0 24px 80px rgba(0,0,0,.48);';
     modal.addEventListener('click',e=>{if(e.target===modal){modal.close();EXTERNAL_REDIRECT=null;}});
     modal.addEventListener('cancel',()=>{EXTERNAL_REDIRECT=null;});
     document.body.appendChild(modal);
-    const style=document.createElement('style');style.textContent='#externalRedirectDialog::backdrop{background:rgba(8,12,20,.66);backdrop-filter:blur(3px)}#externalRedirectDialog .erd-body{padding:24px}#externalRedirectDialog .erd-kicker{font-size:11px;letter-spacing:.12em;font-weight:800;color:var(--muted,#68717f)}#externalRedirectDialog h2{font-size:21px;line-height:1.25;margin:8px 0 14px}#externalRedirectDialog p{font-size:14px;line-height:1.6;margin:0 0 12px}#externalRedirectDialog .erd-note{padding:12px;border-radius:12px;background:var(--soft,#f3f5f7);font-size:13px}#externalRedirectDialog .erd-actions{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}#externalRedirectDialog .erd-actions button{min-height:42px}';document.head.appendChild(style);
+    const style=document.createElement('style');style.textContent='#externalRedirectDialog::backdrop{background:rgba(5,5,10,.76);backdrop-filter:blur(3px)}#externalRedirectDialog .erd-body{padding:24px}#externalRedirectDialog .erd-kicker{font-size:11px;letter-spacing:.12em;font-weight:800;color:var(--muted)}#externalRedirectDialog h2{font-size:21px;line-height:1.25;margin:8px 0 14px;color:var(--fg)}#externalRedirectDialog p{font-size:14px;line-height:1.6;margin:0 0 12px;color:var(--fg)}#externalRedirectDialog .erd-note{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--muted);font-size:13px}#externalRedirectDialog .erd-actions{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}#externalRedirectDialog .erd-actions button{min-height:42px}';document.head.appendChild(style);
   }
   modal.innerHTML='<div class="erd-body"><div class="erd-kicker">SEBELUM MELANJUTKAN</div><h2 id="externalRedirectTitle">Konfirmasi sebelum membuka Mentari</h2><p>Kamu akan diarahkan ke <b>Mentari</b> untuk '+esc(activity)+(title?' <b>'+esc(title)+'</b>':'')+' pada mata kuliah <b>'+esc(course.nama)+'</b> (Pertemuan ke-'+n+').</p><p class="erd-note">Jangan lupa kembali ke website ini untuk konfirmasi ulang pengerjaan kamu, ya. Agar data dan riwayat pengerjaan kamu memiliki bukti dan backup di sini.</p><div class="erd-actions"><button type="button" class="btn" data-act="external-redirect-cancel">Kembali</button><button type="button" class="btn pri" data-act="external-redirect-continue">Setuju dan lanjutkan ke Mentari</button></div></div>';
   if(!modal.open)modal.showModal();
@@ -2218,7 +2218,7 @@ document.addEventListener('click',async e=>{
       if(!ME||!canWrite)break;
       const k=d.k,n=Number(d.n)||defaultPert(k),u=platOf(k,n);
       if(!S.co[k]||n!==defaultPert(k)){toast('Pertemuan aktif berubah. Muat ulang halaman sebelum melanjutkan.');break;}
-      if(u)openExternalRedirect(u,'mengisi absensi',k,n);else toast('Link absensi Mentari belum diatur.');
+      if(u)openD('course',k,'absen',n);else toast('Link absensi Mentari belum diatur.');
       break;
     }
     case 'external-redirect-cancel':{
@@ -2290,7 +2290,7 @@ document.addEventListener('click',async e=>{
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
     case 'attendance-history':{if(!S.co[d.k]){toast('Mata kuliah tidak ditemukan.');break;}openD('course',d.k,'absen',defaultPert(d.k));break;}
-    case 'schedule-attendance':{const c=S.co[d.k];if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dengan akses absensi.');break;}if(!c||scheduleAttendanceState(c)!=='open'){toast('Waktu pengisian absensi belum tersedia atau sudah lewat.');break;}openD('attendance',d.k,'absen',defaultPert(d.k));break;}
+    case 'schedule-attendance':{const c=S.co[d.k];if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dengan akses absensi.');break;}if(!c||scheduleAttendanceState(c)!=='open'){toast('Waktu pengisian absensi belum tersedia atau sudah lewat.');break;}openD('course',d.k,'absen',defaultPert(d.k));break;}
     case 'open-student':openD('student',+d.no);loadHasil(true);break;
     case 'open-pit':openD('pit');loadHasil(true);break;
     case 'hub-task-tab':D.taskTab=d.tab==='group'?'group':'individual';renderDialog(true);break;
