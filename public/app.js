@@ -1304,9 +1304,6 @@ function renderAdmin(force=false){
       (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi</p>'+
         (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Hapus sesi absensi pertemuan '+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi absensi tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>')+'</div>';
     h+=attendancePanel;
-    const configured=[];
-    cl.forEach(c=>{const d=S.pl[c.k]||{},links=d.links||{};Object.keys(links).sort((a,b)=>Number(a)-Number(b)).forEach(n=>{if(okHttps(links[n]))configured.push('<li><b>'+esc(c.nama)+'</b> · Pertemuan '+esc(n)+' · <a href="'+esc(links[n])+'" target="_blank" rel="noopener">Buka tautan</a></li>');});});
-    h+='<div class="panel"><h3 class="ph3">Tautan tersimpan</h3>'+(configured.length?'<ul class="notification-link-list">'+configured.join('')+'</ul>':'<p class="empty">Belum ada tautan platform yang tersimpan.</p>')+'</div>';
   }
   if(ADMIN_NOTIFY_TAB==='seminar'){
     const seminars=Object.keys(S.pc).map(id=>Object.assign({id:id},S.pc[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
