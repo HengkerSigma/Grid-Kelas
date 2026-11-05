@@ -1638,7 +1638,7 @@ function absenAdmin(c){
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
     const status=p[i]?(LBL[p[i]]||p[i]):attendanceMissingStatus(n,se,false,c.k);
-    h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+(canConfirmPlatform?'<div class="row2 manager-student-attendance"><button type="button" class="btn sm pri" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="done">Sudah</button><button type="button" class="btn sm" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="not-done">Belum</button></div>':'')+'</span></li>';
+    h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span>'+(canConfirmPlatform?'<div class="row2 manager-student-attendance"><button type="button" class="btn sm pri" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="done">Sudah</button><button type="button" class="btn sm" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="not-done">Belum</button></div>':'')+'</li>';
   }
   return h+'</ol>';
 }
