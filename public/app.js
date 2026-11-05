@@ -884,7 +884,8 @@ function pitDlg(){
       if(active.length)h+='<h3 class="ph3">Tugas aktif</h3><ul class="plist">'+renderGroup(active,'active')+'</ul>';
       if(done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+renderGroup(done,'done')+'</ul>';
       if(late.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+renderGroup(late,'dnf')+'</ul>';
-      if(!active.length&&!done.length&&!late.length)h+='<p class="empty">Tidak ada tugas Constructor yang sedang menunggu pengumpulan.</p>';
+    }else{
+      h+='<p class="empty">Tidak ada tugas Constructor yang sedang menunggu pengumpulan.</p>';
     }
   }
   return h+'</div>';
