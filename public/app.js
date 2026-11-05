@@ -691,25 +691,25 @@ function loadGridDriver(){
             setTimeout(()=>{const t=document.querySelector('#dlg [data-course-tab="'+tab+'"]');if(t)t.click();},0);
           };
           if(previousIndex===0){setView('beranda',true);}
-          else if(previousIndex===1||previousIndex===2){setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();}
-          else if(previousIndex===3){showStudentCard('overview');}
-          else if(previousIndex===4){showStudentCard('hasil');}
-          else if(previousIndex===5){showStudentCard('achievement');}
-          else if(previousIndex>=6&&previousIndex<=9){
+          else if(previousIndex===1||previousIndex===2||previousIndex===3){setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();}
+          else if(previousIndex===4){showStudentCard('overview');}
+          else if(previousIndex===5){showStudentCard('hasil');}
+          else if(previousIndex===6){showStudentCard('achievement');}
+          else if(previousIndex>=7&&previousIndex<=10){
             setView('mahasiswa',true);
             const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="constructor"]');if(b)b.click();
-            CONSTRUCTOR_SUBTAB=previousIndex>=9?'standings':'list';renderConstructor();
-          }else if(previousIndex>=10&&previousIndex<=12){
+            CONSTRUCTOR_SUBTAB=previousIndex>=10?'standings':'list';renderConstructor();
+          }else if(previousIndex>=11&&previousIndex<=13){
             setView('mata-kuliah',true);
-            const tab=previousIndex===12?'history':'grand-prix';
+            const tab=previousIndex===13?'history':'grand-prix';
             const b=document.querySelector('#v-mata-kuliah [data-act="course-subtab"][data-tab="'+tab+'"]');if(b)b.click();
-          }else if(previousIndex===13){setView('beranda',true);}
-          else if(previousIndex===14||previousIndex===15){
+          }else if(previousIndex===14){setView('beranda',true);}
+          else if(previousIndex===15||previousIndex===16){
             setView('beranda',true);
             const b=document.querySelector('#home [data-act="open-pit"]');if(b)b.click();
             setTimeout(()=>{const tab=previousIndex===15?'group':'individual',t=document.querySelector('#dlg [data-act="hub-task-tab"][data-tab="'+tab+'"]');if(t)t.click();},0);
-          }else if(previousIndex===16){setView('beranda',true);}
-          else if(previousIndex===17){
+          }else if(previousIndex===17){setView('beranda',true);}
+          else if(previousIndex===18){
             setView('beranda',true);
             const b=document.querySelector('#home [data-act="open-sektor"]');if(b)b.click();
           }else{setView('beranda',true);}
@@ -798,10 +798,12 @@ async function launchGridClassTour(force){
     progressText:'{{current}} / {{total}}',allowClose:true,overlayColor:'rgba(4,8,16,.82)',
     stagePadding:7,stageRadius:12,popoverClass:'gk-race-tour',
     steps:[
-      {element:()=>{const mobile=window.matchMedia('(max-width: 600px)').matches;if(mobile)toggleMobileNav(true);return document.querySelector('#mainNav');},popover:{title:'01 · PIT WALL NAVIGATION',description:'Ini pusat navigasi Grid Kelas. '+(window.matchMedia('(max-width: 600px)').matches?'Menu navigasi sudah dibuka agar tab Beranda, Mahasiswa, dan Mata Kuliah terlihat.':'Gunakan tab Beranda, Mahasiswa, dan Mata Kuliah'+(adm()?', serta Pengelola.':'.')),side:'bottom',align:'center'},
-       onNextClick:()=>{toggleMobileNav(false);setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();setTimeout(()=>d.moveNext(),120);}},
+      {element:()=>window.matchMedia('(max-width: 600px)').matches?document.querySelector('[data-mobile-nav-toggle]'):document.querySelector('#mainNav'),popover:{title:'01 · PIT WALL NAVIGATION',description:window.matchMedia('(max-width: 600px)').matches?'Klik tombol F di pojok atas untuk membuka tampilan navigasi. Dari sana kamu bisa berpindah ke Beranda, Mahasiswa, dan Mata Kuliah.':'Gunakan navigasi untuk berpindah antara Beranda, Mahasiswa, dan Mata Kuliah'+(adm()?', serta Pengelola.':'.'),side:'bottom',align:'center'},
+       onNextClick:()=>{toggleMobileNav(true);setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();setTimeout(()=>d.moveNext(),260);}},
       {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
        onNextClick:()=>{d.moveNext();}},
+      {element:'#v-mahasiswa #rail',popover:{title:'03 · SLIDER GRID',description:'Geser deretan kartu mahasiswa ke kiri atau kanan untuk melihat mahasiswa lainnya. Coba perhatikan animasi geser pada slider ini.',side:'top',align:'center'},
+       onEnter:()=>{const rail=document.querySelector('#v-mahasiswa #rail');if(rail){const end=Math.max(0,rail.scrollWidth-rail.clientWidth);if(end>0){rail.scrollTo({left:end,behavior:'smooth'});setTimeout(()=>rail.scrollTo({left:0,behavior:'smooth'}),1150);}}},onNextClick:()=>{d.moveNext();}},
       {element:'#v-mahasiswa #sgrid .scard.me-highlight',popover:{title:'03 · PERSONAL CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
        onNextClick:()=>{if(!dlg.open){const b=document.querySelector('#v-mahasiswa #sgrid .scard.me-highlight');if(b)b.click();}setTimeout(()=>d.moveNext(),180);}},
       {element:'#dlg .student-overview',popover:{title:'04 · PERSONAL TELEMETRY',description:'Ringkasan performa akademik pribadimu: persentase kehadiran, jumlah tugas yang sudah dikumpulkan, dan pencapaian Early Bird.',side:'top',align:'center'},
