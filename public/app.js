@@ -873,6 +873,7 @@ function pitDlg(){
     if(individual.dnf.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+individual.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact">'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
     if(individual.done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+individual.done.map(x=>'<li class="pit-it done"><span class="pck">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Lihat</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
   }else{
+    h+='<p class="s hub-task-explainer">Tugas Constructor dikumpulkan oleh masing-masing Team Principal.</p>';
     const mineTasks=groupTasks.map(t=>({t:t,g:myConstructor(ME,t.k)})).filter(x=>x.g);
     if(mineTasks.length){
       const active=mineTasks.filter(x=>!isLocked(x.t)&&!(x.t.groupSubs&&x.t.groupSubs[x.g.id]&&x.t.groupSubs[x.g.id].at));
@@ -883,7 +884,7 @@ function pitDlg(){
       if(active.length)h+='<h3 class="ph3">Tugas aktif</h3><ul class="plist">'+renderGroup(active,'active')+'</ul>';
       if(done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah dikumpulkan</h3><ul class="plist">'+renderGroup(done,'done')+'</ul>';
       if(late.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+renderGroup(late,'dnf')+'</ul>';
-      if(!active.length&&!done.length&&!late.length)h+='<p class="empty">Belum ada tugas kelompok.</p>';
+      if(!active.length&&!done.length&&!late.length)h+='<p class="empty">Tidak ada tugas Constructor yang sedang menunggu pengumpulan.</p>';
     }
   }
   return h+'</div>';
