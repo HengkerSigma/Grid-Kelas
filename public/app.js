@@ -2125,8 +2125,30 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       const k=d.k,n=Number(d.n),id=k+'_'+PAD(n);
       if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){ATTENDANCE_SESSION_DELETE=null;toast('Sesi absensi tidak ditemukan atau sudah dihapus.');renderAdmin(true);break;}
-      const ok=await run(()=>db.doc('sessions/'+id).delete(),'Sesi absensi pertemuan '+n+' berhasil dihapus');
-      if(ok){delete S.se[id];ATTENDANCE_SESSION_DELETE=null;PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;refreshAll();renderAdmin(true);}
+      const sessionSnapshot=Object.assign({},S.se[id]);
+      const platformSnapshot=S.pl[k]?Object.assign({},S.pl[k],{links:Object.assign({},S.pl[k].links||{})}):null;
+      const links=Object.assign({},platformSnapshot&&platformSnapshot.links||{});
+      if(platformSnapshot&&platformSnapshot.url&&Number(platformSnapshot.meeting_number)>0&&!links[platformSnapshot.meeting_number])links[platformSnapshot.meeting_number]=platformSnapshot.url;
+      delete links[String(n)];
+      const remaining=Object.keys(links).sort((a,b)=>Number(a)-Number(b));
+      const latest=remaining.length?Number(remaining[remaining.length-1]):0;
+      const nextPlatform=remaining.length?Object.assign({},platformSnapshot||{},{links:links,enabled:true,meeting_number:latest,url:links[latest],updatedAt:Date.now()}):null;
+      const ok=await run(async()=>{
+        await db.doc('sessions/'+id).delete();
+        try{
+          if(nextPlatform)await db.doc('platform/'+k).set(nextPlatform);
+          else if(platformSnapshot)await db.doc('platform/'+k).delete();
+        }catch(error){
+          try{await db.doc('sessions/'+id).set(sessionSnapshot);}catch(restoreError){console.error('Gagal memulihkan sesi absensi setelah penghapusan tautan gagal.',restoreError);}
+          try{if(platformSnapshot)await db.doc('platform/'+k).set(platformSnapshot);else await db.doc('platform/'+k).delete();}catch(restoreError){console.error('Gagal memulihkan konfigurasi tautan absensi.',restoreError);}
+          throw error;
+        }
+      },'Sesi dan tautan absensi pertemuan '+n+' berhasil dihapus');
+      if(ok){
+        delete S.se[id];
+        if(nextPlatform)S.pl[k]=nextPlatform;else delete S.pl[k];
+        ATTENDANCE_SESSION_DELETE=null;PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;refreshAll();renderAdmin(true);
+      }
       break;
     }
     case 'platform-save':{
