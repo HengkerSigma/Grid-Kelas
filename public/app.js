@@ -1630,10 +1630,15 @@ function absenAdmin(c){
   if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!se)h+='<p class="empty"><b>'+esc(attendanceMissingStatus(n,se,false,c.k))+'.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
+  if(ME&&n===defaultPert(c.k)&&isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n)){
+    const ownStatus=p[ME]?(LBL[p[ME]]||p[ME]):attendanceMissingStatus(n,se,true,c.k);
+    h+='<div class="tcard manager-forum-check"><div><b>Sudah Mengerjakan Forum Diskusi?</b><br><span class="s">Konfirmasi forum diskusi untuk akun pengelola sendiri · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status absensi saya: <b>'+esc(ownStatus)+'</b></span></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div></div>';
+  }
+  const canConfirmPlatform=isPlatformCourse(c)&&n===defaultPert(c.k)&&inSession(c)&&!!platOf(c.k,n);
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
     const status=p[i]?(LBL[p[i]]||p[i]):attendanceMissingStatus(n,se,false,c.k);
-    h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span></li>';
+    h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span>'+(canConfirmPlatform?'<div class="row2 manager-student-attendance"><button type="button" class="btn sm pri" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="done">Sudah</button><button type="button" class="btn sm" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="not-done">Belum</button></div>':'')+'</li>';
   }
   return h+'</ol>';
 }
@@ -2206,6 +2211,21 @@ document.addEventListener('click',async e=>{
       const meeting=Number(t.meeting_number||t.pertemuan||t.meeting)||defaultPert(t.k);
       if(url)openExternalRedirect(url,'mengerjakan tugas',t.k,meeting,t.judul||t.title||'');
       else toast('Link tugas atau platform belum diatur oleh pengelola.');
+      break;
+    }
+    case 'manager-forum-student':{
+      if(!adm())break;
+      const k=d.k,n=Number(d.n),student=Number(d.student),id=k+'_'+PAD(n),course=S.co[k],session=S.se[id]||{};
+      if(!course||!isPlatformCourse(course)||n!==defaultPert(k)||n<1||n>PERT||!inSession(course)||!platOf(k,n)||!Number.isInteger(student)||student<1||student>N||!['done','not-done'].includes(d.status)){
+        toast('Konfirmasi forum tidak tersedia atau sesi sudah berubah.');break;
+      }
+      const present=Object.assign({},session.present||{});
+      if(d.status==='done')present[student]='H';else delete present[student];
+      const ok=await run(()=>writeSession(k,n,{present}),d.status==='done'?'Absensi '+nameOf(student)+' ditandai Sudah':'Absensi '+nameOf(student)+' ditandai Belum');
+      if(ok){
+        S.se[id]=Object.assign({k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}},session,{present});
+        renderDialog(true);refreshAll();
+      }
       break;
     }
     case 'forum-done':{
