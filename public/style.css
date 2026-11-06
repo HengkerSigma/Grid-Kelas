@@ -1017,7 +1017,7 @@ button.is-busy{cursor:wait;opacity:.65}
 .overview-subtabs .course-subtab-sep{font-size:clamp(1.6rem,5.2vw,3.2rem)}
 .tire-legend li>span:not(.dnfb){display:inline;font-size:.78rem;color:var(--muted);line-height:1.25}
 @media(max-width:600px){
- .overview-subtabs{gap:7px;margin-bottom:18px;flex-wrap:wrap}
+ .overview-subtabs{gap:7px;margin-bottom:18px;flex-wrap:nowrap;align-items:baseline}
  .overview-subtabs .student-subtab,.overview-subtabs .course-subtab-sep{font-size:clamp(1.25rem,6vw,2rem);padding-bottom:5px}
 }
 
