@@ -1140,8 +1140,8 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .archive-comment-list small{display:block;color:var(--muted);font-size:.72rem}
 .archive-comment-form{display:flex;gap:6px;align-items:center}
 .archive-comment-form input{min-width:0;flex:1;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--fg);font:inherit;font-size:.82rem}
-.student-profile-editor{display:grid;gap:10px;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
-.student-profile-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.student-profile-editor{display:grid;gap:10px;margin-top:6px}
+.student-profile-details{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}
 .student-profile-details>div{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px;min-width:0}
 .student-profile-details span{font-size:.9rem;color:var(--muted)}
 .student-profile-details b{font-size:.9rem;font-weight:600;overflow-wrap:anywhere}
