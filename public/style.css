@@ -1127,3 +1127,24 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
  .race-course-list li{grid-template-columns:38px minmax(65px,1fr) minmax(48px,.8fr) 36px 26px;gap:5px}
  .race-course-rank{font-size:.65rem}
 }
+
+/* Class Archive reactions and comments */
+.archive-social{display:grid;gap:9px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.archive-reactions{display:flex;flex-wrap:wrap;gap:5px}
+.archive-reaction{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--fg);padding:4px 9px;font:inherit;font-size:.82rem;cursor:pointer}
+.archive-reaction.active{border-color:var(--accent,var(--fg));background:var(--surface-2);font-weight:800}
+.archive-reaction:disabled{opacity:.65;cursor:not-allowed}
+.archive-reaction span{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.archive-comments{display:grid;gap:7px;min-width:0}
+.archive-comment-list{display:grid;gap:6px;max-height:150px;overflow:auto}
+.archive-comment-list p{margin:0;font-size:.82rem;overflow-wrap:anywhere}
+.archive-comment-list small{display:block;color:var(--muted);font-size:.72rem}
+.archive-comment-form{display:flex;gap:6px;align-items:center}
+.archive-comment-form input{min-width:0;flex:1;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--fg);font:inherit;font-size:.82rem}
+.student-profile-editor{display:grid;gap:10px;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.student-profile-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.student-profile-details>div{display:grid;gap:3px;min-width:0}
+.student-profile-details small{font-size:.68rem;letter-spacing:.08em;color:var(--muted)}
+.student-profile-details b{font-size:.9rem;overflow-wrap:anywhere}
+.student-profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(max-width:520px){.student-profile-details,.student-profile-fields{grid-template-columns:minmax(0,1fr)}.archive-comment-form{align-items:stretch}.archive-comment-form .btn{flex:none}}
