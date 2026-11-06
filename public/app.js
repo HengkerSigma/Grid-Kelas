@@ -1162,8 +1162,12 @@ function renderExhibition(){
 }
 
 function schedPanel(sched,dayN){
+  const ordered=sched.slice().sort((a,b)=>{
+    const ar=jamRange(a),br=jamRange(b),as=ar?ar.s:Infinity,bs=br?br.s:Infinity;
+    return as-bs;
+  });
   let li='';
-  sched.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
+  ordered.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
   const needsAttendance=!!ME&&sched.some(c=>inSession(c)&&!(S.se[c.k+'_'+PAD(defaultPert(c.k))]&&S.se[c.k+'_'+PAD(defaultPert(c.k))].present&&S.se[c.k+'_'+PAD(defaultPert(c.k))].present[ME]));
   return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah hari ini, selamat bersantai.':'Tidak ada kuliah hari ini.')+'</p>')+'</div>';
 }
