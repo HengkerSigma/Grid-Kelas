@@ -1892,11 +1892,11 @@ function settingsHtml(c){
 function studentAttendanceTab(no){
   const st=stats(no),sx=sektorData(),row=sx.byNo[no],delta=attendanceDelta(sx,no),performance=sectorPerformance(sx,no);
   const best=performance[0],weak=performance[performance.length-1],overall=pct(st.tot.h,st.tot.t);
-  let h='<div class="race-report-kicker">PERSONAL RACE REPORT</div>'+
+  let h='<div class="race-report-kicker">ATTENDANCE REPORT</div>'+
     '<div class="race-report-stats">'+
       '<article><small>KEHADIRAN</small><b>'+(overall==null?'—':overall+'%')+'</b><span>'+st.tot.h+' dari '+st.tot.t+' sesi</span></article>'+
       '<article><small>OVERALL POSITION</small><b>'+(sx.t?'P'+row.rank:'—')+'</b><span>'+(sx.t?'dari '+N+' mahasiswa':'Belum ada peringkat')+'</span></article>'+
-      '<article><small>ATTENDANCE DELTA</small><b>'+(delta?delta.label:'—')+'</b><span>'+(delta?'di belakang P'+delta.ahead.rank:'Kamu berada di P1 / belum ada data')+'</span></article>'+
+      '<article><small>ATTENDANCE DELTA</small><b>'+(delta?delta.label:'—')+'</b><span>'+(delta?'di belakang P'+delta.ahead.rank+' : '+esc(nameOf(delta.ahead.no))+' · '+delta.points.toFixed(1)+' Poin':'Kamu berada di P1 / belum ada data')+'</span></article>'+
     '</div>';
   h+='<section class="race-sector-performance"><div class="race-section-heading"><div><span class="constructor-kicker">SECTOR PERFORMANCE</span><h3 class="ph3">Performa mata kuliah</h3></div></div>';
   if(best){
