@@ -1100,26 +1100,27 @@ function renderHome(force){
 }
 function superLicensePanel(){
   const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
-    .filter(x=>x.no===ME&&x.jenis==='ser').sort((a,b)=>(b.at||0)-(a.at||0));
+    .filter(x=>x.no===ME&&['ser','dok'].includes(x.jenis)).sort((a,b)=>(b.at||0)-(a.at||0));
   let h='<div class="panel" id="superLicensePanel"><h3 class="ph3">Super License</h3>'+
-    '<p class="s" style="margin-bottom:12px">Kumpulkan sertifikat pentingmu di satu tempat. Biar gampang dicari kapan pun dibutuhkan.</p>';
+    '<p class="s" style="margin-bottom:12px">Simpan sertifikat dan dokumentasi pribadi dalam satu tempat. Unggah foto atau PDF, lalu buka kembali kapan pun dibutuhkan.</p>';
   if(ME&&AS){
-    h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama sertifikat</label>'+
-      '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="Contoh: Sertifikat Workshop Web"></div>'+
-      '<div class="row2"><label class="btn sm pickfile">'+(PEND.ser?'Ganti berkas':'Pilih sertifikat')+
+    h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama sertifikat atau dokumen</label>'+
+      '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="Contoh: Sertifikat Workshop atau Dokumentasi Praktikum"></div>'+
+      '<div class="row2"><label class="btn sm pickfile">'+(PEND.ser?'Ganti berkas':'Pilih Sertifikat atau Dokumen')+
       '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+(PEND.ser?esc(PEND.ser.name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
       '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button>'+
       (superLicenseDriveUrl?'<a class="btn" href="'+esc(superLicenseDriveUrl)+'" target="_blank" rel="noopener noreferrer">Simpan ke Google Drive <span aria-hidden="true">&#8599;</span></a>':'')+'</div>'+
-      (superLicenseDriveUrl?'<span class="s">Buka folder Google Drive, lalu upload sertifikatmu di sana.</span>':'<span class="s">Folder Google Drive belum disiapkan oleh pengelola.</span>')+'</div>';
-  }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan sertifikat pribadi.</p>';
-  if(!mine.length)return h+'<p class="empty">Belum ada sertifikat.</p></div>';
+      (superLicenseDriveUrl?'<span class="s">Google Drive tetap tersedia sebagai penyimpanan tambahan.</span>':'<span class="s">Berkas yang diunggah tersimpan secara privat di Super License.</span>')+'</div>';
+  }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan sertifikat atau dokumentasi pribadi.</p>';
+  if(!mine.length)return h+'<p class="empty">Belum ada sertifikat atau dokumen.</p></div>';
   h+='<ul>';
   mine.forEach(x=>{
+    const kind=x.jenis==='dok'?'Dokumentasi':'Sertifikat';
     const status='Tersimpan privat di Super License';
     const del=berDel===x.id
       ?'<span class="row2"><button type="button" class="btn sm pri" data-act="ber-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ber-del-no">Batal</button></span>'
       :'<button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus dari daftar</button>';
-    h+='<li class="it"><div><b>'+esc(x.judul||'Sertifikat')+'</b>'+fileHtml(x.file,true)+
+    h+='<li class="it"><div><b>'+esc(x.judul||kind)+'</b><span class="chip">'+kind+'</span>'+fileHtml(x.file,true)+
       '<span class="s">'+fmtTime(x.at)+' · '+esc(status)+'</span>'+
       '</div>'+del+'</li>';
   });
@@ -1383,10 +1384,15 @@ function renderAdmin(force=false){
   h+='</div><div id="admin-academic-recap"'+(ADMIN_MAIN_TAB==='academic'?'':' hidden')+'><div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><p class="s">Lihat ringkasan absensi dan tugas dari tiap mata kuliah.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   h+='</div><div id="admin-student-recap"'+(ADMIN_MAIN_TAB==='students'?'':' hidden')+'>';
-  const cs={},cd={};Object.values(S.be).forEach(x=>{if(x.jenis==='ser')cs[x.no]=(cs[x.no]||0)+1;else if(x.jenis==='dok')cd[x.no]=(cd[x.no]||0)+1;});
+  const docsByStudent={};Object.values(S.be).forEach(x=>{const n=Number(x.no);if(!Number.isInteger(n)||n<1||n>N||!['ser','dok'].includes(x.jenis))return;(docsByStudent[n]||(docsByStudent[n]={ser:[],dok:[]}))[x.jenis].push(x);});
   let rows='';
-  for(let n=1;n<=N;n++){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);rows+='<tr><td class="num">'+n+'</td><td><button type="button" class="lnk" data-act="open-student" data-no="'+n+'">'+esc(nameOf(n))+'</button></td><td class="num">'+(p==null?'—':p+'%')+'</td><td class="num">'+t.a+'/'+t.b+'</td><td class="num">'+(t.b-t.a)+'</td><td class="num">'+(cs[n]||0)+'</td><td class="num">'+(cd[n]||0)+'</td></tr>';}
-  h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><p class="s">Cek progres tiap mahasiswa, mulai dari kehadiran sampai dokumen yang sudah terkumpul.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th class="num">Belum</th><th class="num">Sertifikat</th><th class="num">Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+  for(let n=1;n<=N;n++){
+    const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n),docs=docsByStudent[n]||{ser:[],dok:[]};
+    const links=(kind,label)=>docs[kind].map((x,i)=>x.file&&okId(x.file.id)?'<a class="btn sm" href="/_blob/'+x.file.id+'" target="_blank" rel="noopener noreferrer" aria-label="Lihat '+label.toLowerCase()+': '+esc(x.judul||label)+'">Lihat '+label+(docs[kind].length>1?' '+(i+1):'')+'</a>':'').join('');
+    const docLinks='<div class="row2" style="gap:6px;flex-wrap:wrap">'+(links('ser','Sertifikat')||'')+(links('dok','Dokumentasi')||'')+(!docs.ser.length&&!docs.dok.length?'<span class="s">—</span>':'')+'</div>';
+    rows+='<tr><td class="num">'+n+'</td><td><button type="button" class="lnk" data-act="open-student" data-no="'+n+'">'+esc(nameOf(n))+'</button></td><td class="num">'+(p==null?'—':p+'%')+'</td><td class="num">'+t.a+'/'+t.b+'</td><td>'+docLinks+'</td></tr>';
+  }
+  h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><p class="s">Cek progres tiap mahasiswa, mulai dari kehadiran sampai dokumen yang sudah terkumpul.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th>Sertifikat &amp; Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
   $('admin').innerHTML=h;
 
 }
@@ -2664,9 +2670,10 @@ document.addEventListener('click',async e=>{
       if(!ME)break;
       const j=d.j,judul=($(j+'-judul').value||'').trim();
       if(!PEND[j]){toast('Pilih berkas dulu.');break;}
-      if(j==='ser'&&!judul){toast('Isi nama sertifikat dulu.');break;}
-      const ok=await run(()=>db.collection('berkas').add({no:ME,jenis:j,judul:judul.slice(0,100),file:PEND[j],at:Date.now()}),j==='ser'?'Sertifikat disimpan':'Dokumentasi disimpan');
-      if(ok){PEND[j]=null;delete DR[j+'-judul'];if(j==='ser')renderExhibition();else renderHome(true);}
+      if(!judul){toast('Isi nama sertifikat atau dokumen dulu.');break;}
+      const jenis=j==='dok'?'dok':'ser';
+      const ok=await run(()=>db.collection('berkas').add({no:ME,jenis:jenis,judul:judul.slice(0,100),file:PEND[j],at:Date.now()}),jenis==='ser'?'Sertifikat disimpan':'Dokumentasi disimpan');
+      if(ok){PEND[j]=null;delete DR[j+'-judul'];renderExhibition();}
       break;
     }
     case 'ber-del':berDel=d.id;renderExhibition();break;
@@ -2767,7 +2774,7 @@ document.addEventListener('change',async e=>{
       const k=D.key,n=D.pert;
       await run(async()=>{const fo=await sendFile(f,'attendance');await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
     }else if(kind==='ser'||kind==='dok'){
-      await run(async()=>{PEND[kind]=await sendFile(f,kind==='ser'?'certificates':'uploads');if(kind==='ser')renderExhibition();else renderHome(true);},'Berkas siap. Tekan Simpan.');
+      await run(async()=>{PEND[kind]=await sendFile(f,kind==='ser'?'certificates':'uploads');renderExhibition();},'Berkas siap. Tekan Simpan.');
     }else if(kind==='tugas'){
       await run(async()=>{const fo=await sendFile(f,'uploads');D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
     }
