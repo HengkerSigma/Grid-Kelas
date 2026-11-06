@@ -985,6 +985,22 @@ function towerHtml(r,full){
 
   return h+'</tbody></table></div>';
 }
+function recapFilesDlg(){
+  if(!adm())return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Daftar berkas hanya dapat dilihat pengelola.</p></div>';
+  const no=Number(D.key),kind=D.fileKind==='dok'?'dok':'ser',label=kind==='ser'?'Sertifikat':'Dokumentasi';
+  if(!Number.isInteger(no)||no<1||no>N)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mahasiswa tidak ditemukan.</p></div>';
+  const files=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
+    .filter(x=>Number(x.no)===no&&x.jenis===kind)
+    .sort((a,b)=>(b.at||0)-(a.at||0));
+  let h=dlgHead('REKAP MAHASISWA',label+' · '+esc(nameOf(no)),'No. '+no+' · '+files.length+' berkas','#e10600');
+  h+='<div class="db"><div class="row2"><button type="button" class="btn sm" data-act="close">&lsaquo; Kembali ke rekap</button></div>';
+  if(!files.length)h+='<p class="empty">Belum ada '+label.toLowerCase()+' yang tersimpan.</p>';
+  else h+='<div class="history-course-list">'+files.map(x=>{
+    const file=x.file&&okId(x.file.id)?'<a class="btn sm" href="/_blob/'+x.file.id+'" target="_blank" rel="noopener noreferrer">Buka berkas</a>':'<span class="s">Berkas tidak tersedia</span>';
+    return '<article class="tcard history-item"><div class="history-top"><div><span class="history-course">'+label.toUpperCase()+'</span><h3>'+esc(x.judul||label)+'</h3></div><span class="chip">'+(x.file&&x.file.type?esc(x.file.type):'Berkas')+'</span></div><div class="history-bottom"><span class="s">'+fmtTime(x.at)+'</span>'+file+'</div></article>';
+  }).join('')+'</div>';
+  return h+'</div>';
+}
 function groupHasilDlg(){
   if(!ME&&!adm())return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Klasemen Konstruktor.</p></div>';
   const r=groupTowerData(D.key);
@@ -1389,8 +1405,8 @@ function renderAdmin(force=false){
   let rows='';
   for(let n=1;n<=N;n++){
     const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n),docs=docsByStudent[n]||{ser:[],dok:[]};
-    const links=(kind,label)=>docs[kind].map((x,i)=>x.file&&okId(x.file.id)?'<a class="btn sm" href="/_blob/'+x.file.id+'" target="_blank" rel="noopener noreferrer" aria-label="Lihat '+label.toLowerCase()+': '+esc(x.judul||label)+'">Lihat '+label+(docs[kind].length>1?' '+(i+1):'')+'</a>':'').join('');
-    const docLinks='<div class="row2" style="gap:6px;flex-wrap:wrap">'+(links('ser','Sertifikat')||'')+(links('dok','Dokumentasi')||'')+(!docs.ser.length&&!docs.dok.length?'<span class="s">—</span>':'')+'</div>';
+    const recapFileButton=(kind,label)=>docs[kind].length?'<button type="button" class="btn sm" data-act="open-recap-files" data-no="'+n+'" data-kind="'+kind+'">Lihat '+label+' ('+docs[kind].length+')</button>':'';
+    const docLinks='<div class="row2" style="gap:6px;flex-wrap:wrap">'+recapFileButton('ser','Sertifikat')+recapFileButton('dok','Dokumentasi')+(!docs.ser.length&&!docs.dok.length?'<span class="s">—</span>':'')+'</div>';
     rows+='<tr><td class="num">'+n+'</td><td><button type="button" class="lnk" data-act="open-student" data-no="'+n+'">'+esc(nameOf(n))+'</button></td><td class="num">'+(p==null?'—':p+'%')+'</td><td class="num">'+t.a+'/'+t.b+'</td><td>'+docLinks+'</td></tr>';
   }
   h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><p class="s">Cek progres tiap mahasiswa, mulai dari kehadiran sampai dokumen yang sudah terkumpul.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th>Sertifikat &amp; Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
@@ -1446,6 +1462,7 @@ function renderDialog(force){
   else if(D.kind==='sektor')box.innerHTML=sektorDlg();
   else if(D.kind==='hasil')box.innerHTML=hasilDlg();
   else if(D.kind==='group-hasil')box.innerHTML=groupHasilDlg();
+  else if(D.kind==='recap-files')box.innerHTML=recapFilesDlg();
   else box.innerHTML=loginDlg();
   box.scrollTop=sc;
 }
@@ -2524,6 +2541,12 @@ document.addEventListener('click',async e=>{
     }
     case 'open-hasil':openD('hasil',d.id);loadHasil(true);break;
     case 'open-group-hasil':openD('group-hasil',d.id);loadHasil(true);break;
+    case 'open-recap-files':{
+      if(!adm())break;
+      const no=Number(d.no),kind=d.kind==='dok'?'dok':'ser';
+      if(!Number.isInteger(no)||no<1||no>N){toast('Mahasiswa tidak ditemukan.');break;}
+      openD('recap-files',no);D.fileKind=kind;renderDialog(true);break;
+    }
     case 'me-clear':{const ok=await run(clearMe,'Anda sudah keluar');if(ok){if(dlg.open)dlg.close();setView('beranda',true);}break;}
     case 'save-course':{
       if(!adm())break;
