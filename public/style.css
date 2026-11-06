@@ -1140,13 +1140,16 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .archive-comment-list small{display:block;color:var(--muted);font-size:.72rem}
 .archive-comment-form{display:flex;gap:6px;align-items:center}
 .archive-comment-form input{min-width:0;flex:1;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--fg);font:inherit;font-size:.82rem}
+.student-photo-column{display:grid;justify-items:start;align-content:start;gap:12px;min-width:0}
+.student-photo-actions{display:flex;flex-wrap:wrap;gap:7px;max-width:100%}
 .student-profile-editor{display:grid;gap:10px;margin-top:6px}
-.student-profile-details{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}
-.student-profile-details>div{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px;min-width:0}
-.student-profile-details span{font-size:.9rem;color:var(--muted)}
-.student-profile-details b{font-size:.9rem;font-weight:600;overflow-wrap:anywhere}
+.student-profile-details{display:grid;grid-template-columns:minmax(130px,220px) 12px minmax(0,1fr);gap:5px 0;align-items:baseline}
+.student-profile-details>div{display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:baseline;min-width:0}
+.student-profile-details span{grid-column:1;font-size:.9rem;color:var(--muted)}
+.student-profile-details i{grid-column:2;font-style:normal;text-align:center;color:var(--muted)}
+.student-profile-details b{grid-column:3;font-size:.9rem;font-weight:600;overflow-wrap:anywhere;min-width:0}
 .student-profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-@media(max-width:520px){.student-profile-details,.student-profile-fields{grid-template-columns:minmax(0,1fr)}.archive-comment-form{align-items:stretch}.archive-comment-form .btn{flex:none}}
+@media(max-width:520px){.student-profile-details{grid-template-columns:minmax(105px,145px) 12px minmax(0,1fr)}.student-profile-fields{grid-template-columns:minmax(0,1fr)}.archive-comment-form{align-items:stretch}.archive-comment-form .btn{flex:none}}
 
 
 /* Keep Class Archive comment content inside the photo card */
