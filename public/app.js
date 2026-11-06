@@ -195,15 +195,15 @@ function focusOwnStrip(behavior){
   const max=Math.max(0,r.scrollWidth-r.clientWidth);
   r.scrollTo({left:Math.max(0,Math.min(max,target)),behavior:behavior||'auto'});
 }
-function presenceOnline(no){const p=S.pr&&S.pr[PAD(no)];return !!(p&&Number(p.lastSeen)>0&&Date.now()-Number(p.lastSeen)<75000);}
-function writePresence(){if(!ME||!db||(!AUTH&&!uid)||document.visibilityState==='hidden')return;db.doc('presence/'+PAD(ME)).set({no:Number(ME),lastSeen:Date.now()}).catch(e=>console.warn('Presence tidak dapat diperbarui:',e));}
-function startPresence(){if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null;}if(!ME||!db||(!AUTH&&!uid))return;writePresence();presenceTimer=setInterval(writePresence,25000);}
+function presenceOnline(no){const p=S.pr&&S.pr[PAD(no)];return !!(p&&Number(p.lastSeen)>0&&Date.now()-Number(p.lastSeen)<120000);}
+function writePresence(){if(!ME||!db||(!AUTH&&!uid))return;db.doc('presence/'+PAD(ME)).set({no:Number(ME),lastSeen:Date.now()}).catch(e=>console.warn('Presence tidak dapat diperbarui:',e));}
+function startPresence(){if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null;}if(!ME||!db||(!AUTH&&!uid))return;writePresence();presenceTimer=setInterval(writePresence,30000);}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')writePresence();});
 function renderStrip(){
   let h='';
   for(let n=1;n<=N;n++){
     const s=stu(n);
-    h+='<button type="button" class="rs'+(Number(ME)===n?' me-highlight':'')+(presenceOnline(n)?' is-online':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'</span></button>';
+    h+='<button type="button" class="rs'+(Number(ME)===n?' me-highlight':'')+(presenceOnline(n)?' is-online':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+(presenceOnline(n)?', aktif':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'</span></button>';
   }
   const r=$('rail'),x=r.scrollLeft,ownNo=Number(ME)||null;
   r.innerHTML=h;
