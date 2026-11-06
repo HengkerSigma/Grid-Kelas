@@ -1164,3 +1164,10 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
  .archive-comment-form input{padding:7px 8px;font-size:.78rem}
  .archive-comment-form .btn{padding-inline:10px;font-size:.78rem}
 }
+
+
+/* Student online presence */
+.rs.is-online .sav{border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.22),0 0 12px rgba(34,197,94,.28)}
+.rs.is-online::after{content:"";display:block;width:100%;height:3px;border-radius:999px;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.3)}
+.sph .online-dot{position:absolute;right:11px;top:11px;z-index:2;width:13px;height:13px;border-radius:50%;background:#22c55e;border:2px solid var(--surface);box-shadow:0 0 0 2px rgba(34,197,94,.22)}
+.scard.is-online .sph{box-shadow:inset 0 0 0 2px #22c55e}

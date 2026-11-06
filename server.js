@@ -462,6 +462,7 @@ async function view(p, data, sess) {
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
   if (root === 'students' || root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
+  if (root === 'presence') return sess ? { no: Number(data.no), lastSeen: Number(data.lastSeen) || 0 } : null;
   if (root === 'paddockClub') {
     const out = Object.assign({}, data), poster = isObj(data.poster) ? data.poster : null;
     if (poster && /^[0-9a-f]{32}$/.test(poster.id || '')) {
@@ -606,6 +607,14 @@ async function decide(method, p, body, sess, existing) {
       else return ERR_BAD('Bidang akun tidak dikenal.');
     }
     return { data: base, resetNo: reset ? Number(id) : null };
+  }
+
+  if (root === 'presence') {
+    if (!sess) return ERR_NEED;
+    if (parts.length !== 2 || !/^(0[1-9]|[12]\d|3[0-2])$/.test(id) || Number(id) !== Number(sess.no)) return ERR_FORBID;
+    if (method !== 'PUT' || !onlyKeys(body, ['no', 'lastSeen']) || Number(body.no) !== Number(sess.no) || !Number.isFinite(Number(body.lastSeen)) || Number(body.lastSeen) < 0) return ERR_BAD('Status aktif tidak valid.');
+    const lastSeen = Number(body.lastSeen) === 0 ? 0 : Date.now();
+    return { data: { no: Number(sess.no), lastSeen: lastSeen } };
   }
 
   if (!sess) return ERR_NEED;
