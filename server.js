@@ -980,7 +980,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/logout' && method === 'POST') {
-      const s = await getSession(req);
+      // Logout tetap menghapus cookie meskipun sesi kedaluwarsa atau
+      // pemeriksaan sesi gagal karena gangguan database.
       setCookie(req, res, '', 0);
       return json(res, 200, { ok: true });
     }
