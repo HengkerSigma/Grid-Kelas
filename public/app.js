@@ -90,7 +90,7 @@ function attendanceMissingStatus(meeting,se,student,courseCode){
  if(attendanceIsPast(n,se,k))return 'Absensi sudah terlewat';
  return student?'Belum mengisi':'Belum diisi';
 }
-function greetingText(name){const p=jakartaParts(),minutes=Number(p.hour)*60+Number(p.minute),n=esc(name||'Mahasiswa');if(minutes>=240&&minutes<=600)return{title:'Selamat Pagi, '+n,subtitle:'Semangat menjalani hari!'};if(minutes>=601&&minutes<=899)return{title:'Selamat Siang, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=900&&minutes<=1079)return{title:'Selamat Sore, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=1080&&minutes<=1319)return{title:'Selamat Malam, '+n,subtitle:'Kerja bagus hari ini, jangan lupa istirahat, ya!'};return{title:'Selamat Malam, '+n,subtitle:'Ini waktunya istirahat!'};}
+function greetingText(name,birthday){const p=jakartaParts(),minutes=Number(p.hour)*60+Number(p.minute),n=esc(name||'Mahasiswa');if(birthday&&/^\d{4}-\d{2}-\d{2}$/.test(birthday)&&birthday.slice(5)===p.month+'-'+p.day)return{title:'Selamat Ulang Tahun, '+n+'! 🎂',subtitle:'Semoga tahun ini penuh pencapaian dan hal baik. Have a great lap!'};if(minutes>=240&&minutes<=600)return{title:'Selamat Pagi, '+n,subtitle:'Semangat menjalani hari!'};if(minutes>=601&&minutes<=899)return{title:'Selamat Siang, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=900&&minutes<=1079)return{title:'Selamat Sore, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=1080&&minutes<=1319)return{title:'Selamat Malam, '+n,subtitle:'Kerja bagus hari ini, jangan lupa istirahat, ya!'};return{title:'Selamat Malam, '+n,subtitle:'Ini waktunya istirahat!'};}
 function semesterMeetingNow(){const p=today().split('-').map(Number),a=SEMESTER_ANCHOR_DATE.split('-').map(Number),weeks=Math.floor((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(a[0],a[1]-1,a[2]))/604800000);return Math.max(1,Math.min(PERT,SEMESTER_ANCHOR_MEETING+weeks));}
 function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'';}
 function updateLiveClock(){const el=$('liveClock');if(!el)return;const now=new Date();el.dateTime=now.toISOString();el.textContent=new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now)+' WIB';}
@@ -611,7 +611,7 @@ function endTourDemo(){
   refreshAll();
   loadSektor();loadHasil(true);
 }
-const TOUR_SAFE_ACTIONS=new Set(['overview-subtab','student-subtab','constructor-subtab','constructor-course-toggle','course-subtab','open-student','open-hasil','open-group-hasil','open-pit','hub-task-tab','pit-history-toggle','open-sektor','tab','close']);
+const TOUR_SAFE_ACTIONS=new Set(['overview-subtab','student-subtab','constructor-subtab','constructor-course-toggle','course-subtab','open-student','open-hasil','open-group-hasil','open-pit','hub-task-tab','pit-history-toggle','open-sektor','tab','close','profile-save']);
 
 var GRID_TOUR_STARTED=false;
 var GRID_TOUR_HELP_VISIBLE=true;
@@ -824,7 +824,9 @@ async function launchGridClassTour(force){
         onHighlighted:()=>{const rail=document.querySelector('#rail');if(rail){const start=rail.scrollLeft,max=Math.max(0,rail.scrollWidth-rail.clientWidth);const right=Math.min(max,start+240),left=Math.max(0,start-180);rail.scrollTo({left:right,behavior:'smooth'});setTimeout(()=>rail.scrollTo({left,behavior:'smooth'}),720);setTimeout(()=>rail.scrollTo({left:start,behavior:'smooth'}),1440);}}},
       {element:'#v-mahasiswa #sgrid .scard.me-highlight',popover:{title:'03 · PERSONAL CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
        onNextClick:()=>{if(!dlg.open){const b=document.querySelector('#v-mahasiswa #sgrid .scard.me-highlight');if(b)b.click();}setTimeout(()=>d.moveNext(),180);}},
-      {element:'#dlg .student-overview',popover:{title:'04 · PERSONAL TELEMETRY',description:'Ringkasan performa akademik pribadimu: persentase kehadiran, jumlah tugas yang sudah dikumpulkan, dan pencapaian Early Bird.',side:'top',align:'center'},
+      {element:'#dlg .student-profile-editor',popover:{title:'04 · DRIVER PROFILE',description:'Sebelum lanjut, yuk, update profilmu sebentar. Isi tanggal lahir dan nomor WhatsApp, lalu tekan Simpan profil. Data ini hanya dapat dilihat olehmu dan pengelola.',side:'bottom',align:'center'},
+       onNextClick:()=>{const input=document.querySelector('#profile-dob');if(input)input.focus();d.moveNext();}},
+      {element:'#dlg .student-overview',popover:{title:'05 · PERSONAL TELEMETRY',description:'Ringkasan performa akademik pribadimu: persentase kehadiran, jumlah tugas yang sudah dikumpulkan, dan pencapaian Early Bird.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#dlg [data-course-tab="hasil"]');if(b)b.click();setTimeout(()=>d.moveNext(),140);}},
       {element:'#dlg [data-course-tab="hasil"]',popover:{title:'05 · RESULT',description:'Tab Hasil menampilkan riwayat pengumpulan tugas beserta posisi atau peringkat yang kamu raih.',side:'bottom',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#dlg [data-course-tab="achievement"]');if(b)b.click();setTimeout(()=>d.moveNext(),140);}},
@@ -865,6 +867,7 @@ async function launchGridClassTour(force){
       {element:'#overviewSubtabs [data-tab="exhibition"]',popover:{title:'22 · EXHIBITION',description:'Exhibition berada tepat di samping heading Overview. Buka tab ini untuk melihat sertifikat, dokumentasi kelas, dan agenda seminar akademik tanpa meninggalkan halaman Overview.',side:'bottom',align:'start'},onNextClick:()=>{setOverviewSubtab('exhibition');setTimeout(()=>d.moveNext(),140);}},
       {element:'#exhibitionPanel #superLicensePanel',popover:{title:'23 · SUPER LICENSE',description:'Simpan sertifikat pentingmu di Super License. Kamu juga dapat membuka folder Google Drive kelas jika tersedia.',side:'top',align:'center'}},
       {element:'#exhibitionPanel #classArchivePanel',popover:{title:'24 · CLASS ARCHIVE',description:'Class Archive menjadi galeri dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika akunmu memiliki izin.',side:'top',align:'center'}},
+      {element:()=>document.querySelector('#classArchivePanel .archive-social')||document.querySelector('#classArchivePanel .gal .gi')||document.querySelector('#classArchivePanel'),popover:{title:'24A · REACTION & COMMENT',description:'Pilih foto yang sudah ada, lalu berikan reaction singkat seperti 👍 ❤️ 😂 🔥. Kamu juga bisa menulis komentar pada kolom di bawah reaction dan tekan Kirim untuk membagikan tanggapanmu.',side:'top',align:'center'}},
       {element:'#exhibitionPanel #paddockClubPanel',popover:{title:'25 · PADDOCK CLUB',description:'Pusat daftar seminar untuk mencari kegiatan yang menyediakan poin KAK. Periksa poster dan tekan Daftar untuk membuka tautan pendaftaran seminar.',side:'top',align:'center'}},
       {element:'#gkTourHelp',popover:{title:'26 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Tekan untuk membuka tutorial Grid Kelas kembali jika kamu membutuhkan panduan.',side:'top',align:'center'}}
     ],
@@ -1109,7 +1112,7 @@ function renderHome(force){
     missing.sort((a2,b2)=>(a2.tanggal||'').localeCompare(b2.tanggal||''));
     const s0=stu(ME),ak=S.ak[PAD(ME)];
     $('homeLede').textContent='Cek jadwal, tugas, dan kabar terbaru kelasmu di sini.';
-    const greeting=greetingText(nicknameOf(s0));
+    const greeting=greetingText(nicknameOf(s0),ak&&ak.tanggalLahir);
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
     h+=homeTiles(ME);
     const left=[],right=[];
@@ -1183,6 +1186,9 @@ function classArchivePanel(){
       '<div class="gc"><b>'+esc(x.judul||'Dokumentasi kelas')+'</b>'+
       (x.caption?'<span>'+esc(x.caption)+'</span>':'')+
       '<span class="s">'+fmtTime(x.at)+(x.no?' · '+esc(nameOf(x.no)):'')+'</span>'+
+      '<div class="archive-social"><div class="archive-reactions">'+['👍','❤️','😂','🔥'].map(emoji=>{const count=Object.values(x.reactions||{}).filter(v=>v===emoji).length,active=ME&&x.reactions&&x.reactions[String(ME)]===emoji;return '<button type="button" class="archive-reaction'+(active?' active':'')+'" data-act="archive-react" data-id="'+esc(x.id)+'" data-emoji="'+emoji+'"'+(!ME?' disabled title="Masuk untuk memberi reaction"':'')+' aria-pressed="'+!!active+'">'+emoji+' <span>'+count+'</span></button>';}).join('')+'</div>'+
+      '<div class="archive-comments">'+(Array.isArray(x.comments)&&x.comments.length?'<div class="archive-comment-list">'+x.comments.slice(-5).map(comment=>'<p><b>'+esc(nameOf(comment.no))+'</b> '+esc(comment.text)+' <small>'+fmtTime(comment.at)+'</small></p>').join('')+'</div>':'<span class="s">Belum ada komentar.</span>')+
+      (ME?'<div class="archive-comment-form"><input type="text" maxlength="280" id="archive-comment-'+esc(x.id)+'" placeholder="Tulis komentar singkat..." aria-label="Komentar Class Archive"><button type="button" class="btn sm" data-act="archive-comment" data-id="'+esc(x.id)+'">Kirim</button></div>':'<span class="s">Masuk untuk ikut berkomentar.</span>')+'</div></div>'+
       (adm()?'<button type="button" class="btn sm" data-act="archive-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+
       '</div></li>';
   });
@@ -1953,6 +1959,7 @@ function studentDlg(){
   let h='<div class="db"><div class="row2" style="justify-content:flex-end"><button type="button" class="btn sm" data-act="close">Tutup</button></div>'+
     '<div class="shead"><div class="sbig">'+photo('s'+PAD(no))+fb(no)+'</div><div><div class="k">NO. '+no+(s&&s.kode?' · '+esc(s.kode):'')+(isAd(no)?' · ADMIN':'')+'</div><h2 id="dtitle">'+esc(nameOf(no))+(isAd(no)?' '+FLAG:'')+'</h2>'+
     ((adm()||ME!==null)&&nim?'<div class="student-nim">NIM · '+esc(nim)+'</div>':'')+
+    ((ME!==null||adm())?'<section class="student-profile-editor"><div class="student-profile-details"><div><small>TANGGAL LAHIR</small><b>'+(ac.tanggalLahir?fmtDate(ac.tanggalLahir):'Belum diisi')+'</b></div><div><small>NOMOR WHATSAPP</small><b>'+(ac.whatsapp?esc(ac.whatsapp):'Belum diisi')+'</b></div></div>'+(own?'<div class="student-profile-fields"><div class="field"><label for="profile-dob">Tanggal Lahir</label><input id="profile-dob" type="date" max="'+today()+'" value="'+esc(ac.tanggalLahir||'')+'"></div><div class="field"><label for="profile-whatsapp">Nomor WhatsApp</label><input id="profile-whatsapp" type="tel" inputmode="tel" maxlength="18" value="'+esc(ac.whatsapp||'')+'" placeholder="Contoh: 081234567890"></div></div><button type="button" class="btn sm pri" data-act="profile-save">Simpan profil</button>':'')+'</section>':'')+
     '<div class="row2" style="margin-top:12px">'+
     (canPhoto?'<label class="btn sm pickfile">Ganti foto<input type="file" accept="image/*" data-up="s'+PAD(no)+'" data-kind="photo"></label>':'')+
     (canPhoto&&S.md['s'+PAD(no)]?'<button type="button" class="btn sm" data-act="img-del" data-key="s'+PAD(no)+'">Hapus foto</button>':'')+
@@ -2712,6 +2719,31 @@ document.addEventListener('click',async e=>{
         catch(err){try{await db.doc('media/'+key).delete();}catch(ignore){}throw err;}
       },'Foto ditambahkan ke Class Archive');
       if(ok){PEND.archive=null;delete DR['archive-judul'];delete DR['archive-caption'];renderExhibition();}
+      break;
+    }
+    case 'archive-react':{
+      if(!ME){toast('Masuk terlebih dahulu untuk memberi reaction.');break;}
+      const item=S.ca[d.id],emoji=d.emoji,allowed=['👍','❤️','😂','🔥'];
+      if(!item||!allowed.includes(emoji))break;
+      const current=item.reactions&&item.reactions[String(ME)]===emoji;
+      await run(()=>db.doc('classArchive/'+d.id).update({reaction:current?null:emoji}),'Reaction diperbarui');
+      break;
+    }
+    case 'archive-comment':{
+      if(!ME){toast('Masuk terlebih dahulu untuk berkomentar.');break;}
+      const field=$('archive-comment-'+d.id),comment=(field&&field.value||'').trim();
+      if(!comment){toast('Tulis komentar terlebih dahulu.');break;}
+      if(comment.length>280){toast('Komentar maksimal 280 karakter.');break;}
+      const ok=await run(()=>db.doc('classArchive/'+d.id).update({comment:comment}),'Komentar dikirim');
+      if(ok&&field)field.value='';
+      break;
+    }
+    case 'profile-save':{
+      if(!ME||!D||D.kind!=='student'||Number(D.key)!==Number(ME))break;
+      const tanggalLahir=$('profile-dob').value,whatsapp=$('profile-whatsapp').value.trim().replace(/[\s()-]/g,'');
+      if(tanggalLahir&&(tanggalLahir>today()||!/^(\d{4})-(\d{2})-(\d{2})$/.test(tanggalLahir))){toast('Tanggal lahir tidak valid.');break;}
+      if(whatsapp&&!/^\+?[0-9]{8,16}$/.test(whatsapp)){toast('Nomor WhatsApp harus berisi 8–16 digit, boleh diawali +.');break;}
+      await run(()=>db.doc('akun/'+PAD(ME)).update({tanggalLahir:tanggalLahir,whatsapp:whatsapp}),'Profil diperbarui');
       break;
     }
     case 'archive-del':{

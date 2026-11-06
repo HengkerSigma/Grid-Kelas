@@ -502,9 +502,8 @@ async function view(p, data, sess) {
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
   if (root === 'akun') {
     const out = { no: data.no, admin: data.admin === true };
-    // NIM boleh dilihat oleh seluruh mahasiswa yang sudah login.
-    // Data sensitif akun tetap hanya untuk pemilik akun dan admin.
-    if (sess) out.nim = data.nim;
+    // NIM, tanggal lahir, dan WhatsApp dapat dilihat mahasiswa yang sudah login.
+    if (sess) { out.nim = data.nim; out.tanggalLahir = data.tanggalLahir || ''; out.whatsapp = data.whatsapp || ''; }
     out.teamPrincipal = data.teamPrincipal || null;
     if (admin) { out.resetReq = data.resetReq || null; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
     else if (sess && sess.no === data.no) { out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
@@ -573,6 +572,14 @@ async function decide(method, p, body, sess, existing) {
       return { data: Object.assign({}, existing, { resetReq: Date.now() }) };
     }
     if (!sess) return ERR_NEED;
+    if (method === 'PATCH' && existing && sess.no === Number(id) && onlyKeys(body, ['tanggalLahir','whatsapp'])) {
+      const tanggalLahir = String(body.tanggalLahir || '').trim();
+      const whatsapp = String(body.whatsapp || '').trim();
+      const parsedBirthDate = new Date(tanggalLahir + 'T00:00:00Z');
+      if (tanggalLahir && (!/^\d{4}-\d{2}-\d{2}$/.test(tanggalLahir) || !Number.isFinite(parsedBirthDate.getTime()) || parsedBirthDate.toISOString().slice(0,10) !== tanggalLahir || tanggalLahir > new Date().toISOString().slice(0,10))) return ERR_BAD('Tanggal lahir tidak valid.');
+      if (whatsapp && !/^\+?[0-9]{8,16}$/.test(whatsapp)) return ERR_BAD('Nomor WhatsApp harus berisi 8–16 digit, boleh diawali +.');
+      return { data: Object.assign({}, existing, { tanggalLahir: tanggalLahir, whatsapp: whatsapp }) };
+    }
     if (!admin || method === 'DELETE' || method === 'POST') return ERR_FORBID;
     if (method === 'PATCH' && !existing) return ERR_MISSING;
     const base = existing ? clone(existing) : { no: Number(id), nim: '', admin: false, hash: null, salt: null, resetReq: null };
@@ -861,6 +868,20 @@ async function decide(method, p, body, sess, existing) {
   if (root === 'classArchive') {
     if (parts.length !== 2) return ERR_FORBID;
     if (method === 'DELETE') return admin ? { del: true } : ERR_FORBID;
+    if (method === 'PATCH' && existing && onlyKeys(body, ['reaction'])) {
+      const reaction = body.reaction, allowed = ['👍','❤️','😂','🔥'];
+      if (reaction !== null && allowed.indexOf(reaction) < 0) return ERR_BAD('Reaction tidak valid.');
+      const reactions = Object.assign({}, isObj(existing.reactions) ? existing.reactions : {}), key = String(sess.no);
+      if (reaction === null) delete reactions[key]; else reactions[key] = reaction;
+      return { data: Object.assign({}, existing, { reactions: reactions }) };
+    }
+    if (method === 'PATCH' && existing && onlyKeys(body, ['comment'])) {
+      const comment = String(body.comment || '').trim();
+      if (!comment || comment.length > 280) return ERR_BAD('Komentar harus berisi 1–280 karakter.');
+      const comments = Array.isArray(existing.comments) ? existing.comments.slice(-99) : [];
+      comments.push({ no: sess.no, text: comment, at: Date.now() });
+      return { data: Object.assign({}, existing, { comments: comments }) };
+    }
     if (method !== 'POST') return ERR_FORBID;
     const acc = await getDoc('akun/' + pad(sess.no));
     if (!admin && !(acc && acc.archiveEdit === true)) return ERR_FORBID;
