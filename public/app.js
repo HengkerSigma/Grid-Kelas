@@ -2042,6 +2042,9 @@ async function setMe(no){
   else{ME=no;try{localStorage.setItem('gk_me',String(no));}catch(e){}refreshAll();}
 }
 async function clearMe(){
+  const oldNo=ME;
+  if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null;}
+  if(oldNo&&db){try{await db.doc('presence/'+PAD(oldNo)).set({no:Number(oldNo),lastSeen:0});}catch(e){}}
   if(AUTH){await AUTH.logout();ME=null;SK=null;refreshAll();return;}
   if(uid&&db){await db.doc('data/users/'+uid+'/profil').delete();}
   else{ME=null;try{localStorage.removeItem('gk_me');}catch(e){}refreshAll();}
