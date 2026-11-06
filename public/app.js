@@ -665,6 +665,7 @@ function loadGridDriver(){
           }
         };
         layer.appendChild(spot);layer.appendChild(pop);
+        if(typeof step.onHighlighted==='function')requestAnimationFrame(()=>step.onHighlighted());
         const tourHost=dlg&&dlg.open?dlg:document.body;
         tourHost.appendChild(layer);
         reposition=place;
@@ -717,7 +718,8 @@ function loadGridDriver(){
         };
         pop.querySelector('[data-tour="next"]').onclick=()=>{
           if(index===steps.length-1){destroy();return;}
-          if(typeof step.onNextClick==='function')step.onNextClick();else{index++;render();}
+          const nextHandler=step.onNextClick||p.onNextClick;
+          if(typeof nextHandler==='function')nextHandler();else{index++;render();}
         };
       };
       return {drive:()=>{index=0;render();},moveNext:()=>{index++;render();},movePrevious:()=>{index=Math.max(0,index-1);render();},destroy};
@@ -801,7 +803,7 @@ async function launchGridClassTour(force){
       {element:()=>window.matchMedia('(max-width: 600px)').matches?document.querySelector('[data-mobile-nav-toggle]'):document.querySelector('#mainNav'),popover:{title:'01 · PIT WALL NAVIGATION',description:window.matchMedia('(max-width: 600px)').matches?'Klik tombol F di pojok atas untuk membuka tampilan navigasi. Dari sana kamu bisa berpindah ke Beranda, Mahasiswa, dan Mata Kuliah.':'Gunakan navigasi untuk berpindah antara Beranda, Mahasiswa, dan Mata Kuliah'+(adm()?', serta Pengelola.':'.'),side:'bottom',align:'center',onNextClick:()=>{toggleMobileNav(true);setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();setTimeout(()=>d.moveNext(),360);}}},
       {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
        onNextClick:()=>{d.moveNext();}},
-      {element:'#v-mahasiswa #sgrid',popover:{title:'03 · SLIDER GRID',description:'Kartu mahasiswa akan bergeser sebagai pratinjau. Geser grid ke atas atau ke bawah untuk melihat seluruh mahasiswa.',side:'top',align:'center',onNextClick:()=>{d.moveNext();}},
+      {element:'#v-mahasiswa #sgrid',popover:{title:'03 · SLIDER GRID',description:'Perhatikan kartu-kartu mahasiswa yang bergeser sebagai animasi pengenalan Line-Up. Grid ini menampilkan seluruh kartu mahasiswa.',side:'top',align:'center',onNextClick:()=>{d.moveNext();}},
         onHighlighted:()=>{const grid=document.querySelector('#v-mahasiswa #sgrid');if(grid){const cards=[...grid.querySelectorAll('.scard:not(.skel)')];cards.forEach((card,i)=>card.animate([{transform:'translateX(0)',opacity:1},{transform:'translateX(-22px)',opacity:.78},{transform:'translateX(0)',opacity:1}],{duration:850,delay:i*35,easing:'ease-in-out'}));}}},
       {element:'#v-mahasiswa #sgrid .scard.me-highlight',popover:{title:'03 · PERSONAL CARD',description:'Ini kartu mahasiswa milikmu. Buka kartu untuk melihat profil dan rekap performa akademikmu.',side:'top',align:'center'},
        onNextClick:()=>{if(!dlg.open){const b=document.querySelector('#v-mahasiswa #sgrid .scard.me-highlight');if(b)b.click();}setTimeout(()=>d.moveNext(),180);}},
