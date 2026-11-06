@@ -472,7 +472,7 @@ let SK=null,skTimer=null;
 function loadSektor(){
   if(TOUR_DEMO_ACTIVE||!ME||!AUTH||!AUTH.sektor)return;
   clearTimeout(skTimer);
-  skTimer=setTimeout(async()=>{try{SK=await AUTH.sektor();refreshAll();}catch(e){/* tetap pakai data lokal */}},400);
+  skTimer=setTimeout(async()=>{try{const data=await AUTH.sektor();if(TOUR_DEMO_ACTIVE)return;SK=data;refreshAll();}catch(e){/* tetap pakai data lokal */}},400);
 }
 function sektorRaw(){
   if(SK&&SK.courses)return SK.courses;
