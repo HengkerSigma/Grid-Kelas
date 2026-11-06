@@ -57,11 +57,11 @@ let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='load
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
 let ownerMode=false,view='beranda',annDel=null,ANN_EDIT=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null,seminar:null};
-const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{}};
+const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{},pr:{}};
 let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
-let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null;
+let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null,PROFILE_EDITING=false,presenceTimer=null;
 
 const dlg=$('dlg'),box=$('dbox');
 const isAd=no=>!!(S.ak[PAD(no)]&&S.ak[PAD(no)].admin===true);
@@ -195,11 +195,15 @@ function focusOwnStrip(behavior){
   const max=Math.max(0,r.scrollWidth-r.clientWidth);
   r.scrollTo({left:Math.max(0,Math.min(max,target)),behavior:behavior||'auto'});
 }
+function presenceOnline(no){const p=S.pr&&S.pr[PAD(no)];return !!(p&&Number(p.lastSeen)>0&&Date.now()-Number(p.lastSeen)<75000);}
+function writePresence(){if(!ME||!db||(!AUTH&&!uid)||document.visibilityState==='hidden')return;db.doc('presence/'+PAD(ME)).set({no:Number(ME),lastSeen:Date.now()}).catch(e=>console.warn('Presence tidak dapat diperbarui:',e));}
+function startPresence(){if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null;}if(!ME||!db||(!AUTH&&!uid))return;writePresence();presenceTimer=setInterval(writePresence,25000);}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')writePresence();});
 function renderStrip(){
   let h='';
   for(let n=1;n<=N;n++){
     const s=stu(n);
-    h+='<button type="button" class="rs'+(Number(ME)===n?' me-highlight':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'</span></button>';
+    h+='<button type="button" class="rs'+(Number(ME)===n?' me-highlight':'')+(presenceOnline(n)?' is-online':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'</span></button>';
   }
   const r=$('rail'),x=r.scrollLeft,ownNo=Number(ME)||null;
   r.innerHTML=h;
@@ -220,7 +224,7 @@ function renderStudents(){
     const s=stu(n),showMeta=true;
     let meta='';
     if(showMeta){const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n);meta='<span class="smeta"><span>Kehadiran '+(p==null?'—':p+'%')+'</span><span>Tugas '+t.a+'/'+t.b+'</span></span>';}
-    h+='<li><button type="button" class="scard'+(s?'':' skel')+(Number(ME)===n?' me-highlight':'')+'" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+'><span class="sph">'+photo('s'+PAD(n))+'<span class="sno">'+n+'</span>'+fb(n)+'</span>'+
+    h+='<li><button type="button" class="scard'+(s?'':' skel')+(Number(ME)===n?' me-highlight':'')+(presenceOnline(n)?' is-online':'')+'" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+'><span class="sph">'+photo('s'+PAD(n))+'<span class="sno">'+n+'</span>'+(presenceOnline(n)?'<span class="online-dot" title="Sedang aktif" aria-label="Sedang aktif"></span>':'')+fb(n)+'</span>'+
       '<span class="snm"><span class="f">'+(s?esc(s.depan):'&nbsp;')+'</span><b>'+(s?esc(s.belakang):'&nbsp;')+'</b></span>'+meta+'</button></li>';
   }
   $('sgrid').innerHTML=h;
@@ -1473,6 +1477,7 @@ function defaultPert(k){
   return m||1;
 }
 function openD(kind,key,tab,pert){
+  if(kind==='student')PROFILE_EDITING=false;
   D={kind:kind,key:key,tab:tab||(kind==='course'||kind==='attendance'?'absen':kind==='student'?'kehadiran':'main'),pert:(kind==='course'||kind==='attendance')?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
   renderDialog(true);
   if(!dlg.open)dlg.showModal();
@@ -1956,14 +1961,14 @@ function studentAchievementsTab(no){
 }
 function studentDlg(){
   const no=D.key,s=stu(no),own=ME===no,seeStats=true;
-  const canPhoto=canWrite&&(adm()||own),ac=S.ak[PAD(no)]||{},nim=ac.nim||'';
+  const canPhoto=canWrite&&(adm()||own),canEditProfile=own&&canWrite,editing=canEditProfile&&PROFILE_EDITING,ac=S.ak[PAD(no)]||{},nim=ac.nim||'';
   let h='<div class="db"><div class="row2" style="justify-content:flex-end"><button type="button" class="btn sm" data-act="close">Tutup</button></div>'+
     '<div class="shead"><div class="student-photo-column"><div class="sbig">'+photo('s'+PAD(no))+fb(no)+'</div><div class="row2 student-photo-actions">'+
     (canPhoto?'<label class="btn sm pickfile">Ganti foto<input type="file" accept="image/*" data-up="s'+PAD(no)+'" data-kind="photo"></label>':'')+
     (canPhoto&&S.md['s'+PAD(no)]?'<button type="button" class="btn sm" data-act="img-del" data-key="s'+PAD(no)+'">Hapus foto</button>':'')+
     (own?'<button type="button" class="btn sm" data-act="me-clear">Keluar</button>':(ME?'':'<button type="button" class="btn sm pri" data-act="login-no" data-no="'+no+'">Masuk sebagai nomor ini</button>'))+
     '</div></div><div><div class="k">NO. '+no+(s&&s.kode?' · '+esc(s.kode):'')+(isAd(no)?' · ADMIN':'')+'</div><h2 id="dtitle">'+esc(nameOf(no))+(isAd(no)?' '+FLAG:'')+'</h2>'+
-    ((ME!==null||adm())?'<section class="student-profile-editor"><div class="student-profile-details">'+(nim?'<div><span>NIM</span><i>:</i><b>'+esc(nim)+'</b></div>':'')+'<div><span>Tanggal Lahir</span><i>:</i><b>'+(ac.tanggalLahir?fmtDate(ac.tanggalLahir):'Belum diisi')+'</b></div><div><span>Nomor WhatsApp</span><i>:</i><b>'+(ac.whatsapp?esc(ac.whatsapp):'Belum diisi')+'</b></div></div>'+(own?'<div class="student-profile-fields"><div class="field"><label for="profile-dob">Tanggal Lahir</label><input id="profile-dob" type="date" max="'+today()+'" value="'+esc(ac.tanggalLahir||'')+'"></div><div class="field"><label for="profile-whatsapp">Nomor WhatsApp</label><input id="profile-whatsapp" type="tel" inputmode="tel" maxlength="18" value="'+esc(ac.whatsapp||'')+'" placeholder="Contoh: 081234567890"></div></div><button type="button" class="btn sm pri" data-act="profile-save">Simpan profil</button>':'')+'</section>':'')+'</div></div>';
+    ((ME!==null||adm())?'<section class="student-profile-editor"><div class="student-profile-details">'+(nim?'<div><span>NIM</span><i>:</i><b>'+esc(nim)+'</b></div>':'')+'<div><span>Tanggal Lahir</span><i>:</i><b>'+(ac.tanggalLahir?fmtDate(ac.tanggalLahir):'Belum diisi')+'</b></div><div><span>Nomor WhatsApp</span><i>:</i><b>'+(ac.whatsapp?esc(ac.whatsapp):'Belum diisi')+'</b></div></div>'+(editing?'<div class="student-profile-fields"><div class="field"><label for="profile-dob">Tanggal Lahir</label><input id="profile-dob" type="date" max="'+today()+'" value="'+esc(ac.tanggalLahir||'')+'"></div><div class="field"><label for="profile-whatsapp">Nomor WhatsApp</label><input id="profile-whatsapp" type="tel" inputmode="tel" maxlength="18" value="'+esc(ac.whatsapp||'')+'" placeholder="Contoh: 081234567890"></div></div><div class="row2"><button type="button" class="btn sm pri" data-act="profile-save">Simpan</button><button type="button" class="btn sm" data-act="profile-edit-cancel">Batal</button></div>':(canEditProfile?'<button type="button" class="btn sm" data-act="profile-edit">Edit Profil</button>':''))+'</section>':'')+'</div></div>';
   if(seeStats){
     const st=stats(no),ts=tugasStat(no),tabs=[['kehadiran','Kehadiran'],['hasil','Hasil'],['achievement','Achievement']];
     h+='<div class="student-overview"><div><b>'+(pct(st.tot.h,st.tot.t)==null?'—':pct(st.tot.h,st.tot.t)+'%')+'</b><small>Kehadiran</small></div><div><b>'+ts.a+'/'+ts.b+'</b><small>Tugas terkumpul</small></div><div><b>'+studentAchievementCounts(no).earlyBird+'</b><small>Early Bird</small></div></div>';
@@ -2470,7 +2475,9 @@ document.addEventListener('click',async e=>{
         :'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
       break;
     }
-    case 'close':dlg.close();break;
+    case 'close':PROFILE_EDITING=false;dlg.close();break;
+    case 'profile-edit':{if(!D||D.kind!=='student'||Number(D.key)!==Number(ME)||!canWrite)break;PROFILE_EDITING=true;renderDialog(true);break;}
+    case 'profile-edit-cancel':PROFILE_EDITING=false;renderDialog(true);break;
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
@@ -2742,7 +2749,8 @@ document.addEventListener('click',async e=>{
       const tanggalLahir=$('profile-dob').value,whatsapp=$('profile-whatsapp').value.trim().replace(/[\s()-]/g,'');
       if(tanggalLahir&&(tanggalLahir>today()||!/^(\d{4})-(\d{2})-(\d{2})$/.test(tanggalLahir))){toast('Tanggal lahir tidak valid.');break;}
       if(whatsapp&&!/^\+?[0-9]{8,16}$/.test(whatsapp)){toast('Nomor WhatsApp harus berisi 8–16 digit, boleh diawali +.');break;}
-      await run(()=>db.doc('akun/'+PAD(ME)).update({tanggalLahir:tanggalLahir,whatsapp:whatsapp}),'Profil diperbarui');
+      const saved=await run(()=>db.doc('akun/'+PAD(ME)).update({tanggalLahir:tanggalLahir,whatsapp:whatsapp}),'Profil diperbarui');
+      if(saved){PROFILE_EDITING=false;renderDialog(true);}
       break;
     }
     case 'archive-del':{
@@ -2909,7 +2917,8 @@ refreshAll();
 /* Tombol Isi absen bergantung pada jam: periksa tiap 30 detik, tampilkan ulang hanya bila ada kuliah yang mulai/selesai. */
 updateLiveClock();
 setInterval(updateLiveClock,1000);
-setInterval(()=>{if(D&&D.kind==='hasil')loadHasil(true);},20000); // time tower tetap segar selama dibuka
+setInterval(()=>{if(D&&D.kind==='hasil')loadHasil(true);},20000);
+setInterval(()=>{renderStrip();renderStudents();},30000); // time tower tetap segar selama dibuka
 let liveSig='';
 setInterval(()=>{const s=today()+'|'+courseList().filter(c=>inSession(c)).map(c=>c.k).join();if(s!==liveSig){liveSig=s;refreshAll();}},30000);
 
@@ -2931,17 +2940,18 @@ setInterval(()=>{const s=today()+'|'+courseList().filter(c=>inSession(c)).map(c=
   }
   dbState='ok';
   const onErr=err=>{console.error(err);dbState='err';refreshAll();};
-  const sub=(path,key)=>db.collection(path).onSnapshot(snap=>{
+  const sub=(path,key,onSnapshotError)=>db.collection(path).onSnapshot(snap=>{
     const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});
     if(TOUR_DEMO_ACTIVE&&TOUR_DEMO_SNAPSHOT&&['tu','se','cs'].includes(key)){TOUR_DEMO_SNAPSHOT.live[key]=o;return;}
     S[key]=o;if(key in loaded)loaded[key]=true;if(key==='se')loadSektor();if(key==='tu'&&D&&D.kind==='hasil')loadHasil();refreshAll();
-  },onErr);
+  },onSnapshotError||onErr);
   sub('students','st');sub('courses','co');sub('constructors','cs');sub('media','md');sub('sessions','se');sub('tugas','tu');sub('pengumuman','an');sub('akun','ak');sub('berkas','be');sub('classArchive','ca');sub('paddockClub','pc');sub('drives','dr');sub('platform','pl');sub('course_updates','cu');
+  db.collection('presence').onSnapshot(snap=>{const o={};snap.docs.forEach(x=>{o[x.id]=x.data();});S.pr=o;refreshAll();},()=>{});
   if(AUTH){
-    AUTH.me().then(m=>{ME=m&&m.no||null;if(ME){loadSektor();refreshAll();setTimeout(startGridClassTour,1100);}else refreshAll();});
+    AUTH.me().then(m=>{ME=m&&m.no||null;if(ME){startPresence();loadSektor();refreshAll();setTimeout(startGridClassTour,1100);}else refreshAll();});
   }else if(uid){
     db.doc('data/users/'+uid+'/profil').onSnapshot(s=>{
-      const x=s.data();ME=x&&Number.isInteger(x.absen)?x.absen:null;refreshAll();if(ME)setTimeout(startGridClassTour,1100);
+      const x=s.data();ME=x&&Number.isInteger(x.absen)?x.absen:null;if(ME)startPresence();refreshAll();if(ME)setTimeout(startGridClassTour,1100);
     },()=>{});
   }else{
     try{const v=localStorage.getItem('gk_me');ME=v?(parseInt(v,10)||null):null;}catch(e){}
