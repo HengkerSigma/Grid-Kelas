@@ -1104,10 +1104,11 @@ function superLicensePanel(){
   let h='<div class="panel" id="superLicensePanel"><h3 class="ph3">Super License</h3>'+
     '<p class="s" style="margin-bottom:12px">Simpan sertifikat dan dokumentasi pribadi dalam satu tempat. Unggah foto atau PDF, lalu buka kembali kapan pun dibutuhkan.</p>';
   if(ME&&AS){
-    h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama sertifikat atau dokumen</label>'+
+    h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-jenis">Jenis berkas</label><select id="ser-jenis" data-dr="ser-jenis"><option value="ser"'+(dv('ser-jenis','ser')==='ser'?' selected':'')+'>Sertifikat</option><option value="dok"'+(dv('ser-jenis','ser')==='dok'?' selected':'')+'>Dokumentasi</option></select></div>'+
+      '<div class="field"><label for="ser-judul">Nama sertifikat atau dokumen</label>'+
       '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="Contoh: Sertifikat Workshop atau Dokumentasi Praktikum"></div>'+
-      '<div class="row2"><label class="btn sm pickfile">'+(PEND.ser?'Ganti berkas':'Pilih Sertifikat atau Dokumen')+
-      '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+(PEND.ser?esc(PEND.ser.name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
+      '<div class="row2"><label class="btn sm pickfile">'+((PEND.ser||PEND.dok)?'Ganti berkas':'Pilih Sertifikat atau Dokumen')+
+      '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+((PEND.ser||PEND.dok)?esc((PEND.ser||PEND.dok).name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
       '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button>'+
       (superLicenseDriveUrl?'<a class="btn" href="'+esc(superLicenseDriveUrl)+'" target="_blank" rel="noopener noreferrer">Simpan ke Google Drive <span aria-hidden="true">&#8599;</span></a>':'')+'</div>'+
       (superLicenseDriveUrl?'<span class="s">Google Drive tetap tersedia sebagai penyimpanan tambahan.</span>':'<span class="s">Berkas yang diunggah tersimpan secara privat di Super License.</span>')+'</div>';
@@ -2668,12 +2669,11 @@ document.addEventListener('click',async e=>{
     }
     case 'ber-save':{
       if(!ME)break;
-      const j=d.j,judul=($(j+'-judul').value||'').trim();
-      if(!PEND[j]){toast('Pilih berkas dulu.');break;}
+      const j=d.j,jenis=$('ser-jenis').value==='dok'?'dok':'ser',judul=($('ser-judul').value||'').trim();
+      if(!PEND[jenis]){toast('Pilih berkas dulu.');break;}
       if(!judul){toast('Isi nama sertifikat atau dokumen dulu.');break;}
-      const jenis=j==='dok'?'dok':'ser';
-      const ok=await run(()=>db.collection('berkas').add({no:ME,jenis:jenis,judul:judul.slice(0,100),file:PEND[j],at:Date.now()}),jenis==='ser'?'Sertifikat disimpan':'Dokumentasi disimpan');
-      if(ok){PEND[j]=null;delete DR[j+'-judul'];renderExhibition();}
+      const ok=await run(()=>db.collection('berkas').add({no:ME,jenis:jenis,judul:judul.slice(0,100),file:PEND[jenis],at:Date.now()}),jenis==='ser'?'Sertifikat disimpan':'Dokumentasi disimpan');
+      if(ok){PEND[jenis]=null;delete DR['ser-judul'];renderExhibition();}
       break;
     }
     case 'ber-del':berDel=d.id;renderExhibition();break;
@@ -2774,7 +2774,7 @@ document.addEventListener('change',async e=>{
       const k=D.key,n=D.pert;
       await run(async()=>{const fo=await sendFile(f,'attendance');await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
     }else if(kind==='ser'||kind==='dok'){
-      await run(async()=>{PEND[kind]=await sendFile(f,kind==='ser'?'certificates':'uploads');renderExhibition();},'Berkas siap. Tekan Simpan.');
+      await run(async()=>{const targetKind=kind==='ser'&&$('ser-jenis')&&$('ser-jenis').value==='dok'?'dok':kind;PEND[targetKind]=await sendFile(f,targetKind==='ser'?'certificates':'uploads');renderExhibition();},'Berkas siap. Tekan Simpan.');
     }else if(kind==='tugas'){
       await run(async()=>{const fo=await sendFile(f,'uploads');D.pending[tid]=fo;renderDialog(true);},'Berkas siap. Tekan Kirim untuk mengumpulkan.');
     }
