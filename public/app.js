@@ -485,8 +485,7 @@ function sektorRaw(){
   });
   return out;
 }
-/* Peringkat: tiap mata kuliah = satu sektor. 5 teratas ungu, 10 berikutnya hijau, sisanya kuning.
- * Seri diurutkan menurut kehadiran keseluruhan, lalu nomor absen. */
+/* Peringkat utama tetap berdasarkan persentase kehadiran keseluruhan; warna tiap sektor berdiri sendiri. */
 function sektorData(){
   const raw=sektorRaw(),cl=courseList().map(c=>c.k);
   let tt=0;cl.forEach(k=>{tt+=(raw[k]&&raw[k].t)||0;});
@@ -507,6 +506,17 @@ function sektorData(){
 }
 const SXNAME={p:'Sektor ungu',g:'Sektor hijau',y:'Sektor kuning'};
 function sxStrip(row,cl){return '<span class="sxm" aria-hidden="true">'+cl.map(k=>'<i class="sxc '+(row.cells[k].c||'n')+'"></i>').join('')+'</span>';}
+function attendanceDelta(sx,no){
+  const row=sx&&sx.byNo[no];if(!row||row.rank<=1)return null;
+  const ahead=sx.rows[row.rank-2],gap=Math.max(0,(ahead.p-row.p)*100);
+  return{ahead:ahead,points:gap,label:gap<0.05?'0 pp':gap.toFixed(1)+' pp'};
+}
+function sectorPerformance(sx,no){
+  const row=sx&&sx.byNo[no];if(!row)return[];
+  return sx.cl.map(k=>({k:k,name:cname(k),cell:row.cells[k]}))
+    .filter(x=>x.cell&&x.cell.t>0)
+    .sort((a,b)=>b.cell.p-a.cell.p||a.k.localeCompare(b.k));
+}
 function tireSvg(type){
   const colors={soft:'#e10600',medium:'#d6a300',hard:'#737b87'},c=colors[type]||colors.hard;
   return '<svg class="tire-icon '+type+'" viewBox="0 0 32 32" role="img" aria-label="Ban '+type+'"><circle cx="16" cy="16" r="13" fill="'+c+'" stroke="currentColor" stroke-width="1.1"/><circle cx="16" cy="16" r="8.2" fill="#171a20" stroke="#c9cdd4" stroke-width="1"/><circle cx="16" cy="16" r="3.3" fill="'+c+'" stroke="#e8e9eb" stroke-width=".8"/><path d="M16 2.8v3.2M16 26v3.2M2.8 16H6M26 16h3.2M6.7 6.7 9 9M23 23l2.3 2.3M25.3 6.7 23 9M9 23l-2.3 2.3" stroke="#f4f5f7" stroke-width="1.2" stroke-linecap="round"/></svg>';
@@ -1025,14 +1035,23 @@ function sektorDlg(){
   h+='<div class="db sector-dialog-content"><ul class="pleg"><li><i class="sxc p"></i>Sektor ungu · 5 teratas</li><li><i class="sxc g"></i>Sektor hijau · 10 berikutnya</li><li><i class="sxc y"></i>Sektor kuning · sisanya</li></ul>';
   h+='<div class="sector-overview">';
   if(sx.t){
-    h+='<div class="tblw sector-table-scroll" tabindex="0" role="region" aria-label="Tabel sektor absensi. Geser ke samping untuk melihat semua kolom, termasuk absen dan nama mahasiswa."><table class="sx"><thead><tr><th class="num">#</th><th>Mahasiswa</th><th class="num">Total</th>'+sx.cl.map(k=>'<th class="num" title="'+esc(cname(k))+'">'+esc(k)+'</th>').join('')+'</tr></thead><tbody>';
+    h+='<div class="tblw sector-table-scroll" tabindex="0" role="region" aria-label="Tabel sektor absensi. Geser ke samping untuk melihat semua kolom, termasuk delta dan performa mata kuliah."><table class="sx"><thead><tr><th class="num">#</th><th>Mahasiswa</th><th class="num">Total</th><th class="num" title="Selisih persentase dengan mahasiswa tepat di atas">Delta</th>'+sx.cl.map(k=>'<th class="num" title="'+esc(cname(k))+'">'+esc(k)+'</th>').join('')+'</tr></thead><tbody>';
     sx.rows.forEach(r=>{
-      h+='<tr'+(r.no===ME?' class="sxme"':'')+'><td class="num">'+r.rank+'</td><td class="sxn"><b>'+r.no+'</b> '+esc(nameOf(r.no))+'</td><td class="num"><b>'+Math.round(r.p*100)+'%</b></td>'+
+      const delta=attendanceDelta(sx,r.no);
+      h+='<tr'+(r.no===ME?' class="sxme"':'')+'><td class="num">'+r.rank+'</td><td class="sxn"><b>'+r.no+'</b> '+esc(nameOf(r.no))+'</td><td class="num"><b>'+Math.round(r.p*100)+'%</b></td><td class="num sx-delta" title="'+(delta?'Selisih dengan P'+delta.ahead.rank:'Peringkat pertama')+'">'+(delta?delta.label:'—')+'</td>'+
         sx.cl.map(k=>{const c=r.cells[k];return '<td class="num">'+(c.c?'<span class="sxc '+c.c+' big" title="'+SXNAME[c.c]+' · peringkat '+c.rk+' di '+esc(k)+'"><span class="sxsr">'+SXNAME[c.c]+', </span>'+c.p+'%</span>':'<span class="sxc n big">—</span>')+'</td>';}).join('')+'</tr>';
     });
     h+='</tbody></table></div>';
   }else h+='<p class="empty">Belum ada pertemuan yang diisi absennya.</p>';
   h+='</div>';
+  if(sx.t){
+    const performance=sectorPerformance(sx,ME),best=performance[0],weak=performance[performance.length-1];
+    h+='<section class="sector-performance"><div><span class="constructor-kicker">SECTOR PERFORMANCE</span><h3 class="ph3">Performa sektor kamu</h3><p class="s">Mata kuliah dengan persentase kehadiran terbaik dan terendah.</p></div>';
+    if(best)h+='<div class="sector-performance-grid"><article class="sector-performance-card best"><small>TERBAIK · '+esc(best.k)+'</small><b>'+best.cell.p+'%</b><span>'+esc(best.name)+'</span></article>';
+    if(weak&&weak.k!==(best&&best.k))h+='<article class="sector-performance-card focus"><small>PERLU PERHATIAN · '+esc(weak.k)+'</small><b>'+weak.cell.p+'%</b><span>'+esc(weak.name)+'</span></article>';
+    else if(best)h+='<article class="sector-performance-card focus"><small>SEKTOR LAINNYA</small><b>—</b><span>Belum ada mata kuliah lain untuk dibandingkan</span></article>';
+    h+='</div></section>';
+  }
   h+='<h3 class="ph3" style="margin-top:6px">Absen belum diisi</h3>';
   h+=miss.length?'<ul class="plist">'+miss.slice(0,12).map(se=>'<li class="pit-it"><div><b>'+esc(cname(se.k))+' · Pertemuan '+se.n+'</b><span class="s">'+fmtDate(se.tanggal)+(se.topik?' · '+esc(se.topik):'')+'</span></div><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(se.k)+'" data-tab="absen" data-pert="'+se.n+'">Isi absen</button></li>').join('')+'</ul>':'<p class="empty">Tidak ada absen yang tertinggal.</p>';
   return h+'</div>';
@@ -1871,16 +1890,29 @@ function settingsHtml(c){
 }
 
 function studentAttendanceTab(no){
-  const st=stats(no),sx=sektorData(),row=sx.byNo[no];
-  let h='<div class="student-statline"><span><b>'+st.tot.h+'/'+st.tot.t+'</b><small>Total hadir</small></span><span><b>'+((pct(st.tot.h,st.tot.t)==null)?'—':pct(st.tot.h,st.tot.t)+'%')+'</b><small>Kehadiran</small></span></div>'+
-    '<div><div class="lbl" style="margin-bottom:10px">Kehadiran per mata kuliah</div><ul class="rk student-attendance">';
-  const cl=courseList();
-  if(!cl.length)h+='<li class="empty">Belum ada mata kuliah.</li>';
-  cl.forEach(course=>{
-    const b=st.by[course.k]||{h:0,t:0},p=pct(b.h,b.t),cell=row&&row.cells[course.k],tone=cell&&cell.c?cell.c:'n';
-    h+='<li><span class="c">'+esc(course.k)+'</span><span class="n">'+esc(course.nama)+'</span><span class="b track sector-track sector-'+tone+'" aria-label="'+(p==null?'Belum ada data':p+' persen')+'"><i style="width:'+(p||0)+'%"></i></span><span class="v">'+(p==null?'—':p+'%')+'</span></li>';
+  const st=stats(no),sx=sektorData(),row=sx.byNo[no],delta=attendanceDelta(sx,no),performance=sectorPerformance(sx,no);
+  const best=performance[0],weak=performance[performance.length-1],overall=pct(st.tot.h,st.tot.t);
+  let h='<div class="race-report-kicker">PERSONAL RACE REPORT</div>'+
+    '<div class="race-report-stats">'+
+      '<article><small>KEHADIRAN</small><b>'+(overall==null?'—':overall+'%')+'</b><span>'+st.tot.h+' dari '+st.tot.t+' sesi</span></article>'+
+      '<article><small>OVERALL POSITION</small><b>'+(sx.t?'P'+row.rank:'—')+'</b><span>'+(sx.t?'dari '+N+' mahasiswa':'Belum ada peringkat')+'</span></article>'+
+      '<article><small>ATTENDANCE DELTA</small><b>'+(delta?delta.label:'—')+'</b><span>'+(delta?'di belakang P'+delta.ahead.rank:'Kamu berada di P1 / belum ada data')+'</span></article>'+
+    '</div>';
+  h+='<section class="race-sector-performance"><div class="race-section-heading"><div><span class="constructor-kicker">SECTOR PERFORMANCE</span><h3 class="ph3">Performa mata kuliah</h3></div></div>';
+  if(best){
+    h+='<div class="race-highlight-grid"><article class="race-highlight best"><small>SEKTOR TERBAIK</small><b>'+esc(best.k)+' · '+best.cell.p+'%</b><span>'+esc(best.name)+'</span></article>';
+    if(weak&&weak.k!==best.k)h+='<article class="race-highlight focus"><small>PERLU DITINGKATKAN</small><b>'+esc(weak.k)+' · '+weak.cell.p+'%</b><span>'+esc(weak.name)+'</span></article>';
+    else h+='<article class="race-highlight focus"><small>PERFORMA LAINNYA</small><b>—</b><span>Belum ada mata kuliah lain untuk dibandingkan</span></article>';
+    h+='</div>';
+  }else h+='<p class="empty">Belum ada sesi absensi tercatat untuk dibandingkan.</p>';
+  h+='</section><section class="race-course-section"><h3 class="ph3">Rincian seluruh sektor</h3>';
+  if(!performance.length)h+='<p class="empty">Belum ada data kehadiran per mata kuliah.</p>';
+  h+='<ul class="rk student-attendance race-course-list">';
+  performance.forEach(item=>{
+    const cell=item.cell,tone=cell.c||'n';
+    h+='<li><span class="c">'+esc(item.k)+'</span><span class="n">'+esc(item.name)+'</span><span class="b track sector-track sector-'+tone+'" aria-label="'+cell.p+' persen"><i style="width:'+cell.p+'%"></i></span><span class="v">'+cell.p+'%</span><small class="race-course-rank">'+(cell.rk?'P'+cell.rk:'—')+'</small></li>';
   });
-  return h+'</ul><ul class="pleg student-sector-legend"><li><i class="sxc p"></i>Ungu · 5 teratas</li><li><i class="sxc g"></i>Hijau · 10 berikutnya</li><li><i class="sxc y"></i>Kuning · lainnya</li></ul></div>';
+  return h+'</ul><ul class="pleg student-sector-legend"><li><i class="sxc p"></i>Ungu · 5 teratas</li><li><i class="sxc g"></i>Hijau · 10 berikutnya</li><li><i class="sxc y"></i>Kuning · lainnya</li></ul></section>';
 }
 function studentResultsTab(no){
   const rows=[];
