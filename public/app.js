@@ -187,27 +187,28 @@ function fileHtml(f,sm){
 
 /* ---------- strip, students, courses ---------- */
 function fb(no){return isAd(no)?'<span class="fbadge" title="Admin">'+FLAG+'</span>':'';}
+function focusOwnStrip(behavior){
+  const r=$('rail'),own=r&&r.querySelector('.rs.me-highlight');
+  if(!r||!own)return;
+  const railRect=r.getBoundingClientRect(),ownRect=own.getBoundingClientRect();
+  const target=r.scrollLeft+ownRect.left-railRect.left-(r.clientWidth-own.offsetWidth)/2;
+  const max=Math.max(0,r.scrollWidth-r.clientWidth);
+  r.scrollTo({left:Math.max(0,Math.min(max,target)),behavior:behavior||'auto'});
+}
 function renderStrip(){
   let h='';
   for(let n=1;n<=N;n++){
     const s=stu(n);
     h+='<button type="button" class="rs'+(Number(ME)===n?' me-highlight':'')+'" role="listitem" data-act="open-student" data-no="'+n+'"'+(Number(ME)===n?' aria-current="true"':'')+' aria-label="'+esc(nameOf(n))+', absen '+n+(isAd(n)?', admin':'')+'"><span class="sw"><span class="sav">'+photo('s'+PAD(n))+'</span>'+fb(n)+'</span><span class="rl"><b>'+n+'</b> '+esc(s?s.kode:'')+'</span></button>';
   }
-  const r=$('rail'),x=r.scrollLeft;
+  const r=$('rail'),x=r.scrollLeft,ownNo=Number(ME)||null;
   r.innerHTML=h;
-  if(ME){
-    const ownNo=Number(ME);
-    if(stripFocusedNo!==ownNo){
-      const own=r.querySelector('.rs.me-highlight');
-      if(own){
-        const railRect=r.getBoundingClientRect(),ownRect=own.getBoundingClientRect();
-        const left=r.scrollLeft+ownRect.left-railRect.left-(r.clientWidth-own.offsetWidth)/2;
-        r.scrollTo({left:Math.max(0,left),behavior:'smooth'});
-        stripFocusedNo=ownNo;
-      }
-    }else r.scrollLeft=x;
+  if(ownNo){
+    if(stripFocusedNo!==ownNo){focusOwnStrip('smooth');stripFocusedNo=ownNo;}
+    else r.scrollLeft=x;
   }else{stripFocusedNo=null;r.scrollLeft=x;}
 }
+window.addEventListener('resize',()=>{if(ME)focusOwnStrip('auto');});
 function renderStudents(){
   const note=$('snote');
   if(dbState==='none'){note.hidden=false;note.textContent='Data kelas tidak bisa dimuat di tampilan ini. Buka halaman dengan akun yang punya akses.';}

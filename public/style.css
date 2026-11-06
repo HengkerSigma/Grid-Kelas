@@ -70,8 +70,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 .avbtn img{width:100%;height:100%;object-fit:cover}
 
 
-/* Let the first and last student cards reach the exact center of the horizontal slider. */
-.rail::before,.rail::after{content:"";flex:0 0 max(0px,calc((100% - 62px)/2));}
+/* Student slider respects natural scroll edges without oversized empty spacers. */
 
 /* student strip */
 .strip{background:var(--band);border-bottom:1px solid var(--line)}
