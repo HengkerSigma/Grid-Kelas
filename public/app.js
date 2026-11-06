@@ -797,8 +797,8 @@ async function launchGridClassTour(force){
   const mobileTour=window.matchMedia('(max-width: 600px)').matches;
   const mobileNavStep=(target,label)=>mobileTour?[{
     element:()=>{toggleMobileNav(true);return document.querySelector('.nl[data-view="'+target+'"]');},
-    popover:{title:'NAVIGASI · '+label.toUpperCase(),description:'Buka halaman '+label+' dengan mengetuk tab '+label+' pada navigasi.',side:'bottom',align:'center'},
-    onNextClick:()=>{const b=document.querySelector('.nl[data-view="'+target+'"]');if(b)b.click();setTimeout(()=>d.moveNext(),180);}
+    popover:{title:'NAVIGASI · '+label.toUpperCase(),description:'Tekan tombol F untuk membuka navigasi, lalu ketuk tab '+label+'. Setelah halaman terbuka, navigasi akan tertutup otomatis agar tutorial bisa dilanjutkan.',side:'bottom',align:'center'},
+    onNextClick:()=>{const b=document.querySelector('.nl[data-view="'+target+'"]');if(b)b.click();toggleMobileNav(false);setTimeout(()=>{toggleMobileNav(false);d.moveNext();},220);}
   }]:[];
   const d=window.driver.js.driver({
     animate:true,showProgress:true,showButtons:['previous','next','close'],
@@ -806,7 +806,7 @@ async function launchGridClassTour(force){
     progressText:'{{current}} / {{total}}',allowClose:true,overlayColor:'rgba(4,8,16,.82)',
     stagePadding:7,stageRadius:12,popoverClass:'gk-race-tour',
     steps:[
-      {element:()=>mobileTour?document.querySelector('#top .brand'):document.querySelector('#mainNav'),popover:{title:'01 · PIT WALL NAVIGATION',description:mobileTour?'Ini tombol F untuk membuka navigasi. Setelah itu, pilih tab halaman yang ingin dibuka.':'Gunakan navigasi untuk berpindah antara Beranda, Mahasiswa, dan Mata Kuliah'+(adm()?', serta Pengelola.':'.'),side:'bottom',align:'center',onNextClick:()=>{if(mobileTour){toggleMobileNav(true);setTimeout(()=>d.moveNext(),180);}else{setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();setTimeout(()=>d.moveNext(),420);}}}}, 
+      {element:()=>mobileTour?document.querySelector('#top .brand'):document.querySelector('#mainNav'),popover:{title:'01 · PIT WALL NAVIGATION',description:mobileTour?'Tekan tombol F untuk membuka navigasi, lalu pilih tab Mahasiswa. Navigasi akan tertutup setelah halaman terbuka.':'Gunakan navigasi untuk berpindah antara Beranda, Mahasiswa, dan Mata Kuliah'+(adm()?', serta Pengelola.':'.'),side:'bottom',align:'center',onNextClick:()=>{if(mobileTour){toggleMobileNav(true);setTimeout(()=>d.moveNext(),180);}else{setView('mahasiswa',true);const b=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="line-up"]');if(b)b.click();setTimeout(()=>d.moveNext(),420);}}}}, 
       ...mobileNavStep('mahasiswa','Mahasiswa'),
       {element:'#v-mahasiswa .student-subtabs [data-tab="line-up"]',popover:{title:'02 · LINE-UP',description:'LINE-UP menampilkan grid kartu seluruh mahasiswa. Kartu milikmu diberi sorotan khusus. Pilih kartu tersebut untuk membuka profil, statistik, hasil tugas, dan achievement.',side:'bottom',align:'start'},
        onNextClick:()=>{d.moveNext();}},
@@ -849,8 +849,7 @@ async function launchGridClassTour(force){
       {element:'#home [data-act="open-sektor"]',popover:{title:'18 · SECTOR CLASSIFICATION',description:'Sektor Absensi memperlihatkan persentase kehadiran, peringkat kelas, dan warna sektor berdasarkan posisi kehadiranmu.',side:'top',align:'center'},
        onNextClick:()=>{const b=document.querySelector('#home [data-act="open-sektor"]');if(b)b.click();setTimeout(()=>d.moveNext(),160);}},
       {element:'#dlg .sector-overview',popover:{title:'19 · ABSENCE SECTOR',description:'Di tampilan sektor, bandingkan posisi dan progres absensi setiap mahasiswa. Warna sektor membantu membaca peringkat kehadiran.',side:'top',align:'center'},
-       onNextClick:()=>{if(dlg.open)dlg.close();if(mobileTour){toggleMobileNav(true);setTimeout(()=>d.moveNext(),120);}else{setView('beranda',true);setTimeout(()=>d.moveNext(),120);}}}, 
-      ...mobileNavStep('beranda','Beranda'),
+       onNextClick:()=>{if(dlg.open)dlg.close();if(mobileTour){toggleMobileNav(false);setTimeout(()=>d.moveNext(),120);}else{setView('beranda',true);setTimeout(()=>d.moveNext(),120);}}}, 
       {element:'#home .schedule-panel',popover:{title:'20 · SCHEDULE',description:'Jadwal hari ini menampilkan kelas dan jam perkuliahan. Gunakan tombol Isi Absen saat sesi dibuka, atau buka riwayat absensi untuk mengecek catatan sebelumnya.',side:'top',align:'center'}},
       {element:'#home .team-radio',popover:{title:'21 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'},onNextClick:()=>{setView('beranda',true);setTimeout(()=>d.moveNext(),140);}},
       {element:'#overviewSubtabs [data-tab="exhibition"]',popover:{title:'22 · EXHIBITION',description:'Exhibition berada tepat di samping heading Overview. Buka tab ini untuk melihat sertifikat, dokumentasi kelas, dan agenda seminar akademik tanpa meninggalkan halaman Overview.',side:'bottom',align:'start'},onNextClick:()=>{setOverviewSubtab('exhibition');setTimeout(()=>d.moveNext(),140);}},
