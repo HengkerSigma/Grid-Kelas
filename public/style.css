@@ -1148,3 +1148,17 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .student-profile-details b{font-size:.9rem;overflow-wrap:anywhere}
 .student-profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 @media(max-width:520px){.student-profile-details,.student-profile-fields{grid-template-columns:minmax(0,1fr)}.archive-comment-form{align-items:stretch}.archive-comment-form .btn{flex:none}}
+
+
+/* Keep Class Archive comment content inside the photo card */
+.archive-comments{width:100%;min-width:0;box-sizing:border-box}
+.archive-comments>.s{display:block;min-width:0;padding:7px 9px;border:1px dashed var(--line);border-radius:8px;line-height:1.4;overflow-wrap:anywhere}
+.archive-comment-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:stretch;width:100%;min-width:0;box-sizing:border-box}
+.archive-comment-form input{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.archive-comment-form .btn{min-width:0;max-width:100%;white-space:nowrap;box-sizing:border-box}
+.gc{min-width:0;box-sizing:border-box}
+@media(max-width:520px){
+ .archive-comment-form{grid-template-columns:minmax(0,1fr) auto;align-items:stretch}
+ .archive-comment-form input{padding:7px 8px;font-size:.78rem}
+ .archive-comment-form .btn{padding-inline:10px;font-size:.78rem}
+}
