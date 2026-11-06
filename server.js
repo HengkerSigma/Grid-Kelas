@@ -611,9 +611,10 @@ async function decide(method, p, body, sess, existing) {
 
   if (root === 'presence') {
     if (!sess) return ERR_NEED;
-    if (parts.length !== 2 || !/^(0[1-9]|[12]\\d|3[0-2])$/.test(id) || Number(id) !== Number(sess.no)) return ERR_FORBID;
+    if (parts.length !== 2 || !/^(0[1-9]|[12]\d|3[0-2])$/.test(id) || Number(id) !== Number(sess.no)) return ERR_FORBID;
     if (method !== 'PUT' || !onlyKeys(body, ['no', 'lastSeen']) || Number(body.no) !== Number(sess.no) || !Number.isFinite(Number(body.lastSeen)) || Number(body.lastSeen) < 0) return ERR_BAD('Status aktif tidak valid.');
-    return { data: { no: Number(sess.no), lastSeen: Number(body.lastSeen) } };
+    const lastSeen = Number(body.lastSeen) === 0 ? 0 : Date.now();
+    return { data: { no: Number(sess.no), lastSeen: lastSeen } };
   }
 
   if (!sess) return ERR_NEED;
