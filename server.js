@@ -36,6 +36,7 @@ const N = 32;
 const PERT = 16;
 const MAX_JSON = 300 * 1024;
 const MAX_FILE = 20 * 1024 * 1024;
+const GREETING_COOLDOWN_MS = 60000;
 const MAKRAB_START_AT = Date.UTC(2026, 9, 31, 17, 0, 0, 0);
 const MAKRAB_DEADLINE_AT = Date.UTC(2026, 10, 30, 16, 59, 59, 999);
 const SESSION_MS = 30 * 24 * 3600 * 1000;
@@ -516,6 +517,11 @@ async function view(p, data, sess) {
   const admin = !!(sess && sess.admin);
   if (root === 'students' || root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
   if (root === 'presence') return sess ? { no: Number(data.no), lastSeen: Number(data.lastSeen) || 0 } : null;
+  if (root === 'greetings') {
+    if (!sess || Number(data.senderNo) === Number(sess.no) || Date.now() - Number(data.createdAt || 0) > 15000) return null;
+    return pick(data, ['senderNo', 'senderName', 'createdAt']);
+  }
+  if (root === 'greetingCooldown') return sess && parts.length === 2 && parts[1] === pad(sess.no) ? pick(data, ['at']) : null;
   if (root === 'paddockClub') {
     const out = Object.assign({}, data), poster = isObj(data.poster) ? data.poster : null;
     if (poster && /^[0-9a-f]{32}$/.test(poster.id || '')) {
@@ -672,6 +678,23 @@ async function decide(method, p, body, sess, existing) {
   }
 
   if (!sess) return ERR_NEED;
+
+  if (root === 'greetings') {
+    if (parts.length !== 2 || method !== 'POST' || !onlyKeys(body, [])) return ERR_FORBID;
+    const now = Date.now(), cooldownPath = 'greetingCooldown/' + pad(sess.no), previous = await getDoc(cooldownPath);
+    const remaining = GREETING_COOLDOWN_MS - (now - Number(previous && previous.at || 0));
+    if (remaining > 0 || !take('greeting:' + sess.no, 1, GREETING_COOLDOWN_MS)) {
+      const seconds = Math.max(1, Math.ceil(Math.max(remaining, 1000) / 1000));
+      return { err: [429, 'rate_limited', 'Tunggu ' + seconds + ' detik sebelum mengirim sapaan lagi.'] };
+    }
+    const activeRows = await listCol('presence');
+    const hasOnlineFriend = activeRows.some(row => { const p = row.data || {}; return Number(p.no) !== Number(sess.no) && Number(p.lastSeen) > 0 && now - Number(p.lastSeen) < 90000; });
+    if (!hasOnlineFriend) return ERR_BAD('Tidak ada teman yang sedang online saat ini.');
+    const student = await getDoc('students/' + pad(sess.no));
+    const senderName = [student && student.depan, student && student.belakang].filter(Boolean).join(' ').trim().slice(0, 80) || ('Mahasiswa ' + sess.no);
+    await setDoc(cooldownPath, { at: now });
+    return { data: { senderNo: Number(sess.no), senderName: senderName, createdAt: now } };
+  }
 
   if (root === 'course_updates') {
     if (!admin || parts.length !== 2) return ERR_FORBID;
