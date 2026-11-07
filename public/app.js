@@ -155,7 +155,7 @@ async function run(fn,okMsg){
   }
   showLoading(okMsg);
   try{await fn();if(okMsg)toast(okMsg);return true;}
-  catch(e){console.error(e);toast((e&&ERRMAP[e.code])||(e&&e.message&&!e.code?e.message:'Gagal menyimpan. Coba lagi.'));return false;}
+  catch(e){console.error(e);toast((e&&e.message)||(e&&ERRMAP[e.code])||'Gagal menyimpan. Coba lagi.');return false;}
   finally{
     pendingRuns=Math.max(0,pendingRuns-1);
     if(!pendingRuns){busyButtons.forEach(x=>{x.el.disabled=x.disabled;x.el.classList.remove('is-busy');});busyButtons=[];hideLoading();}
@@ -1444,14 +1444,14 @@ function renderAdmin(force=false){
   const taskPanel=tk?'<div class="task-management-inline"><h4 class="ph3">Daftar tugas aktif</h4><p class="s">Kelola tugas yang sudah diterbitkan. Tugas yang melewati tenggat tetap tersimpan di History.</p><ul>'+tk+'</ul></div>':'<div class="task-management-inline"><h4 class="ph3">Daftar tugas aktif</h4><p class="empty">Belum ada tugas aktif.</p></div>';
   if(ADMIN_NOTIFY_TAB==='tasks'){
   h+='<div class="panel" id="course-update-panel"><h3 class="ph3">Pembaruan mata kuliah</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s">Kelola informasi pertemuan, materi, tugas, dan tenggat. Pengaturan tautan absensi tersedia di subtab Absensi.</p>'+
-    '<div class="cu-form"><div class="field"><label for="cu-course">Mata kuliah</label><select id="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((edit?edit.course_code:cl[0]&&cl[0].k)===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
-    '<div class="field"><label for="cu-meeting">Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" value="'+(edit?edit.meeting_number:1)+'"></div>'+
-    '<div class="field"><label for="cu-title">Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" value="'+esc(edit&&edit.task_title||'')+'"></div>'+
-    '<div class="field"><label for="cu-mode">Jenis tugas</label><select id="cu-mode"><option value="individual"'+((linkedTask&&linkedTask.mode==='group')?'':' selected')+'>Individu</option><option value="group"'+((linkedTask&&linkedTask.mode==='group')?' selected':'')+'>Kelompok</option></select></div>'+
-    '<div class="field"><label for="cu-task">Link tugas / materi / soal</label><input id="cu-task" type="url" placeholder="https://..." value="'+esc(edit&&edit.task_url||'')+'"></div>'+
-    '<div class="field"><label for="cu-submit">Link pengumpulan</label><input id="cu-submit" type="url" placeholder="https://..." value="'+esc(edit&&edit.submission_url||'')+'"></div>'+
-    '<div class="field"><label for="cu-deadline">Batas waktu pengumpulan</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div>'+
-    '<div class="field" style="grid-column:1/-1"><label for="cu-desc">Petunjuk tugas</label><textarea id="cu-desc" maxlength="1000" placeholder="Jelaskan instruksi dan apa yang harus dikumpulkan">'+esc(linkedTask&&linkedTask.deskripsi||'')+'</textarea></div>'+
+    '<div class="cu-form"><div class="field"><label for="cu-course">Mata kuliah</label><select id="cu-course" data-dr="cu-course">'+cl.map(c=>'<option value="'+esc(c.k)+'"'+((edit?edit.course_code:dv('cu-course',cl[0]&&cl[0].k))===c.k?' selected':'')+'>'+esc(c.nama)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label for="cu-meeting">Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" data-dr="cu-meeting" value="'+(edit?edit.meeting_number:dv('cu-meeting',1))+'"></div>'+
+    '<div class="field"><label for="cu-title">Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" data-dr="cu-title" value="'+esc(edit?edit.task_title||'':dv('cu-title',''))+'"></div>'+
+    '<div class="field"><label for="cu-mode">Jenis tugas</label><select id="cu-mode"><option value="individual"'+((linkedTask&&linkedTask.mode==='group')?'':' selected')+'>Individu</option><option value="group"'+((dv('cu-mode',linkedTask&&linkedTask.mode||'individual')==='group')?' selected':'')+'>Kelompok</option></select></div>'+
+    '<div class="field"><label for="cu-task">Link tugas / materi / soal</label><input id="cu-task" data-dr="cu-task" type="url" placeholder="https://..." value="'+esc(edit?edit.task_url||'':dv('cu-task',''))+'"></div>'+
+    '<div class="field"><label for="cu-submit">Link pengumpulan</label><input id="cu-submit" data-dr="cu-submit" type="url" placeholder="https://..." value="'+esc(edit?edit.submission_url||'':dv('cu-submit',''))+'"></div>'+
+    '<div class="field"><label for="cu-deadline">Batas waktu pengumpulan</label><input id="cu-deadline" data-dr="cu-deadline" type="date" value="'+esc(edit?edit.deadline||'':dv('cu-deadline',''))+'"></div>'+
+    '<div class="field" style="grid-column:1/-1"><label for="cu-desc">Petunjuk tugas</label><textarea id="cu-desc" data-dr="cu-desc" maxlength="1000" placeholder="Jelaskan instruksi dan apa yang harus dikumpulkan">'+esc(edit?linkedTask&&linkedTask.deskripsi||'':dv('cu-desc',''))+'</textarea></div>'+
      '<div class="field" style="grid-column:1/-1"><label for="cu-images">Foto tugas / soal (opsional)</label><div class="row2"><label class="btn sm pickfile">Tambah foto<input id="cu-images" type="file" accept="image/jpeg,image/png,image/webp" multiple></label><span class="s">JPG, PNG, atau WebP · Maksimal 10 foto, 5 MB per foto.</span></div><span class="s">Jika tidak mengisi link tugas/soal, foto akan tampil sebagai tombol visual “Lihat Tugas” di kartu tugas mahasiswa.</span><div id="cu-attachments-preview">'+cuImageEditorHtml(CU_PENDING_IMAGES)+'</div></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div>'+
     '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="6" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div>'+taskPanel+'</div>';
