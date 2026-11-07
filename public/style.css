@@ -1177,14 +1177,14 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .task-image-grid{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.task-image-thumb{width:clamp(92px,22%,150px);padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);color:inherit;text-align:left;cursor:pointer}.task-image-thumb img{display:block;width:100%;height:105px;object-fit:cover}.task-image-thumb span{display:block;padding:6px 8px;font-size:.75rem;color:var(--muted)}.cu-image-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.cu-image-item{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:8px;max-width:100%;padding:7px;border:1px solid var(--line);border-radius:10px}.cu-image-item img{width:64px;height:56px;object-fit:cover;border-radius:7px}.cu-image-item span{font-size:.8rem;overflow-wrap:anywhere}.task-gallery-dialog{width:min(96vw,1100px);max-width:96vw;max-height:96vh;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--text)}.task-gallery-dialog::backdrop{background:rgba(0,0,0,.82)}.task-gallery-head,.task-gallery-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 2px 10px;font-size:.85rem}.task-gallery-stage{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:45vh;max-height:78vh}.task-gallery-stage img{display:block;max-width:calc(100% - 96px);max-height:76vh;width:auto;height:auto;object-fit:contain;touch-action:pan-x pan-y pinch-zoom}.task-gallery-nav{flex:0 0 38px;min-height:42px;padding:0;font-size:1.5rem}.task-gallery-foot{justify-content:center;color:var(--muted);padding:10px 2px 2px;text-align:center}@media(max-width:560px){.task-image-thumb{width:calc(50% - 5px)}.task-image-thumb img{height:112px}.task-gallery-dialog{padding:8px}.task-gallery-stage{min-height:38vh}.task-gallery-stage img{max-width:calc(100% - 76px);max-height:72vh}.task-gallery-nav{flex-basis:30px;min-height:38px}.cu-image-item{grid-template-columns:54px minmax(0,1fr) auto}.cu-image-item img{width:54px;height:50px}}
 
 
-/* Event khusus Bukti Absen Maktab di Super License dan rekap pengelola */
-.maktab-dropdown{margin:14px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);overflow:hidden}
-.maktab-dropdown>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;cursor:pointer;list-style:none}
-.maktab-dropdown>summary::-webkit-details-marker{display:none}
-.maktab-dropdown>summary>span:first-child{display:grid;gap:3px;min-width:0}
-.maktab-dropdown>summary small{font-size:.75rem;color:var(--muted)}
-.maktab-event{padding:0 14px 14px;min-width:0}
-.maktab-event-tag{display:inline-flex;align-items:center;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:.66rem;font-weight:800;letter-spacing:.08em}
-.maktab-submission{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
-.maktab-admin-recap{margin-top:18px}
-.maktab-admin-recap .export-formats{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+/* Event khusus Bukti Absen Makrab di Super License dan rekap pengelola */
+.makrab-dropdown{margin:14px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);overflow:hidden}
+.makrab-dropdown>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;cursor:pointer;list-style:none}
+.makrab-dropdown>summary::-webkit-details-marker{display:none}
+.makrab-dropdown>summary>span:first-child{display:grid;gap:3px;min-width:0}
+.makrab-dropdown>summary small{font-size:.75rem;color:var(--muted)}
+.makrab-event{padding:0 14px 14px;min-width:0}
+.makrab-event-tag{display:inline-flex;align-items:center;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:.66rem;font-weight:800;letter-spacing:.08em}
+.makrab-submission{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.makrab-admin-recap{margin-top:18px}
+.makrab-admin-recap .export-formats{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
