@@ -645,7 +645,7 @@ async function decide(method, p, body, sess, existing) {
     const attachments = [];
     for (const item of rawAttachments) {
       const file = await cleanFile(item, sess, MEDIA_BUCKET);
-      if (!file || !/^image\\/(jpeg|png|webp)$/.test(file.type || '')) return ERR_BAD('Foto tugas tidak cocok dengan akun atau formatnya. Unggah ulang foto JPG, PNG, atau WebP.');
+      if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type || '')) return ERR_BAD('Foto tugas tidak cocok dengan akun atau formatnya. Unggah ulang foto JPG, PNG, atau WebP.');
       attachments.push(file);
     }
     const hasTask = !!(taskTitle || taskUrl || description || attachments.length);
