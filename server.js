@@ -174,7 +174,7 @@ async function deleteDoc(p) {
     let found = must(await supabase.from('course_updates').select('id').eq('id', id).maybeSingle());
     if (!found.data) found = must(await supabase.from('course_updates').select('id').eq('task_id', id).maybeSingle());
     if (found.data) must(await supabase.from('course_updates').update({ task_id: null, task_title: null, task_url: null,
-      deadline: null, task_mode: 'individual', task_description: '', task_submissions: {},
+      deadline: null, task_mode: 'individual', task_description: '', task_attachments: [], task_submissions: {},
       task_group_submissions: {}, task_created_at: null }).eq('id', found.data.id));
     else must(await supabase.from('app_data').delete().eq('key', p));
   } else if (root === 'course_updates') {
@@ -189,6 +189,7 @@ function taskFromCourseUpdate(row) {
   const subs = isObj(row.task_submissions) ? row.task_submissions : {};
   return { k: row.course_code, judul: row.task_title, tenggat: row.deadline || '',
     deskripsi: row.task_description || '', link: row.task_url || '',
+    lampiran: Array.isArray(row.task_attachments) ? row.task_attachments : [],
     mode: row.task_mode === 'group' ? 'group' : 'individual', closed: !!(subs.__meta && subs.__meta.closed),
     subs: subs,
     groupSubs: isObj(row.task_group_submissions) ? row.task_group_submissions : {},
@@ -197,6 +198,7 @@ function taskFromCourseUpdate(row) {
 function taskColumns(task) {
   return { task_title: task.judul || null, deadline: task.tenggat || null,
     task_description: task.deskripsi || '', task_url: task.link || '',
+    task_attachments: Array.isArray(task.lampiran) ? task.lampiran : [],
     task_mode: task.mode === 'group' ? 'group' : 'individual',
     task_submissions: isObj(task.subs) ? task.subs : {},
     task_group_submissions: isObj(task.groupSubs) ? task.groupSubs : {},

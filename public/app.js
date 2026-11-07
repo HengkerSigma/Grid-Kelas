@@ -58,7 +58,7 @@ let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa ser
 let ownerMode=false,view='beranda',annDel=null,ANN_EDIT=null,tkDel=null,berDel=null,fails=0,lockUntil=0;
 const PEND={ser:null,dok:null,archive:null,seminar:null};
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{},pr:{}};
-let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
+let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null,PROFILE_EDITING=false,presenceTimer=null;
@@ -184,8 +184,24 @@ function tugasStat(no){let a=0,b=0;(TOUR_DEMO_ACTIVE?Object.keys(S.tu).map(id=>O
 const pct=(h,t)=>t?Math.round(h/t*100):null;
 function fileHtml(f,sm){
   if(!f||!okId(f.id))return '';
-  const img=/^image\//.test(f.type||'');
-  return '<a class="fl'+(sm?' sm':'')+'" href="/_blob/'+f.id+'" target="_blank" rel="noopener noreferrer">'+(img&&!sm?'<img class="thumb" src="/_blob/'+f.id+'" alt="">':'')+'<span>'+esc(f.name||'Berkas')+'</span></a>';
+  const img=/^image\//.test(f.type||''),src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;
+  return '<a class="fl'+(sm?' sm':'')+'" href="'+esc(src)+'" target="_blank" rel="noopener noreferrer">'+(img&&!sm?'<img class="thumb" src="'+esc(src)+'" alt="">':'')+'<span>'+esc(f.name||'Berkas')+'</span></a>';
+}
+function taskImagesHtml(images,taskId){
+  if(!Array.isArray(images)||!images.length)return '';
+  return '<div class="task-image-grid" aria-label="Lampiran foto tugas">'+images.map((f,i)=>{if(!f||!okId(f.id))return '';const src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;return '<button type="button" class="task-image-thumb" data-act="task-image-open" data-id="'+esc(taskId)+'" data-index="'+i+'" aria-label="Buka foto '+(i+1)+' dari '+images.length+'"><img src="'+esc(src)+'" alt="'+esc(f.name||('Foto '+(i+1)))+'" loading="lazy"><span>Foto '+(i+1)+'</span></button>';}).join('')+'</div>';
+}
+function cuImageEditorHtml(images){
+  if(!Array.isArray(images)||!images.length)return '<p class="s">Belum ada foto lampiran.</p>';
+  return '<div class="cu-image-list">'+images.map((f,i)=>{const src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;return '<div class="cu-image-item"><img src="'+esc(src)+'" alt="'+esc(f.name||('Foto '+(i+1)))+'"><span>'+esc(f.name||('Foto '+(i+1)))+'</span><button type="button" class="btn sm" data-act="cu-image-remove" data-index="'+i+'">Hapus</button></div>';}).join('')+'</div>';
+}
+function openTaskGallery(images,index){
+  if(!Array.isArray(images)||!images.length)return;
+  let current=Math.max(0,Math.min(images.length-1,Number(index)||0));
+  const dialog=document.createElement('dialog');dialog.className='task-gallery-dialog';
+  const source=f=>f&&f.url&&/^https:\/\//i.test(f.url)?f.url:(f&&okId(f.id)?'/_blob/'+f.id:'');
+  const paint=()=>{const f=images[current],src=source(f);dialog.innerHTML='<div class="task-gallery-head"><span>Foto '+(current+1)+' / '+images.length+'</span><button type="button" class="btn sm" data-gallery-close>Tutup</button></div><div class="task-gallery-stage"><button type="button" class="btn sm task-gallery-nav" data-gallery-prev '+(current===0?'disabled':'')+' aria-label="Foto sebelumnya">‹</button><img src="'+esc(src)+'" alt="'+esc(f&&f.name||'Lampiran tugas')+'"><button type="button" class="btn sm task-gallery-nav" data-gallery-next '+(current===images.length-1?'disabled':'')+' aria-label="Foto berikutnya">›</button></div><div class="task-gallery-foot">'+esc(f&&f.name||('Foto '+(current+1)))+' · Gunakan gerakan cubit untuk memperbesar</div>';dialog.querySelector('[data-gallery-close]').addEventListener('click',()=>dialog.close());const prev=dialog.querySelector('[data-gallery-prev]'),next=dialog.querySelector('[data-gallery-next]');if(prev)prev.addEventListener('click',()=>{current--;paint();});if(next)next.addEventListener('click',()=>{current++;paint();});};
+  dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});dialog.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'&&current>0){current--;paint();}else if(e.key==='ArrowRight'&&current<images.length-1){current++;paint();}});dialog.addEventListener('close',()=>dialog.remove());document.body.appendChild(dialog);paint();dialog.showModal();
 }
 
 /* ---------- strip, students, courses ---------- */
@@ -315,7 +331,7 @@ function groupTaskCard(t,g,sub,principal){
   const id=t.id,locked=isLocked(t),done=!!(sub&&sub.at),late=locked,open=D.subOpen===id;
   let h='<article class="tcard group-task-card"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">'+(done?'Sudah selesai':late?(t.closed?'Ditutup pengelola':'Lewat tenggat'):'Tugas kelompok')+'</span></div>'+
     '<p class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</p>'+
-    (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'');
+    (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+taskImagesHtml(t.lampiran,t.id);
   if(!g)h+='<p class="empty">Kamu belum terdaftar dalam Constructor.</p>';
   else h+='<p class="s">Constructor: <b>'+esc(g.name||'Kelompok')+'</b> · Team Principal: '+esc(g.principal?nameOf(g.principal):'Belum ditetapkan')+'</p>';
   if(done)h+='<p class="tdone"><b>&#10003; Sudah selesai untuk seluruh anggota kelompok.</b><br><span class="s">Dikumpulkan '+fmtTime(sub.at)+'</span></p>';
@@ -1386,6 +1402,7 @@ function renderAdmin(force=false){
     '<div class="field"><label for="cu-submit">Link pengumpulan</label><input id="cu-submit" type="url" placeholder="https://..." value="'+esc(edit&&edit.submission_url||'')+'"></div>'+
     '<div class="field"><label for="cu-deadline">Batas waktu pengumpulan</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="cu-desc">Petunjuk tugas</label><textarea id="cu-desc" maxlength="1000" placeholder="Jelaskan instruksi dan apa yang harus dikumpulkan">'+esc(linkedTask&&linkedTask.deskripsi||'')+'</textarea></div>'+
+     '<div class="field" style="grid-column:1/-1"><label for="cu-images">Foto soal / instruksi (opsional)</label><div class="row2"><label class="btn sm pickfile">Tambah foto<input id="cu-images" type="file" accept="image/jpeg,image/png,image/webp" multiple></label><span class="s">JPG, PNG, atau WebP · Maksimal 10 foto, 5 MB per foto.</span></div><div id="cu-attachments-preview">'+cuImageEditorHtml(CU_PENDING_IMAGES)+'</div></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div>'+
     '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="6" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div>'+taskPanel+'</div>';
   }
@@ -1861,7 +1878,7 @@ function tugasStudent(c){
   const all=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k),active=taskList().filter(t=>t.k===c.k),history=all.filter(t=>isLocked(t)).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
   if(!active.length&&!history.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   let h='';if(!ME)h+='<div class="mine"><div><b>Masuk untuk mengerjakan dan mengumpulkan tugas</b><span class="s">Pilih nomor absen Anda terlebih dahulu.</span></div><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>';
-  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);return groupTaskCard(t,g,sub,principal);}return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(t.closed?'Ditutup pengelola · ':'')+(late&&!t.closed?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+(late?'':taskActions(t,mine))+'</article>';};
+  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);return groupTaskCard(t,g,sub,principal);}return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(t.closed?'Ditutup pengelola · ':'')+(late&&!t.closed?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+taskImagesHtml(t.lampiran,t.id)+(late?'':taskActions(t,mine))+'</article>';};
   if(active.length)h+='<h3 class="ph3">Tugas aktif</h3>'+active.map(renderTask).join('');else h+='<p class="empty">Tidak ada tugas aktif.</p>';
   if(!ME)return h;
   if(history.length)h+='<details class="task-history"><summary>Riwayat tugas ('+history.length+')</summary>'+history.map(renderTask).join('')+'</details>';return h;
@@ -1879,7 +1896,7 @@ function tugasAdmin(c){
       const groups=constructorGroups(t.k),gc=groups.length,done=Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).length;
       const managerCard='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span class="chip">Kelompok</span></div>'+
         (late?'<span class="chip late">'+(t.closed?'Ditutup pengelola':'Masuk riwayat')+'</span>':'')+(t.tenggat?'<p class="s">Tenggat '+fmtDate(t.tenggat)+'</p>':'')+
-        (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
+        (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+taskImagesHtml(t.lampiran,t.id)+
         '<div><div class="track"><i style="width:'+Math.round((gc?done/gc:0)*100)+'%"></i></div><span class="s">'+done+' dari '+gc+' Constructor sudah mengumpulkan</span></div>'+
         '<div class="row2 manager-task-actions">'+taskAction+closeControl+'</div>'+
         '<details><summary>Lihat pengumpulan kelompok ('+done+')</summary><ul class="subs">'+Object.keys(t.groupSubs||{}).filter(gid=>groups.some(g=>g.id===gid)).map(gid=>{const g=S.cs[gid]||{},principal=Number(g.principal)||null,sub=t.groupSubs[gid];return '<li><b>'+esc(g.name||gid)+'</b> · Team Principal: '+esc(principal?nameOf(principal):'—')+' · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka pengumpulan</a>':(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+'</li>';}).join('')+'</ul></details></article>';
@@ -2667,7 +2684,8 @@ document.addEventListener('click',async e=>{
     }
     case 'cu-save':{
       if(!adm())break;
-      const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null};
+      const previousImages=CU_EDIT&&S.cu[CU_EDIT]&&Array.isArray(S.cu[CU_EDIT].task_attachments)?S.cu[CU_EDIT].task_attachments:[];
+      const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null,task_attachments:CU_PENDING_IMAGES.slice(0,10)};
       body.task_mode=$('cu-mode').value==='group'?'group':'individual';
       body.task_description=$('cu-desc').value.trim().slice(0,1000);
       if(!body.course_code||!S.co[body.course_code]||!Number.isInteger(body.meeting_number)||body.meeting_number<1||body.meeting_number>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
@@ -2679,12 +2697,14 @@ document.addEventListener('click',async e=>{
         if(CU_EDIT)await db.doc('course_updates/'+CU_EDIT).update(body);
         else await db.collection('course_updates').add(body);
       },'Pembaruan mata kuliah dan tugas berhasil disimpan');
-      if(ok)CU_EDIT=null;
+      if(ok){const kept=new Set(CU_PENDING_IMAGES.map(f=>f&&f.id).filter(Boolean));const removed=previousImages.filter(f=>f&&f.id&&!kept.has(f.id));if(AS&&removed.length)await Promise.all(removed.map(f=>AS.delete(f.id).catch(()=>null)));CU_EDIT=null;CU_PENDING_IMAGES=[];}
       refreshAll();break;
     }
-    case 'cu-edit':CU_EDIT=d.id;renderAdmin();$('course-update-panel').scrollIntoView({behavior:'smooth',block:'start'});break;
-    case 'cu-cancel':CU_EDIT=null;renderAdmin();break;
-    case 'cu-del':if(!adm())break;await run(()=>db.doc('course_updates/'+d.id).delete(),'Pembaruan dihapus');CU_EDIT=null;break;
+    case 'cu-edit':CU_EDIT=d.id;CU_PENDING_IMAGES=Array.isArray(S.cu[d.id]&&S.cu[d.id].task_attachments)?S.cu[d.id].task_attachments.slice(0,10):[];renderAdmin();$('course-update-panel').scrollIntoView({behavior:'smooth',block:'start'});break;
+    case 'cu-cancel':CU_EDIT=null;CU_PENDING_IMAGES=[];renderAdmin();break;
+    case 'cu-image-remove':{if(!adm())break;const i=Number(d.index);if(Number.isInteger(i)&&i>=0&&i<CU_PENDING_IMAGES.length){CU_PENDING_IMAGES.splice(i,1);const p=$('cu-attachments-preview');if(p)p.innerHTML=cuImageEditorHtml(CU_PENDING_IMAGES);}break;}
+    case 'task-image-open':{const task=S.tu[d.id];if(task)openTaskGallery(task.lampiran,+d.index);break;}
+    case 'cu-del':{if(!adm())break;const oldImages=Array.isArray(S.cu[d.id]&&S.cu[d.id].task_attachments)?S.cu[d.id].task_attachments:[];const ok=await run(()=>db.doc('course_updates/'+d.id).delete(),'Pembaruan dihapus');if(ok&&AS&&oldImages.length)await Promise.all(oldImages.filter(f=>f&&f.id).map(f=>AS.delete(f.id).catch(()=>null)));if(ok){CU_EDIT=null;CU_PENDING_IMAGES=[];}break;}
     case 'admin-top':$('admin').scrollIntoView({behavior:'smooth',block:'start'});break;
     case 'open-login':openLogin();break;
     case 'login-no':openLogin(+d.no);break;
@@ -2863,6 +2883,13 @@ document.addEventListener('change',async e=>{
     return;
   }
   
+  if(t.id==='cu-images'){
+    const files=Array.from(t.files||[]);t.value='';if(!files.length)return;
+    if(!adm()||!ME||!AS){toast('Masuk sebagai pengelola untuk mengunggah foto tugas.');return;}
+    if(CU_PENDING_IMAGES.length+files.length>10){toast('Maksimal 10 foto untuk satu tugas.');return;}
+    if(files.some(f=>!/^image\/(jpeg|png|webp)$/.test(f.type||''))){toast('Pilih foto JPG, PNG, atau WebP.');return;}
+    await run(async()=>{for(const f of files){const item=await sendFile(f,'media');CU_PENDING_IMAGES.push(item);}const p=$('cu-attachments-preview');if(p)p.innerHTML=cuImageEditorHtml(CU_PENDING_IMAGES);},'Foto lampiran siap disimpan bersama tugas.');return;
+  }
   if(t.matches&&t.matches('input[type=file][data-up]')){
     const f=t.files&&t.files[0],key=t.dataset.up,kind=t.dataset.kind;
     t.value='';
