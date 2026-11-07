@@ -1062,6 +1062,23 @@ function recapFilesDlg(){
   }).join('')+'</div>';
   return h+'</div>';
 }
+function makrabFilesDlg(){
+  if(!adm())return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Daftar pengumpulan hanya dapat dilihat pengelola.</p></div>';
+  const latest={};
+  Object.keys(S.be).forEach(id=>{
+    const x=S.be[id];if(!x||x.jenis!=='makrab')return;
+    const no=Number(x.no);if(!Number.isInteger(no)||no<1||no>N)return;
+    if(!latest[no]||Number(x.at)>Number(latest[no].at))latest[no]=Object.assign({id:id},x);
+  });
+  const entries=Object.keys(latest).map(Number).sort((a,b)=>a-b).map(no=>{
+    const x=latest[no],file=x.file&&okId(x.file.id)?fileHtml(x.file,true):'<span class="s">Berkas tidak tersedia</span>';
+    return '<li class="it"><div><b>'+esc(nameOf(no))+'</b>'+file+'</div></li>';
+  });
+  let h=dlgHead('PENGUMPULAN MAKRAB','Dokumentasi Absensi Makrab',entries.length+' mahasiswa mengumpulkan','#e10600');
+  h+='<div class="db"><div class="row2"><button type="button" class="btn sm" data-act="close">&lsaquo; Kembali</button></div>';
+  h+=entries.length?'<ul class="makrab-submission-list">'+entries.join('')+'</ul>':'<p class="empty">Belum ada mahasiswa yang mengumpulkan berkas.</p>';
+  return h+'</div>';
+}
 function groupHasilDlg(){
   if(!ME&&!adm())return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Masuk dulu untuk melihat Klasemen Konstruktor.</p></div>';
   const r=groupTowerData(D.key);
@@ -1193,11 +1210,12 @@ function superLicensePanel(){
     '<div class="field" style="margin-bottom:14px"><label for="ser-jenis">Jenis berkas</label><select id="ser-jenis" data-dr="ser-jenis">'+
     '<option value="ser"'+(selected==='ser'?' selected':'')+'>Sertifikat</option>'+
     '<option value="dok"'+(selected==='dok'?' selected':'')+'>Dokumentasi</option>'+
-    '<option value="makrab"'+(selected==='makrab'?' selected':'')+'>Dokumentasi Absensi Makrab</option></select></div>';
+    '<option value="makrab"'+(selected==='makrab'?' selected':'')+'>🔴 Dokumentasi Absensi Makrab</option></select></div>';
   if(selected==='makrab'){
     const makrabMine=mine[0]||null;
-    h+='<div class="panel makrab-event-card"><div class="makrab-event"><div class="row2" style="justify-content:space-between;align-items:center"><b>Dokumentasi Absensi Makrab</b><span class="chip">EVENT KHUSUS</span></div>'+
-      '<span class="makrab-event-tag">'+MAKRAB_EVENT_TAG+'</span><p class="s">Periode pengumpulan: 1–30 November 2026. Tenggat berakhir 30 November 2026 pukul 23.59 WIB.</p>';
+    const makrabTotal=Object.values(S.be).filter(x=>x&&x.jenis==='makrab'&&Number(x.no)>=1&&Number(x.no)<=N).length;
+    h+='<div class="panel makrab-event-card" style="border:2px solid var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 24%,transparent)"><div class="makrab-event"><b>Dokumentasi Absensi Makrab</b><p class="s">Periode pengumpulan: 1–30 November 2026. Tenggat berakhir 30 November 2026 pukul 23.59 WIB.</p>'+
+      (adm()?'<div class="row2" style="margin:10px 0"><button type="button" class="btn sm" data-act="makrab-list">Lihat Pengumpulan ('+makrabTotal+')</button></div>':'');
     if(!ME||!AS)h+='<p class="empty">Masuk sebagai mahasiswa untuk mengunggah bukti absensi Makrab.</p>';
     else if(makrabMine)h+='<div class="makrab-submission"><span class="chip done">'+makrabStatus(makrabMine)+'</span>'+fileHtml(makrabMine.file,true)+'<span class="s">Dikirim '+fmtTime(makrabMine.at)+'</span></div>';
     else if(Date.now()>MAKRAB_DEADLINE_AT)h+='<p class="empty">Tenggat telah berakhir. Status: Terlambat.</p>';
@@ -1495,17 +1513,6 @@ function renderAdmin(force=false){
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   h+='</div><div id="admin-student-recap"'+(ADMIN_MAIN_TAB==='students'?'':' hidden')+'>';
   const docsByStudent={};Object.values(S.be).forEach(x=>{const n=Number(x.no);if(!Number.isInteger(n)||n<1||n>N||!['ser','dok'].includes(x.jenis))return;(docsByStudent[n]||(docsByStudent[n]={ser:[],dok:[]}))[x.jenis].push(x);});
-  const makrabByNo={};Object.values(S.be).filter(x=>x&&x.jenis==='makrab').forEach(x=>{const n=Number(x.no);if(Number.isInteger(n)&&n>=1&&n<=N&&(!makrabByNo[n]||Number(x.at)>Number(makrabByNo[n].at)))makrabByNo[n]=x;});
-  let rows='';
-  for(let n=1;n<=N;n++){
-    const a=stats(n).tot,p=pct(a.h,a.t),t=tugasStat(n),docs=docsByStudent[n]||{ser:[],dok:[]};
-    const recapFileButton=(kind,label)=>docs[kind].length?'<button type="button" class="btn sm" data-act="open-recap-files" data-no="'+n+'" data-kind="'+kind+'">Lihat '+label+' ('+docs[kind].length+')</button>':'';
-    const docLinks='<div class="row2" style="gap:6px;flex-wrap:wrap">'+recapFileButton('ser','Sertifikat')+recapFileButton('dok','Dokumentasi')+(!docs.ser.length&&!docs.dok.length?'<span class="s">—</span>':'')+'</div>';
-    rows+='<tr><td class="num">'+n+'</td><td><button type="button" class="lnk" data-act="open-student" data-no="'+n+'">'+esc(nameOf(n))+'</button></td><td class="num">'+(p==null?'—':p+'%')+'</td><td class="num">'+t.a+'/'+t.b+'</td><td>'+docLinks+'</td></tr>';
-  }
-  h+='<div id="recap-student-panel"><h3 class="ph3">Rekap mahasiswa</h3><p class="s">Cek progres tiap mahasiswa, mulai dari kehadiran sampai dokumen yang sudah terkumpul.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th class="num">Kehadiran</th><th class="num">Tugas dikumpulkan</th><th>Sertifikat &amp; Dokumentasi</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
-  const makrabRows=Array.from({length:N},(_,i)=>i+1).map(no=>{const x=makrabByNo[no]||null,st=makrabStatus(x),proof=x&&x.file?fileHtml(x.file,true):'—';return '<tr><td class="num">'+no+'</td><td>'+esc(nameOf(no))+'</td><td>'+esc((S.ak[PAD(no)]||{}).nim||'—')+'</td><td><span class="chip'+(st==='Sudah Mengumpulkan'?' done':st==='Tidak Mengumpulkan'||st==='Terlambat'?' late':'')+'">'+st+'</span></td><td>'+(x?fmtTime(x.at):'—')+'</td><td>'+proof+'</td></tr>';}).join('');
-  h+='<section class="panel makrab-admin-recap" id="makrabAdminRecap"><span class="makrab-event-tag">'+MAKRAB_EVENT_TAG+'</span><h3 class="ph3">Rekap Bukti Absen Makrab</h3><p class="s">Rekap event ini berdiri sendiri dan tidak digabung dengan sertifikat atau dokumentasi Super License lainnya. Tenggat: 30 November 2026 · 23.59 WIB.</p><div class="export-formats" aria-label="Ekspor rekap Bukti Absen Makrab"><button type="button" class="btn sm" data-act="makrab-export" data-format="xlsx">XLSX</button><button type="button" class="btn sm" data-act="makrab-export" data-format="csv">CSV</button><button type="button" class="btn sm" data-act="makrab-export" data-format="pdf">PDF</button></div><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama Mahasiswa</th><th>NIM</th><th>Status</th><th>Tanggal Pengumpulan</th><th>Bukti</th></tr></thead><tbody>'+makrabRows+'</tbody></table></div></section>';
   $('admin').innerHTML=h;
 
 }
@@ -1560,6 +1567,7 @@ function renderDialog(force){
   else if(D.kind==='hasil')box.innerHTML=hasilDlg();
   else if(D.kind==='group-hasil')box.innerHTML=groupHasilDlg();
   else if(D.kind==='recap-files')box.innerHTML=recapFilesDlg();
+  else if(D.kind==='makrab-files')box.innerHTML=makrabFilesDlg();
   else box.innerHTML=loginDlg();
   box.scrollTop=sc;
 }
@@ -1744,28 +1752,6 @@ async function exportCourseRecap(segment,format){
   }
 }
 
-async function exportMakrabRecap(format){
-  if(!adm()){toast('Hanya pengelola yang dapat mengekspor rekap ini.');return;}
-  showLoading('Menyiapkan rekap Bukti Absen Makrab…');
-  try{
-    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    if(format==='xlsx'||format==='pdf')await loadExportLibrary(format);
-    const latest={};Object.values(S.be).filter(x=>x&&x.jenis==='makrab').forEach(x=>{const no=Number(x.no);if(Number.isInteger(no)&&no>=1&&no<=N&&(!latest[no]||Number(x.at)>Number(latest[no].at)))latest[no]=x;});
-    const headers=['No. Absen','Nama Mahasiswa','NIM','Status Pengumpulan','Tanggal Pengumpulan','Nama Berkas'];
-    const rows=Array.from({length:N},(_,i)=>i+1).map(no=>{const x=latest[no]||null;return [no,nameOf(no),(S.ak[PAD(no)]||{}).nim||'—',makrabStatus(x),x?formatDateTime(x.at):'—',x&&x.file&&x.file.name||'—'];});
-    const filename='Rekap-Bukti-Absen-Makrab-November-2026';
-    if(format==='csv'){
-      const csv=[headers].concat(rows).map(row=>row.map(value=>'"'+String(value==null?'':value).replace(/"/g,'""')+'"').join(',')).join('\\r\\n');
-      const blob=new Blob(['\\ufeff',csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-    }else if(format==='xlsx'){
-      if(!window.XLSX)throw new Error('Pustaka XLSX belum tersedia.');const data=[headers].concat(rows),sheet=XLSX.utils.aoa_to_sheet(data);sheet['!cols']=headers.map((h,i)=>({wch:Math.min(38,Math.max(12,...data.map(r=>String(r[i]||'').length+2)))}));const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,sheet,'Bukti Absen Makrab');XLSX.writeFile(book,filename+'.xlsx');
-    }else if(format==='pdf'){
-      const JsPDF=window.jspdf&&window.jspdf.jsPDF;if(!JsPDF)throw new Error('Pustaka PDF belum tersedia.');const doc=new JsPDF({orientation:'landscape',unit:'mm',format:'a4'});if(typeof doc.autoTable!=='function')throw new Error('Komponen tabel PDF belum tersedia.');doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('Rekap Bukti Absen Makrab',14,13);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('Event November 2026 · Tenggat 30 November 2026 pukul 23.59 WIB · Diekspor '+formatDateTime(Date.now()),14,19);doc.autoTable({startY:23,head:[headers],body:rows,theme:'grid',styles:{font:'helvetica',fontSize:7,cellPadding:1.8,overflow:'linebreak'},headStyles:{fontSize:7},margin:{left:10,right:10,bottom:12},horizontalPageBreak:true});doc.save(filename+'.pdf');
-    }else{toast('Format ekspor tidak dikenali.');return;}
-    toast('Rekap Bukti Absen Makrab berhasil diunduh.');
-  }catch(e){console.error('Gagal mengekspor rekap Makrab:',e);toast('Gagal membuat file rekap. Periksa koneksi dan coba lagi.');}
-  finally{hideLoading();}
-}
 
 function courseDlg(){
   const c=S.co[D.key];
@@ -2865,7 +2851,7 @@ document.addEventListener('click',async e=>{
       const ok=await run(()=>db.collection('berkas').add({no:ME,jenis:'makrab',judul:'Bukti Absen Makrab',eventTag:MAKRAB_EVENT_TAG,eventKey:'makrab-november-2026',eventStart:MAKRAB_START_AT,eventDeadline:MAKRAB_DEADLINE_AT,file:pending,at:Date.now()}),'Bukti Absen Makrab berhasil dikumpulkan');
       if(ok){PEND.makrab=null;refreshAll();}break;
     }
-    case 'makrab-export':{if(!adm())break;await exportMakrabRecap(d.format);break;}
+    case 'makrab-list':{if(!adm())break;openD('makrab-files');break;}
     case 'ber-save':{
       if(!ME)break;
       const j=d.j,jenis=$('ser-jenis').value==='dok'?'dok':'ser',judul=($('ser-judul').value||'').trim();
