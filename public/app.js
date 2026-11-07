@@ -66,7 +66,8 @@ const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null,PROFILE_EDITING=false,presenceTimer=null,greetingCooldownUntil=0,greetingCooldownTimer=null;
 const greetingSeenIds=new Set();
-const PRESENCE_TTL=90000,GREETING_COOLDOWN_MS=60000,GREETING_NOTICE_TTL=15000;
+const greetingListenerStartedAt=Date.now();
+const PRESENCE_TTL=90000,GREETING_COOLDOWN_MS=60000,GREETING_NOTICE_TTL=120000;
 function makePresenceSessionId(){try{const bytes=new Uint8Array(16);window.crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}catch(e){return Array.from({length:32},()=>Math.floor(Math.random()*16).toString(16)).join('');}}
 const PRESENCE_SESSION_ID=makePresenceSessionId();
 
@@ -252,7 +253,7 @@ function greetingSectionHtml(){const cd=S.gc&&S.gc[PAD(ME)];if(cd&&Number(cd.at)
 function updateGreetingCooldownUi(){const b=$('greetSendBtn');if(!b)return;const left=Math.max(0,greetingCooldownUntil-Date.now());b.disabled=left>0;b.textContent=left>0?'Tunggu '+Math.ceil(left/1000)+' dtk':'Sapa';if(!left&&greetingCooldownTimer){clearInterval(greetingCooldownTimer);greetingCooldownTimer=null;}}
 function startGreetingCooldown(){greetingCooldownUntil=Date.now()+GREETING_COOLDOWN_MS;updateGreetingCooldownUi();if(greetingCooldownTimer)clearInterval(greetingCooldownTimer);greetingCooldownTimer=setInterval(updateGreetingCooldownUi,250);}
 async function sendGreeting(){if(!ME||!db)return;if(onlineFriendCount()<1){toast('Tidak ada teman yang sedang online saat ini.');refreshAll();return;}const b=$('greetSendBtn');if(b)b.disabled=true;try{await db.collection('greetings').add({});startGreetingCooldown();toast('Sapaan berhasil dikirim!');}catch(e){if(b)b.disabled=false;toast((e&&e.message)||'Sapaan gagal dikirim. Coba lagi nanti.');}}
-function receiveGreeting(id,g){if(!ME||!g||Number(g.senderNo)===Number(ME))return;const age=Date.now()-Number(g.createdAt||0);if(age<0||age>GREETING_NOTICE_TTL)return;toast((g.senderName||'Teman sekelas')+' menyapamu, semoga harimu menyenangkan!');}
+function receiveGreeting(id,g){if(!ME||!g||Number(g.senderNo)===Number(ME))return;const createdAt=Number(g.createdAt)||0,age=Date.now()-createdAt;if(createdAt<greetingListenerStartedAt-10000||age<0||age>GREETING_NOTICE_TTL)return;toast((g.senderName||'Teman sekelas')+' menyapamu, semoga harimu menyenangkan!');}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')writePresence(true);});
 window.addEventListener('pagehide',()=>writePresence(false));
 window.addEventListener('pageshow',()=>{if(ME)startPresence();});
@@ -1196,10 +1197,10 @@ function renderHome(force){
     $('homeLede').textContent='Cek jadwal, tugas, dan kabar terbaru kelasmu di sini.';
     const greeting=greetingText(nicknameOf(s0),ak&&ak.tanggalLahir);
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
-    h+=greetingSectionHtml();
     h+=homeTiles(ME);
     const left=[],right=[];
     left.push(schedPanel(sched,dayN));
+    right.push(greetingSectionHtml());
     right.push(teamRadioPanel(anns));
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
 
