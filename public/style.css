@@ -1063,13 +1063,13 @@ button.is-busy{cursor:wait;opacity:.65}
 @media(max-width:620px){.sk-home-tiles{grid-template-columns:1fr}.sk-home-tiles .sk-tile{min-height:76px}}
 
 
-/* Mobile home: pin Team Radio above every other Beranda section. */
+/* Mobile home: Team Radio → Sapa Online → sapaan personal. */
 @media(max-width:760px){
   #home{display:flex;flex-direction:column}
   #home .cols,#home .col{display:contents}
-  #home .greet{order:-2}
-  #home .greet-social{order:0;width:100%;box-sizing:border-box}
-  #home .team-radio{order:1;width:100%;box-sizing:border-box;margin-bottom:16px}
+  #home .team-radio{order:-3;width:100%;box-sizing:border-box;margin-bottom:16px}
+  #home .greet-social{order:-2;width:100%;box-sizing:border-box}
+  #home .greet{order:-1}
 }
 
 /* Default-password reminder: native modal styled to match Grid Kelas. */
