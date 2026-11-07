@@ -201,9 +201,21 @@ function focusOwnStrip(behavior){
 }
 function scheduleFocusOwnStrip(behavior){
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    if(!focusOwnStrip(behavior))setTimeout(()=>focusOwnStrip('auto'),180);
+    if(document.querySelector('dialog[open]'))return;
+    if(!focusOwnStrip(behavior))setTimeout(()=>{
+      if(!document.querySelector('dialog[open]'))focusOwnStrip('auto');
+    },180);
   }));
 }
+// Jika fokus slider tertunda oleh dialog (misalnya pengingat password bawaan),
+// pulihkan setelah dialog terakhir ditutup. Capture diperlukan karena event
+// close pada elemen dialog tidak melakukan bubbling.
+document.addEventListener('close',e=>{
+  if(!(e.target instanceof HTMLDialogElement))return;
+  requestAnimationFrame(()=>{
+    if(!document.querySelector('dialog[open]'))scheduleFocusOwnStrip('smooth');
+  });
+},true);
 function presenceOnline(no){const now=Date.now();return Object.values(S.pr||{}).some(p=>Number(p.no)===Number(no)&&Number(p.lastSeen)>0&&now-Number(p.lastSeen)<PRESENCE_TTL);}
 function presencePath(no){return 'presence/'+PAD(no)+'-'+PRESENCE_SESSION_ID;}
 function writePresence(active=true){if(!ME||!db||(!AUTH&&!uid))return Promise.resolve();return db.doc(presencePath(ME)).set({no:Number(ME),lastSeen:active?Date.now():0,sessionId:PRESENCE_SESSION_ID}).catch(e=>console.warn('Presence tidak dapat diperbarui:',e));}
