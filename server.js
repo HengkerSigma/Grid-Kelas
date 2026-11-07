@@ -518,7 +518,7 @@ async function view(p, data, sess) {
   if (root === 'students' || root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
   if (root === 'presence') return sess ? { no: Number(data.no), lastSeen: Number(data.lastSeen) || 0 } : null;
   if (root === 'greetings') {
-    if (!sess || Number(data.senderNo) === Number(sess.no) || Date.now() - Number(data.createdAt || 0) > 15000) return null;
+    if (!sess || Number(data.senderNo) === Number(sess.no) || Date.now() - Number(data.createdAt || 0) > 120000) return null;
     return pick(data, ['senderNo', 'senderName', 'createdAt']);
   }
   if (root === 'greetingCooldown') return sess && parts.length === 2 && parts[1] === pad(sess.no) ? pick(data, ['at']) : null;
