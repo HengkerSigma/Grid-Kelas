@@ -523,7 +523,7 @@ async function view(p, data, sess) {
   }
   if (root === 'birthdayGreetings') {
     if (!sess || Number(data.toNo) !== Number(sess.no) || Date.now() - Number(data.createdAt || 0) > 86400000) return null;
-    return pick(data, ['toNo', 'senderNo', 'senderName', 'createdAt']);
+    return pick(data, ['toNo', 'senderNo', 'senderName', 'message', 'createdAt']);
   }
   if (root === 'greetingCooldown') return sess && parts.length === 2 && parts[1] === pad(sess.no) ? pick(data, ['at']) : null;
   if (root === 'paddockClub') {
@@ -700,8 +700,9 @@ async function decide(method, p, body, sess, existing) {
     return { data: { senderNo: Number(sess.no), senderName: senderName, createdAt: now } };
   }
   if (root === 'birthdayGreetings') {
-    if (parts.length !== 2 || method !== 'POST' || !onlyKeys(body, ['toNo'])) return ERR_FORBID;
-    const toNo=Number(body.toNo),now=Date.now();
+    if (parts.length !== 2 || method !== 'POST' || !onlyKeys(body, ['toNo','message'])) return ERR_FORBID;
+    const toNo=Number(body.toNo),now=Date.now(),message=String(body.message||'').trim();
+    if(!message||message.length>500)return ERR_BAD('Pesan ucapan wajib diisi dan maksimal 500 karakter.');
     if(!Number.isInteger(toNo)||toNo<1||toNo>32||toNo===Number(sess.no))return ERR_BAD('Penerima ucapan tidak valid.');
     const account=await getDoc('akun/'+pad(toNo)),dob=String(account&&account.tanggalLahir||'');
     const localParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -713,7 +714,7 @@ async function decide(method, p, body, sess, existing) {
     const student=await getDoc('students/'+pad(sess.no));
     const senderName=[student&&student.depan,student&&student.belakang].filter(Boolean).join(' ').trim().slice(0,80)||('Mahasiswa '+sess.no);
     await setDoc(cooldownPath,{at:now});
-    return {data:{toNo:toNo,senderNo:Number(sess.no),senderName:senderName,createdAt:now}};
+    return {data:{toNo:toNo,senderNo:Number(sess.no),senderName:senderName,message:message,createdAt:now}};
   }
 
   if (root === 'course_updates') {

@@ -1240,3 +1240,15 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .birthday-inbox-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
 .birthday-inbox-list li span{flex:none;color:var(--muted);font-size:.76rem;font-variant-numeric:tabular-nums}
 @media(max-width:520px){.birthday-inbox-message{align-items:flex-start}.birthday-inbox-message p{font-size:.88rem}.birthday-inbox-list li{align-items:flex-start;flex-direction:column;gap:3px}}
+
+
+/* Composer pilihan ucapan ulang tahun dan isi pesan penerima. */
+.birthday-compose-options,.birthday-compose-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+.birthday-compose-options .btn,.birthday-compose-actions .btn{flex:1;min-width:150px}
+.birthday-inbox-default{padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2)}
+.birthday-inbox-default p{margin:0;line-height:1.55}
+.birthday-inbox-list li{align-items:flex-start}
+.birthday-inbox-list li>div{display:grid;gap:4px;min-width:0}
+.birthday-inbox-list li p{margin:0;line-height:1.45;overflow-wrap:anywhere}
+.birthday-inbox-list li span{white-space:nowrap}
+@media(max-width:520px){.birthday-compose-options,.birthday-compose-actions{display:grid;grid-template-columns:1fr}.birthday-compose-options .btn,.birthday-compose-actions .btn{width:100%}.birthday-inbox-list li{flex-direction:column}.birthday-inbox-list li span{white-space:normal}}
