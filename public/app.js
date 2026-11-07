@@ -192,11 +192,17 @@ function fileHtml(f,sm){
 function fb(no){return isAd(no)?'<span class="fbadge" title="Admin">'+FLAG+'</span>':'';}
 function focusOwnStrip(behavior){
   const r=$('rail'),own=r&&r.querySelector('.rs.me-highlight');
-  if(!r||!own)return;
+  if(!r||!own||!r.clientWidth)return false;
   const railRect=r.getBoundingClientRect(),ownRect=own.getBoundingClientRect();
   const target=r.scrollLeft+ownRect.left-railRect.left-(r.clientWidth-own.offsetWidth)/2;
   const max=Math.max(0,r.scrollWidth-r.clientWidth);
   r.scrollTo({left:Math.max(0,Math.min(max,target)),behavior:behavior||'auto'});
+  return true;
+}
+function scheduleFocusOwnStrip(behavior){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(!focusOwnStrip(behavior))setTimeout(()=>focusOwnStrip('auto'),180);
+  }));
 }
 function presenceOnline(no){const now=Date.now();return Object.values(S.pr||{}).some(p=>Number(p.no)===Number(no)&&Number(p.lastSeen)>0&&now-Number(p.lastSeen)<PRESENCE_TTL);}
 function presencePath(no){return 'presence/'+PAD(no)+'-'+PRESENCE_SESSION_ID;}
@@ -214,11 +220,11 @@ function renderStrip(){
   const r=$('rail'),x=r.scrollLeft,ownNo=Number(ME)||null;
   r.innerHTML=h;
   if(ownNo){
-    if(stripFocusedNo!==ownNo){focusOwnStrip('smooth');stripFocusedNo=ownNo;}
+    if(stripFocusedNo!==ownNo){scheduleFocusOwnStrip('smooth');stripFocusedNo=ownNo;}
     else r.scrollLeft=x;
   }else{stripFocusedNo=null;r.scrollLeft=x;}
 }
-window.addEventListener('resize',()=>{if(ME)focusOwnStrip('auto');});
+window.addEventListener('resize',()=>{if(ME)scheduleFocusOwnStrip('auto');});
 function renderStudents(){
   const note=$('snote');
   if(dbState==='none'){note.hidden=false;note.textContent='Data kelas tidak bisa dimuat di tampilan ini. Buka halaman dengan akun yang punya akses.';}
