@@ -1200,7 +1200,7 @@ function superLicensePanel(){
       (superLicenseDriveUrl?'<span class="s">Google Drive tetap tersedia sebagai penyimpanan tambahan.</span>':'<span class="s">Berkas yang diunggah tersimpan secara privat di Super License.</span>')+'</div>';
   }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan sertifikat atau dokumentasi pribadi.</p>';
   const makrabMine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id])).filter(x=>x.no===ME&&x.jenis==='makrab').sort((a,b)=>(b.at||0)-(a.at||0))[0]||null;
-  h+='<details class="makrab-dropdown" id="makrabProofPanel" open><summary><span><b>Bukti Absen Makrab</b><small>Dokumentasi event khusus · November 2026</small></span><span class="chip">EVENT KHUSUS</span></summary><div class="makrab-event"><span class="makrab-event-tag">'+MAKRAB_EVENT_TAG+'</span><p class="s">Periode pengumpulan: 1–30 November 2026. Tenggat berakhir 30 November 2026 pukul 23.59 WIB.</p>';
+  h+='<details class="makrab-dropdown" id="makrabProofPanel"><summary><span><b>Dokumentasi Absensi Makrab</b><small>Event khusus · November 2026</small></span><span class="chip">EVENT KHUSUS</span></summary><div class="makrab-event"><span class="makrab-event-tag">'+MAKRAB_EVENT_TAG+'</span><p class="s">Periode pengumpulan: 1–30 November 2026. Tenggat berakhir 30 November 2026 pukul 23.59 WIB.</p>';
   if(!ME||!AS)h+='<p class="empty">Masuk sebagai mahasiswa untuk mengunggah bukti absensi Makrab.</p>';
   else if(makrabMine)h+='<div class="makrab-submission"><span class="chip done">'+makrabStatus(makrabMine)+'</span>'+fileHtml(makrabMine.file,true)+'<span class="s">Dikirim '+fmtTime(makrabMine.at)+'</span></div>';
   else if(Date.now()>MAKRAB_DEADLINE_AT)h+='<p class="empty">Tenggat telah berakhir. Status: Terlambat.</p>';
