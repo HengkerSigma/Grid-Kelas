@@ -382,6 +382,55 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 function fail(res, code, errCode, message) { json(res, code, { code: errCode, message: message }); }
+
+function zipCrc32(buf) {
+  let c=0xffffffff;
+  for(let i=0;i<buf.length;i++){c^=buf[i];for(let j=0;j<8;j++)c=(c>>>1)^(0xedb88320&-(c&1));}
+  return(c^0xffffffff)>>>0;
+}
+function zipPack(entries) {
+  const local=[],central=[];let offset=0;const now=new Date();
+  const dosTime=(now.getHours()<<11)|(now.getMinutes()<<5)|Math.floor(now.getSeconds()/2);
+  const dosDate=((Math.max(1980,now.getFullYear())-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+  for(const entry of entries){
+    const name=Buffer.from(entry.name,'utf8'),raw=Buffer.isBuffer(entry.data)?entry.data:Buffer.from(String(entry.data),'utf8');
+    const compressed=require('zlib').deflateRawSync(raw),crc=zipCrc32(raw),lh=Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50,0);lh.writeUInt16LE(20,4);lh.writeUInt16LE(0x0800,6);lh.writeUInt16LE(8,8);
+    lh.writeUInt16LE(dosTime,10);lh.writeUInt16LE(dosDate,12);lh.writeUInt32LE(crc,14);lh.writeUInt32LE(compressed.length,18);
+    lh.writeUInt32LE(raw.length,22);lh.writeUInt16LE(name.length,26);lh.writeUInt16LE(0,28);
+    local.push(lh,name,compressed);
+    const ch=Buffer.alloc(46);ch.writeUInt32LE(0x02014b50,0);ch.writeUInt16LE(20,4);ch.writeUInt16LE(20,6);
+    ch.writeUInt16LE(0x0800,8);ch.writeUInt16LE(8,10);ch.writeUInt16LE(dosTime,12);ch.writeUInt16LE(dosDate,14);
+    ch.writeUInt32LE(crc,16);ch.writeUInt32LE(compressed.length,20);ch.writeUInt32LE(raw.length,24);
+    ch.writeUInt16LE(name.length,28);ch.writeUInt16LE(0,30);ch.writeUInt16LE(0,32);ch.writeUInt16LE(0,34);
+    ch.writeUInt16LE(0,36);ch.writeUInt32LE(0,38);ch.writeUInt32LE(offset,42);central.push(ch,name);
+    offset+=lh.length+name.length+compressed.length;
+  }
+  const cbuf=Buffer.concat(central),end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50,0);
+  end.writeUInt16LE(0,4);end.writeUInt16LE(0,6);end.writeUInt16LE(entries.length,8);end.writeUInt16LE(entries.length,10);
+  end.writeUInt32LE(cbuf.length,12);end.writeUInt32LE(offset,16);end.writeUInt16LE(0,20);
+  return Buffer.concat([...local,cbuf,end]);
+}
+function xmlEscape(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
+function makrabXlsx(rows){
+  const headers=['No. Absen','Nama Mahasiswa','Tanggal Pengumpulan','Dokumentasi'];
+  const cells=(values,n)=>values.map((v,i)=>'<c r="'+String.fromCharCode(65+i)+n+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEscape(v)+'</t></is></c>').join('');
+  let sheetRows='<row r="1">'+cells(headers,1)+'</row>',rels=[],hyperlinks=[];
+  rows.forEach((row,i)=>{
+    const n=i+2;sheetRows+='<row r="'+n+'">'+cells([String(row.no),row.name,row.date,row.filename||'Berkas tidak tersedia'],n)+'</row>';
+    if(row.filename){const id='rId'+(rels.length+1);rels.push('<Relationship Id="'+id+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="../../Dokumentasi/'+encodeURIComponent(row.filename)+'" TargetMode="External"/>');hyperlinks.push('<hyperlink ref="D'+n+'" r:id="'+id+'"/>');}
+  });
+  const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="30" customWidth="1"/><col min="3" max="3" width="25" customWidth="1"/><col min="4" max="4" width="48" customWidth="1"/></cols><sheetData>'+sheetRows+'</sheetData>'+(hyperlinks.length?'<hyperlinks>'+hyperlinks.join('')+'</hyperlinks>':'')+'</worksheet>';
+  return zipPack([
+    {name:'[Content_Types].xml',data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'},
+    {name:'_rels/.rels',data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
+    {name:'xl/workbook.xml',data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Rekapitulasi Makrab" sheetId="1" r:id="rId1"/></sheets></workbook>'},
+    {name:'xl/_rels/workbook.xml.rels',data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'},
+    {name:'xl/worksheets/sheet1.xml',data:sheet},
+    {name:'xl/worksheets/_rels/sheet1.xml.rels',data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+rels.join('')+'</Relationships>'}
+  ]);
+}
+
 function readBody(req, limit) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -1104,6 +1153,43 @@ const server = http.createServer(async (req, res) => {
       if (error || !data) { res.writeHead(404); return res.end(); }
       res.writeHead(302, { Location: data.signedUrl, 'Cache-Control': 'private, max-age=120' });
       return res.end();
+    }
+
+
+    if (pathname === '/api/export/makrab.zip' && method === 'GET') {
+      const s=await getSession(req);
+      if(!s)return fail(res,401,'unauthenticated','Masuk dulu untuk melanjutkan.');
+      if(!s.admin)return fail(res,403,'forbidden','Ekspor dokumentasi Makrab hanya dapat dilakukan pengelola.');
+      if(!SERVICE_KEY)return fail(res,503,'unavailable','Penyimpanan berkas belum dikonfigurasi.');
+      const all=await listCol('berkas'),latest=new Map();
+      all.forEach(row=>{const d=row.data||{},no=Number(d.no);if(d.jenis!=='makrab'||!Number.isInteger(no)||no<1||no>N)return;const old=latest.get(no);if(!old||Number(d.at||0)>Number(old.data.at||0))latest.set(no,{id:row.key.slice('berkas/'.length),data:d});});
+      const students=await listCol('students'),names=new Map();
+      students.forEach(row=>{const d=row.data||{},no=Number(String(row.key).split('/').pop());if(Number.isInteger(no))names.set(no,[d.depan,d.belakang].filter(Boolean).join(' ').trim()||('Mahasiswa '+no));});
+      const files=[],recap=[];let total=0;
+      for(const [no,item] of Array.from(latest.entries()).sort((a,b)=>a[0]-b[0])){
+        const d=item.data,f=d.file||{},id=String(f.id||'');
+        const date=d.at?new Date(Number(d.at)).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'}):'';
+        let filename='';
+        if(id){
+          const meta=await readMeta(id),bucket=bucketFor(meta),target=storeFor(bucket);
+          if(!meta||Number(meta.owner)!==no||bucket!==UPLOAD_BUCKET||!target)return fail(res,409,'file_unavailable','Dokumentasi No. '+no+' tidak ditemukan atau metadata penyimpanannya tidak cocok. Ekspor dibatalkan agar tidak ada file terlewat.');
+          const size=Number(meta.size)||0;
+          if(size>MAX_FILE||total+size>150*1024*1024)return fail(res,413,'too_large','Total dokumentasi melebihi batas ekspor 150 MB. Ekspor dibatalkan.');
+          const result=await target.download(id);
+          if(result.error||!result.data)return fail(res,502,'storage_error','Gagal mengambil dokumentasi No. '+no+'. Coba ulangi ekspor.');
+          const bytes=Buffer.from(await result.data.arrayBuffer());total+=bytes.length;
+          const ext={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','image/gif':'.gif','application/pdf':'.pdf'};
+          let original=String(f.name||('Dokumentasi'+(ext[meta.type]||'.bin'))).replace(/[\\\\/:*?"<>|\\x00-\\x1f]/g,'_').trim().slice(0,90);
+          if(!/\\.[A-Za-z0-9]{1,8}$/.test(original))original+=ext[meta.type]||'.bin';
+          const student=(names.get(no)||('Mahasiswa '+no)).replace(/[^A-Za-z0-9 _-]/g,'').trim().replace(/\\s+/g,'_').slice(0,35)||('Mahasiswa_'+no);
+          filename='No-'+pad(no)+'_'+student+'_'+original;files.push({name:'Dokumentasi/'+filename,data:bytes});
+        }
+        recap.push({no:no,name:names.get(no)||('Mahasiswa '+no),date:date,filename:filename});
+      }
+      const workbook=makrabXlsx(recap);
+      const archive=zipPack([{name:'Rekapitulasi Makrab.xlsx',data:workbook},{name:'README.txt',data:'Arsip Dokumentasi Absensi Makrab\\n\\nBuka Rekapitulasi Makrab.xlsx. Kolom Dokumentasi berisi tautan relatif ke folder Dokumentasi. Ekstrak seluruh isi ZIP sebelum membuka tautan agar file dapat dibuka secara offline.\\n'}].concat(files));
+      res.writeHead(200,{'Content-Type':'application/zip','Content-Length':archive.length,'Content-Disposition':"attachment; filename*=UTF-8''Dokumentasi-Absensi-Makrab.zip",'Cache-Control':'no-store'});
+      return res.end(archive);
     }
 
     if (pathname === '/api/sektor' && method === 'GET') {
