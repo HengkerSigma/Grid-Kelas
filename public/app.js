@@ -1084,8 +1084,8 @@ function makrabFilesDlg(){
     return '<li class="it"><div><b>'+esc(nameOf(no))+'</b>'+file+(confirm?'<span class="s">Hapus pengumpulan dan file ini secara permanen?</span>':'')+'</div>'+action+'</li>';
   });
   let h=dlgHead('PENGUMPULAN MAKRAB','Dokumentasi Absensi Makrab',entries.length+' mahasiswa mengumpulkan','#e10600');
-  h+='<div class="db"><div class="row2"><button type="button" class="btn sm" data-act="close">&lsaquo; Kembali</button></div>';
-  h+=entries.length?'<ul class="makrab-submission-list">'+entries.join('')+'</ul>':'<p class="empty">Belum ada mahasiswa yang mengumpulkan berkas.</p>';
+  h+='<div class="db"><div class="row2"><button type="button" class="btn sm" data-act="close">&lsaquo; Kembali</button><button type="button" class="btn sm pri" data-act="makrab-export" '+(entries.length?'':'disabled')+'>Ekspor ZIP</button></div>';
+  h+=entries.length?'<p class="s">ZIP berisi rekapitulasi Excel dan seluruh dokumentasi yang tersedia.</p><ul class="makrab-submission-list">'+entries.join('')+'</ul>':'<p class="empty">Belum ada mahasiswa yang mengumpulkan berkas.</p>';
   return h+'</div>';
 }
 function groupHasilDlg(){
@@ -2863,6 +2863,19 @@ document.addEventListener('click',async e=>{
       if(ok){PEND.makrab=null;refreshAll();}break;
     }
     case 'makrab-list':{if(!adm())break;openD('makrab-files');break;}
+    case 'makrab-export':{
+      if(!adm())break;
+      try{
+        toast('Menyiapkan arsip dokumentasi Makrab…');
+        const response=await fetch('/api/export/makrab.zip',{method:'GET',credentials:'same-origin',cache:'no-store'});
+        if(!response.ok){let message='Ekspor dokumentasi gagal.';try{const error=await response.json();message=error.message||message;}catch(e){}throw new Error(message);}
+        const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement('a');
+        link.href=url;link.download='Dokumentasi-Absensi-Makrab.zip';document.body.appendChild(link);link.click();link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+        toast('Arsip Dokumentasi Absensi Makrab berhasil diunduh.');
+      }catch(error){toast(error&&error.message||'Ekspor dokumentasi gagal.');}
+      break;
+    }
     case 'makrab-file-delete':{if(!adm()||!S.be[d.id]||S.be[d.id].jenis!=='makrab')break;D.makrabDeleteId=d.id;renderDialog(true);break;}
     case 'makrab-file-delete-cancel':{if(D){D.makrabDeleteId=null;renderDialog(true);}break;}
     case 'makrab-file-delete-confirm':{if(!adm())break;const item=S.be[d.id];if(!item||item.jenis!=='makrab')break;const ok=await run(()=>db.doc('berkas/'+d.id).delete(),'Pengumpulan Makrab dihapus');if(ok&&AS&&item.file&&item.file.id){try{await AS.delete(item.file.id);}catch(err){toast('Data pengumpulan dihapus, tetapi file penyimpanan gagal dihapus.');}}if(D)D.makrabDeleteId=null;refreshAll();break;}
