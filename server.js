@@ -36,8 +36,8 @@ const N = 32;
 const PERT = 16;
 const MAX_JSON = 300 * 1024;
 const MAX_FILE = 20 * 1024 * 1024;
-const MAKTAB_START_AT = Date.UTC(2026, 9, 31, 17, 0, 0, 0);
-const MAKTAB_DEADLINE_AT = Date.UTC(2026, 10, 30, 16, 59, 59, 999);
+const MAKRAB_START_AT = Date.UTC(2026, 9, 31, 17, 0, 0, 0);
+const MAKRAB_DEADLINE_AT = Date.UTC(2026, 10, 30, 16, 59, 59, 999);
 const SESSION_MS = 30 * 24 * 3600 * 1000;
 const FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const STATIC = {
@@ -928,17 +928,17 @@ async function decide(method, p, body, sess, existing) {
     }
     if (method !== 'POST') return ERR_FORBID;
     const jenis = body.jenis;
-    if (jenis !== 'ser' && jenis !== 'dok' && jenis !== 'maktab') return ERR_BAD('Jenis berkas tidak valid.');
+    if (jenis !== 'ser' && jenis !== 'dok' && jenis !== 'makrab') return ERR_BAD('Jenis berkas tidak valid.');
     const judul = String(body.judul || '').trim().slice(0, 100);
-    if (jenis === 'maktab') {
+    if (jenis === 'makrab') {
       const now = Date.now();
-      if (now < MAKTAB_START_AT || now > MAKTAB_DEADLINE_AT) return ERR_BAD('Periode Bukti Absen Maktab ditutup. Pengumpulan hanya dibuka 1–30 November 2026 WIB.');
+      if (now < MAKRAB_START_AT || now > MAKRAB_DEADLINE_AT) return ERR_BAD('Periode Bukti Absen Makrab ditutup. Pengumpulan hanya dibuka 1–30 November 2026 WIB.');
       const existingRows = await listCol('berkas');
-      if (existingRows.some(row => row.data && Number(row.data.no) === Number(sess.no) && row.data.jenis === 'maktab')) return ERR_BAD('Bukti Absen Maktab hanya dapat dikumpulkan satu kali per mahasiswa.');
+      if (existingRows.some(row => row.data && Number(row.data.no) === Number(sess.no) && row.data.jenis === 'makrab')) return ERR_BAD('Bukti Absen Makrab hanya dapat dikumpulkan satu kali per mahasiswa.');
     }
     const file = await cleanFile(body.file, sess, jenis === 'ser' ? CERTIFICATE_BUCKET : UPLOAD_BUCKET);
     if (!file) return ERR_BAD('Pilih berkas dulu.');
-    if (jenis === 'maktab') return { data: { no: sess.no, jenis: 'maktab', judul: 'Bukti Absen Maktab', eventTag: 'BUKTI ABSEN MAKTAB', eventKey: 'maktab-november-2026', eventStart: MAKTAB_START_AT, eventDeadline: MAKTAB_DEADLINE_AT, file: file, at: Date.now() } };
+    if (jenis === 'makrab') return { data: { no: sess.no, jenis: 'makrab', judul: 'Bukti Absen Makrab', eventTag: 'BUKTI ABSEN MAKRAB', eventKey: 'makrab-november-2026', eventStart: MAKRAB_START_AT, eventDeadline: MAKRAB_DEADLINE_AT, file: file, at: Date.now() } };
     return { data: { no: sess.no, jenis: jenis, judul: judul, file: file, at: Date.now() } };
   }
 
