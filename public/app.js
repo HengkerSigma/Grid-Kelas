@@ -2163,9 +2163,16 @@ function loadImg(file){
 }
 async function squareImg(file,size){
   const im=await loadImg(file),w=im.naturalWidth,h=im.naturalHeight,s=Math.min(w,h);
-  const c=document.createElement('canvas');c.width=c.height=size;
-  c.getContext('2d').drawImage(im,(w-s)/2,(h-s)*0.2,s,s,0,0,size,size);
-  return c.toDataURL('image/jpeg',0.86);
+  let edge=Math.min(size,512);
+  for(let i=0;i<6;i++){
+    const c=document.createElement('canvas');c.width=c.height=edge;
+    c.getContext('2d').drawImage(im,(w-s)/2,(h-s)*0.2,s,s,0,0,edge,edge);
+    const quality=[0.84,0.78,0.72,0.66,0.6,0.54][i];
+    const data=c.toDataURL('image/jpeg',quality);
+    if(data.length<=240000)return data;
+    edge=Math.max(192,Math.round(edge*0.82));
+  }
+  throw new Error('Foto profil terlalu besar untuk diproses. Pilih foto lain.');
 }
 async function logoImg(file){
   const im=await loadImg(file);
@@ -3005,8 +3012,13 @@ document.addEventListener('change',async e=>{
     t.value='';
     if(!f)return;
     await run(async()=>{
-      const visual=await sendFile(f,'media');
-      await db.doc('media/'+key).set({url:visual.url});
+      if(kind==='photo'){
+        const data=await squareImg(f,512);
+        await db.doc('media/'+key).set({data});
+      }else{
+        const visual=await sendFile(f,'media');
+        await db.doc('media/'+key).set({url:visual.url});
+      }
     },'Gambar disimpan');
     return;
   }
