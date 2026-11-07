@@ -1434,7 +1434,7 @@ function renderAdmin(force=false){
   const updates=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).sort((a,b)=>a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
   const edit=CU_EDIT&&S.cu[CU_EDIT]?Object.assign({id:CU_EDIT},S.cu[CU_EDIT]):null;
   const linkedTask=edit?S.tu[edit.id]||null:null;
-  const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Materi/soal</a>':(courseUpdateTaskPreview(u,u.id,true)||'—'))+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');;
+  const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Materi/soal</a>':'')+(courseUpdateTaskPreview(u,u.id,true)||(!u.task_url?'—':''))+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');;
   let tk='';
   tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
     const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
@@ -1898,7 +1898,7 @@ function taskActions(t,mine){
     return h+'</div>';
   }
   let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">'+(t.closed?'DITUTUP':'DNF')+'</span><span class="s">'+(t.closed?'Tugas ditutup pengelola.':'Tenggat sudah lewat. Pengumpulan ditutup.')+'</span>':'');
-  if((ME||adm())&&!locked){const update=S.cu[id]||null;h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':(courseUpdateTaskPreview(update,id,false)||'<span class="s">Soal belum ditautkan oleh dosen.</span>'));}
+  if((ME||adm())&&!locked){const update=S.cu[id]||null;const photo=courseUpdateTaskPreview(update,id,false);h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':(photo?'':'<span class="s">Soal belum ditautkan oleh dosen.</span>'))+photo;}
   if(can)h+='<button type="button" class="btn sm pri" data-act="tsub-open" data-id="'+esc(id)+'" aria-expanded="'+open+'">'+(mine?'Ubah pengumpulan':'Kumpulkan')+'</button>';
   h+='</div>';
   if(mine&&!open)h+='<div class="tdone"><span class="s">Terkumpul '+fmtTime(mine.at)+':</span> '+(okUrl(mine.tautan)?'<a class="lnk2" href="'+esc(mine.tautan)+'" target="_blank" rel="noopener noreferrer">'+(okDrive(mine.tautan)?'Buka file di Google Drive':'Buka tautan tugas')+'</a>':esc(mine.tautan||''))+(mine.berkas&&mine.berkas.id?' '+fileHtml(mine.berkas,true):'')+(mine.catatan?'<br><span class="s">'+esc(mine.catatan)+'</span>':'')+'</div>';
