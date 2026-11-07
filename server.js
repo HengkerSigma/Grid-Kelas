@@ -521,6 +521,7 @@ async function view(p, data, sess) {
     if (!sess || Number(data.senderNo) === Number(sess.no) || Date.now() - Number(data.createdAt || 0) > 15000) return null;
     return pick(data, ['senderNo', 'senderName', 'createdAt']);
   }
+  if (root === 'greetingCooldown') return sess && parts.length === 2 && parts[1] === pad(sess.no) ? pick(data, ['at']) : null;
   if (root === 'paddockClub') {
     const out = Object.assign({}, data), poster = isObj(data.poster) ? data.poster : null;
     if (poster && /^[0-9a-f]{32}$/.test(poster.id || '')) {
