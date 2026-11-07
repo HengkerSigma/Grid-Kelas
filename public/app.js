@@ -1086,6 +1086,7 @@ function makrabFilesDlg(){
   let h=dlgHead('PENGUMPULAN MAKRAB','Dokumentasi Absensi Makrab',entries.length+' mahasiswa mengumpulkan','#e10600');
   h+='<div class="db"><div class="row2"><button type="button" class="btn sm" data-act="close">&lsaquo; Kembali</button><button type="button" class="btn sm pri" data-act="makrab-export" '+(entries.length?'':'disabled')+'>Ekspor ZIP</button></div>';
   h+=entries.length?'<p class="s">ZIP berisi rekapitulasi Excel dan seluruh dokumentasi yang tersedia.</p><ul class="makrab-submission-list">'+entries.join('')+'</ul>':'<p class="empty">Belum ada mahasiswa yang mengumpulkan berkas.</p>';
+  if(D.makrabExportDone)h+='<div class="tcard" style="margin-top:14px"><b>Arsip berhasil diunduh.</b><p class="s">Ekstrak ZIP, lalu unggah file rekapitulasi dan folder Dokumentasi ke folder Google Drive pengelola.</p>'+(superLicenseDriveUrl?'<div class="row2"><a class="btn sm pri" href="'+esc(superLicenseDriveUrl)+'" target="_blank" rel="noopener noreferrer">Buka Google Drive <span aria-hidden="true">&#8599;</span></a><button type="button" class="btn sm" data-act="makrab-drive-copy">Salin tautan Drive</button></div>':'<p class="s">Folder Drive belum dikonfigurasi. Atur SUPER_LICENSE_DRIVE_URL pada pengaturan environment Vercel agar tombol Drive tersedia.</p>')+'</div>';
   return h+'</div>';
 }
 function groupHasilDlg(){
@@ -2872,8 +2873,19 @@ document.addEventListener('click',async e=>{
         const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement('a');
         link.href=url;link.download='Dokumentasi-Absensi-Makrab.zip';document.body.appendChild(link);link.click();link.remove();
         setTimeout(()=>URL.revokeObjectURL(url),60000);
-        toast('Arsip Dokumentasi Absensi Makrab berhasil diunduh.');
+        if(D&&D.kind==='makrab-files'){D.makrabExportDone=true;renderDialog(true);}
+        toast('Arsip berhasil diunduh. Lanjutkan dengan mengunggahnya ke Google Drive pengelola.');
       }catch(error){toast(error&&error.message||'Ekspor dokumentasi gagal.');}
+      break;
+    }
+    case 'makrab-drive-copy':{
+      if(!adm()||!superLicenseDriveUrl)break;
+      let copied=false;
+      try{if(!navigator.clipboard||!window.isSecureContext)throw new Error('Clipboard API tidak tersedia');await navigator.clipboard.writeText(superLicenseDriveUrl);copied=true;}catch(_){
+        const temp=document.createElement('textarea');temp.value=superLicenseDriveUrl;temp.setAttribute('readonly','');temp.style.position='fixed';temp.style.opacity='0';temp.style.pointerEvents='none';document.body.appendChild(temp);temp.focus();temp.select();
+        try{copied=document.execCommand('copy');}catch(__){copied=false;}temp.remove();
+      }
+      toast(copied?'Tautan Google Drive berhasil disalin.':'Tautan gagal disalin. Gunakan tombol Buka Google Drive.');
       break;
     }
     case 'makrab-file-delete':{if(!adm()||!S.be[d.id]||S.be[d.id].jenis!=='makrab')break;D.makrabDeleteId=d.id;renderDialog(true);break;}
