@@ -194,6 +194,13 @@ function taskImagesHtml(images,taskId){
   if(!Array.isArray(images)||!images.length)return '';
   return '<div class="task-image-grid" aria-label="Lampiran foto tugas">'+images.map((f,i)=>{if(!f||!okId(f.id))return '';const src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;return '<button type="button" class="task-image-thumb" data-act="task-image-open" data-id="'+esc(taskId)+'" data-index="'+i+'" aria-label="Buka foto '+(i+1)+' dari '+images.length+'"><img src="'+esc(src)+'" alt="'+esc(f.name||('Foto '+(i+1)))+'" loading="lazy"><span>Foto '+(i+1)+'</span></button>';}).join('')+'</div>';
 }
+function courseUpdateTaskPreview(update,id,compact){
+  const images=update&&Array.isArray(update.task_attachments)?update.task_attachments.filter(f=>f&&okId(f.id)):[];
+  if(!images.length)return '';
+  const f=images[0],src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;
+  return '<button type="button" class="cu-task-photo-link'+(compact?' compact':'')+'" data-act="course-update-image-open" data-id="'+esc(id)+'" data-index="0" aria-label="Lihat foto tugas">'+
+    '<img src="'+esc(src)+'" alt="Foto tugas / soal" loading="lazy"><span>Lihat Tugas</span>'+(images.length>1?'<small>+'+(images.length-1)+' foto</small>':'')+'</button>';
+}
 function cuImageEditorHtml(images){
   if(!Array.isArray(images)||!images.length)return '<p class="s">Belum ada foto lampiran.</p>';
   return '<div class="cu-image-list">'+images.map((f,i)=>{const src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;return '<div class="cu-image-item"><img src="'+esc(src)+'" alt="'+esc(f.name||('Foto '+(i+1)))+'"><span>'+esc(f.name||('Foto '+(i+1)))+'</span><button type="button" class="btn sm" data-act="cu-image-remove" data-index="'+i+'">Hapus</button></div>';}).join('')+'</div>';
@@ -1072,7 +1079,9 @@ function makrabFilesDlg(){
   });
   const entries=Object.keys(latest).map(Number).sort((a,b)=>a-b).map(no=>{
     const x=latest[no],file=x.file&&okId(x.file.id)?fileHtml(x.file,true):'<span class="s">Berkas tidak tersedia</span>';
-    return '<li class="it"><div><b>'+esc(nameOf(no))+'</b>'+file+'</div></li>';
+    const confirm=D.makrabDeleteId===x.id;
+    const action=confirm?'<div class="row2"><button type="button" class="btn sm pri" data-act="makrab-file-delete-confirm" data-id="'+esc(x.id)+'">Ya, hapus</button><button type="button" class="btn sm" data-act="makrab-file-delete-cancel">Batal</button></div>':'<button type="button" class="btn sm" data-act="makrab-file-delete" data-id="'+esc(x.id)+'">Hapus file</button>';
+    return '<li class="it"><div><b>'+esc(nameOf(no))+'</b>'+file+(confirm?'<span class="s">Hapus pengumpulan dan file ini secara permanen?</span>':'')+'</div>'+action+'</li>';
   });
   let h=dlgHead('PENGUMPULAN MAKRAB','Dokumentasi Absensi Makrab',entries.length+' mahasiswa mengumpulkan','#e10600');
   h+='<div class="db"><div class="row2"><button type="button" class="btn sm" data-act="close">&lsaquo; Kembali</button></div>';
@@ -1203,6 +1212,7 @@ function renderHome(force){
 }
 function superLicensePanel(){
   const selected=dv('ser-jenis','ser')==='makrab'?'makrab':(dv('ser-jenis','ser')==='dok'?'dok':'ser');
+  const makrabSubmitted=!!(ME&&Object.values(S.be).some(x=>x&&x.jenis==='makrab'&&Number(x.no)===Number(ME)));
   const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
     .filter(x=>x.no===ME&&x.jenis===selected).sort((a,b)=>(b.at||0)-(a.at||0));
   let h='<div class="panel" id="superLicensePanel"><h3 class="ph3">Super License</h3>'+
@@ -1210,7 +1220,7 @@ function superLicensePanel(){
     '<div class="field" style="margin-bottom:14px"><label for="ser-jenis">Jenis berkas</label><select id="ser-jenis" data-dr="ser-jenis">'+
     '<option value="ser"'+(selected==='ser'?' selected':'')+'>Sertifikat</option>'+
     '<option value="dok"'+(selected==='dok'?' selected':'')+'>Dokumentasi</option>'+
-    '<option value="makrab"'+(selected==='makrab'?' selected':'')+'>🔴 Dokumentasi Absensi Makrab</option></select></div>';
+    '<option value="makrab"'+(selected==='makrab'?' selected':'')+'>'+(makrabSubmitted?'Dokumentasi Absensi Makrab 🟢':'Dokumentasi Absensi Makrab 🔴')+'</option></select></div>';
   if(selected==='makrab'){
     const makrabMine=mine[0]||null;
     const makrabTotal=Object.values(S.be).filter(x=>x&&x.jenis==='makrab'&&Number(x.no)>=1&&Number(x.no)<=N).length;
@@ -1424,7 +1434,7 @@ function renderAdmin(force=false){
   const updates=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).sort((a,b)=>a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
   const edit=CU_EDIT&&S.cu[CU_EDIT]?Object.assign({id:CU_EDIT},S.cu[CU_EDIT]):null;
   const linkedTask=edit?S.tu[edit.id]||null:null;
-  const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Materi/soal</a>':'—')+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');;
+  const updRows=updates.map(u=>'<tr><td>'+esc(cname(u.course_code))+'</td><td class="num">'+u.meeting_number+'</td><td>'+esc(u.task_title||'—')+'</td><td>'+(u.task_url?'<a href="'+esc(u.task_url)+'" target="_blank" rel="noopener">Materi/soal</a>':(courseUpdateTaskPreview(u,u.id,true)||'—'))+'</td><td>'+(u.submission_url?'<a href="'+esc(u.submission_url)+'" target="_blank" rel="noopener">Pengumpulan</a>':'—')+'</td><td><button class="btn sm" data-act="cu-edit" data-id="'+esc(u.id)+'">Edit</button> <button class="btn sm" data-act="cu-del" data-id="'+esc(u.id)+'">Hapus</button></td></tr>').join('');;
   let tk='';
   tasks.slice().sort((x,y)=>(y.tenggat||'9999').localeCompare(x.tenggat||'9999')).forEach(t=>{
     const cnt=Object.keys(t.subs||{}).length,lk=isLocked(t);
@@ -1442,7 +1452,7 @@ function renderAdmin(force=false){
     '<div class="field"><label for="cu-submit">Link pengumpulan</label><input id="cu-submit" type="url" placeholder="https://..." value="'+esc(edit&&edit.submission_url||'')+'"></div>'+
     '<div class="field"><label for="cu-deadline">Batas waktu pengumpulan</label><input id="cu-deadline" type="date" value="'+esc(edit&&edit.deadline||'')+'"></div>'+
     '<div class="field" style="grid-column:1/-1"><label for="cu-desc">Petunjuk tugas</label><textarea id="cu-desc" maxlength="1000" placeholder="Jelaskan instruksi dan apa yang harus dikumpulkan">'+esc(linkedTask&&linkedTask.deskripsi||'')+'</textarea></div>'+
-     '<div class="field" style="grid-column:1/-1"><label for="cu-images">Foto soal / instruksi (opsional)</label><div class="row2"><label class="btn sm pickfile">Tambah foto<input id="cu-images" type="file" accept="image/jpeg,image/png,image/webp" multiple></label><span class="s">JPG, PNG, atau WebP · Maksimal 10 foto, 5 MB per foto.</span></div><div id="cu-attachments-preview">'+cuImageEditorHtml(CU_PENDING_IMAGES)+'</div></div>'+
+     '<div class="field" style="grid-column:1/-1"><label for="cu-images">Foto tugas / soal (opsional)</label><div class="row2"><label class="btn sm pickfile">Tambah foto<input id="cu-images" type="file" accept="image/jpeg,image/png,image/webp" multiple></label><span class="s">JPG, PNG, atau WebP · Maksimal 10 foto, 5 MB per foto.</span></div><span class="s">Jika tidak mengisi link tugas/soal, foto akan tampil sebagai tombol visual “Lihat Tugas” di kartu tugas mahasiswa.</span><div id="cu-attachments-preview">'+cuImageEditorHtml(CU_PENDING_IMAGES)+'</div></div>'+
     '<div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div>'+
     '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="6" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div>'+taskPanel+'</div>';
   }
@@ -1888,7 +1898,7 @@ function taskActions(t,mine){
     return h+'</div>';
   }
   let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">'+(t.closed?'DITUTUP':'DNF')+'</span><span class="s">'+(t.closed?'Tugas ditutup pengelola.':'Tenggat sudah lewat. Pengumpulan ditutup.')+'</span>':'');
-  if((ME||adm())&&!locked)h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Soal belum ditautkan oleh dosen.</span>');
+  if((ME||adm())&&!locked){const update=S.cu[id]||null;h+=(t.link&&okUrl(t.link)?'<a class="btn sm" href="'+esc(t.link)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':(courseUpdateTaskPreview(update,id,false)||'<span class="s">Soal belum ditautkan oleh dosen.</span>'));}
   if(can)h+='<button type="button" class="btn sm pri" data-act="tsub-open" data-id="'+esc(id)+'" aria-expanded="'+open+'">'+(mine?'Ubah pengumpulan':'Kumpulkan')+'</button>';
   h+='</div>';
   if(mine&&!open)h+='<div class="tdone"><span class="s">Terkumpul '+fmtTime(mine.at)+':</span> '+(okUrl(mine.tautan)?'<a class="lnk2" href="'+esc(mine.tautan)+'" target="_blank" rel="noopener noreferrer">'+(okDrive(mine.tautan)?'Buka file di Google Drive':'Buka tautan tugas')+'</a>':esc(mine.tautan||''))+(mine.berkas&&mine.berkas.id?' '+fileHtml(mine.berkas,true):'')+(mine.catatan?'<br><span class="s">'+esc(mine.catatan)+'</span>':'')+'</div>';
@@ -2724,7 +2734,7 @@ document.addEventListener('click',async e=>{
       body.task_description=$('cu-desc').value.trim().slice(0,1000);
       if(!body.course_code||!S.co[body.course_code]||!Number.isInteger(body.meeting_number)||body.meeting_number<1||body.meeting_number>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
       if([body.task_url,body.submission_url].some(u=>u&&!/^https:\/\//i.test(u))){toast('Semua tautan tugas harus diawali https://');break;}
-      if(body.task_title&&!body.task_url&&!body.task_description){toast('Isi link materi/soal atau petunjuk tugas agar tugas memiliki instruksi.');break;}
+      if(body.task_title&&!body.task_url&&!body.task_description&&!body.task_attachments.length){toast('Isi link, petunjuk, atau unggah foto tugas/soal agar tugas memiliki instruksi.');break;}
       const duplicate=Object.keys(S.cu).find(id=>id!==CU_EDIT&&S.cu[id].course_code===body.course_code&&Number(S.cu[id].meeting_number)===body.meeting_number);
       if(duplicate){toast('Pembaruan untuk mata kuliah dan pertemuan ini sudah ada. Gunakan tombol Edit pada tabel.');break;}
       const ok=await run(async()=>{
@@ -2738,6 +2748,7 @@ document.addEventListener('click',async e=>{
     case 'cu-cancel':CU_EDIT=null;CU_PENDING_IMAGES=[];renderAdmin();break;
     case 'cu-image-remove':{if(!adm())break;const i=Number(d.index);if(Number.isInteger(i)&&i>=0&&i<CU_PENDING_IMAGES.length){CU_PENDING_IMAGES.splice(i,1);const p=$('cu-attachments-preview');if(p)p.innerHTML=cuImageEditorHtml(CU_PENDING_IMAGES);}break;}
     case 'task-image-open':{const task=S.tu[d.id];if(task)openTaskGallery(task.lampiran,+d.index);break;}
+    case 'course-update-image-open':{const update=S.cu[d.id];if(update)openTaskGallery(update.task_attachments,+d.index);break;}
     case 'cu-del':{if(!adm())break;const oldImages=Array.isArray(S.cu[d.id]&&S.cu[d.id].task_attachments)?S.cu[d.id].task_attachments:[];const ok=await run(()=>db.doc('course_updates/'+d.id).delete(),'Pembaruan dihapus');if(ok&&AS&&oldImages.length)await Promise.all(oldImages.filter(f=>f&&f.id).map(f=>AS.delete(f.id).catch(()=>null)));if(ok){CU_EDIT=null;CU_PENDING_IMAGES=[];}break;}
     case 'admin-top':$('admin').scrollIntoView({behavior:'smooth',block:'start'});break;
     case 'open-login':openLogin();break;
@@ -2852,6 +2863,9 @@ document.addEventListener('click',async e=>{
       if(ok){PEND.makrab=null;refreshAll();}break;
     }
     case 'makrab-list':{if(!adm())break;openD('makrab-files');break;}
+    case 'makrab-file-delete':{if(!adm()||!S.be[d.id]||S.be[d.id].jenis!=='makrab')break;D.makrabDeleteId=d.id;renderDialog(true);break;}
+    case 'makrab-file-delete-cancel':{if(D){D.makrabDeleteId=null;renderDialog(true);}break;}
+    case 'makrab-file-delete-confirm':{if(!adm())break;const item=S.be[d.id];if(!item||item.jenis!=='makrab')break;const ok=await run(()=>db.doc('berkas/'+d.id).delete(),'Pengumpulan Makrab dihapus');if(ok&&AS&&item.file&&item.file.id){try{await AS.delete(item.file.id);}catch(err){toast('Data pengumpulan dihapus, tetapi file penyimpanan gagal dihapus.');}}if(D)D.makrabDeleteId=null;refreshAll();break;}
     case 'ber-save':{
       if(!ME)break;
       const j=d.j,jenis=$('ser-jenis').value==='dok'?'dok':'ser',judul=($('ser-judul').value||'').trim();
