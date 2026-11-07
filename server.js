@@ -635,14 +635,28 @@ async function decide(method, p, body, sess, existing) {
     if ([attendance, taskUrl, submission].some(u => u && (!/^https:\/\//i.test(u) || !isHttpUrl(u)))) return ERR_BAD('Semua tautan harus menggunakan HTTPS.');
     if (taskTitle.length > 120 || (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline))) return ERR_BAD('Judul tugas atau tenggat tidak valid.');
     if (!(await getDoc('courses/' + k))) return ERR_BAD('Mata kuliah tidak ditemukan.');
-    const now = Date.now(), hasTask = !!taskTitle, mode = body.task_mode === 'group' ? 'group' : 'individual';
+    const now = Date.now(), mode = body.task_mode === 'group' ? 'group' : 'individual';
     const description = String(body.task_description || '').slice(0, 1000);
-    if (hasTask && !taskUrl && !description) return ERR_BAD('Isi link materi/soal atau petunjuk tugas agar tugas memiliki instruksi.');
+    if (body.task_attachments !== undefined && !Array.isArray(body.task_attachments)) return ERR_BAD('Daftar foto tugas tidak valid.');
+    const rawAttachments = body.task_attachments === undefined
+      ? (existing && Array.isArray(existing.task_attachments) ? existing.task_attachments : [])
+      : body.task_attachments;
+    if (rawAttachments.length > 10) return ERR_BAD('Maksimal 10 foto tugas.');
+    const attachments = [];
+    for (const item of rawAttachments) {
+      const file = await cleanFile(item, sess, MEDIA_BUCKET);
+      if (!file || !/^image\\/(jpeg|png|webp)$/.test(file.type || '')) return ERR_BAD('Foto tugas tidak cocok dengan akun atau formatnya. Unggah ulang foto JPG, PNG, atau WebP.');
+      attachments.push(file);
+    }
+    const hasTask = !!(taskTitle || taskUrl || description || attachments.length);
+    if (hasTask && !taskUrl && !description && !attachments.length) return ERR_BAD('Tambahkan tautan, petunjuk, atau foto tugas.');
+    const finalTaskTitle = hasTask ? (taskTitle || ('Tugas pertemuan ' + meeting)) : null;
     return { data: { course_code:k, meeting_number:meeting, attendance_url:attendance,
-      task_title:hasTask ? taskTitle : null, task_url:hasTask ? taskUrl : null,
+      task_title:finalTaskTitle, task_url:hasTask ? taskUrl : null,
       submission_url:submission, deadline:hasTask ? (deadline || null) : null,
       task_id:hasTask ? (existing && existing.task_id || id) : null,
       task_mode:hasTask ? mode : 'individual', task_description:hasTask ? description : '',
+      task_attachments:hasTask ? attachments : [],
       task_submissions:hasTask && existing && isObj(existing.task_submissions) ? existing.task_submissions : {},
       task_group_submissions:hasTask && existing && isObj(existing.task_group_submissions) ? existing.task_group_submissions : {},
       task_created_at:hasTask ? (existing && existing.task_created_at || now) : null,
