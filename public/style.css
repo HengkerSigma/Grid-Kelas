@@ -1067,9 +1067,9 @@ button.is-busy{cursor:wait;opacity:.65}
 @media(max-width:760px){
   #home{display:flex;flex-direction:column}
   #home .cols,#home .col{display:contents}
-  #home .team-radio{order:-1;width:100%;box-sizing:border-box;margin-bottom:16px}
-  #home .greet-social{order:-2;width:100%;box-sizing:border-box}
   #home .greet{order:-3}
+  #home .greet-social{order:-2;width:100%;box-sizing:border-box}
+  #home .team-radio{order:-1;width:100%;box-sizing:border-box;margin-bottom:16px}
 }
 
 /* Default-password reminder: native modal styled to match Grid Kelas. */
