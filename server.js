@@ -1019,15 +1019,15 @@ async function decide(method, p, body, sess, existing) {
     if (parts.length !== 2) return ERR_FORBID;
     if (method === 'DELETE') return admin ? { del: true } : ERR_FORBID;
     if (method !== 'POST' || !admin) return ERR_FORBID;
-    if (!isObj(body) || !onlyKeys(body, ['title', 'registrationType', 'registrationUrl', 'contactPerson', 'price', 'poster', 'createdAt'])) return ERR_BAD('Data seminar tidak valid.');
-    const title = String(body.title || '').trim(), type = String(body.registrationType || 'link'), registrationUrl = String(body.registrationUrl || '').trim(), contactPerson = String(body.contactPerson || '').trim(), price = String(body.price || '').trim();
+    if (!isObj(body) || !onlyKeys(body, ['title', 'registrationType', 'registrationUrl', 'contactPerson', 'contactPersonName', 'price', 'poster', 'createdAt'])) return ERR_BAD('Data seminar tidak valid.');
+    const title = String(body.title || '').trim(), type = String(body.registrationType || 'link'), registrationUrl = String(body.registrationUrl || '').trim(), contactPerson = String(body.contactPerson || '').trim(), contactPersonName = String(body.contactPersonName || '').trim(), price = String(body.price || '').trim();
     if (!title || title.length > 160 || !price || price.length > 40) return ERR_BAD('Judul dan harga seminar wajib diisi.');
     if (type === 'link' && (!/^https:\/\//i.test(registrationUrl) || !isHttpUrl(registrationUrl))) return ERR_BAD('Tautan pendaftaran seminar tidak valid.');
-    if (type === 'contact' && !/^\d{9,15}$/.test(contactPerson)) return ERR_BAD('Nomor contact person harus berisi 9–15 digit.');
+    if (type === 'contact' && (!/^\d{9,15}$/.test(contactPerson) || !contactPersonName || contactPersonName.length > 80)) return ERR_BAD('Nama dan nomor contact person wajib diisi dengan benar.');
     if (type !== 'link' && type !== 'contact') return ERR_BAD('Metode pendaftaran tidak valid.');
     const poster = await cleanFile(body.poster, sess, UPLOAD_BUCKET);
     if (!poster || !/^image\/(jpeg|png|webp)$/.test(poster.type || '')) return ERR_BAD('Poster seminar harus berupa gambar JPG, PNG, atau WebP yang sudah diunggah.');
-    return { data: { title: title, registrationType: type, registrationUrl: type === 'link' ? registrationUrl : '', contactPerson: type === 'contact' ? contactPerson : '', price: price, poster: poster, createdAt: Date.now() } };
+    return { data: { title: title, registrationType: type, registrationUrl: type === 'link' ? registrationUrl : '', contactPerson: type === 'contact' ? contactPerson : '', contactPersonName: type === 'contact' ? contactPersonName : '', price: price, poster: poster, createdAt: Date.now() } };
   }
 
   if (root === 'berkas') {
