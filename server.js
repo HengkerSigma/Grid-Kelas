@@ -707,7 +707,7 @@ async function decide(method, p, body, sess, existing) {
     const localParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
     const localDate=localParts.reduce((o,p)=>(o[p.type]=p.value,o),{});
     const todayKey=localDate.year+'-'+localDate.month+'-'+localDate.day;
-    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(dob)||dob.slice(5)!==todayKey.slice(5))return ERR_BAD('Mahasiswa ini tidak tercatat berulang tahun hari ini.');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(dob)||dob.slice(5)!==todayKey.slice(5))return ERR_BAD('Mahasiswa ini tidak tercatat berulang tahun hari ini.');
     const cooldownPath='birthdayGreetingCooldown/'+pad(sess.no)+'-'+pad(toNo)+'-'+todayKey.replace(/-/g,'');
     if(await getDoc(cooldownPath))return ERR_BAD('Kamu sudah mengirim ucapan untuk mahasiswa ini hari ini.');
     const student=await getDoc('students/'+pad(sess.no));

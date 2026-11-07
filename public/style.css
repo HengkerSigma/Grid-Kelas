@@ -1063,13 +1063,13 @@ button.is-busy{cursor:wait;opacity:.65}
 @media(max-width:620px){.sk-home-tiles{grid-template-columns:1fr}.sk-home-tiles .sk-tile{min-height:76px}}
 
 
-/* Mobile home: Team Radio → Sapa Online → sapaan personal. */
+/* Mobile home: sapaan personal → Sapa Online → Team Radio. */
 @media(max-width:760px){
   #home{display:flex;flex-direction:column}
   #home .cols,#home .col{display:contents}
-  #home .team-radio{order:-3;width:100%;box-sizing:border-box;margin-bottom:16px}
+  #home .team-radio{order:-1;width:100%;box-sizing:border-box;margin-bottom:16px}
   #home .greet-social{order:-2;width:100%;box-sizing:border-box}
-  #home .greet{order:-1}
+  #home .greet{order:-3}
 }
 
 /* Default-password reminder: native modal styled to match Grid Kelas. */
@@ -1229,3 +1229,14 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .birthday-greeting-row p{margin:0;min-width:0;line-height:1.45}
 .birthday-greeting-row .btn{flex:none;min-width:82px}
 @media(max-width:520px){.greet-social-main,.birthday-greeting-row{align-items:flex-start}.birthday-greeting-row p{font-size:.88rem}.birthday-greeting-row .btn{min-width:74px;padding-inline:10px}}
+
+
+/* Inbox ucapan ulang tahun pada section Sapa. */
+.birthday-inbox{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--line)}
+.birthday-inbox-message{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.birthday-inbox-message p{margin:0;min-width:0;line-height:1.5}
+.birthday-inbox-message .btn{flex:none;min-width:68px}
+.birthday-inbox-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.birthday-inbox-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.birthday-inbox-list li span{flex:none;color:var(--muted);font-size:.76rem;font-variant-numeric:tabular-nums}
+@media(max-width:520px){.birthday-inbox-message{align-items:flex-start}.birthday-inbox-message p{font-size:.88rem}.birthday-inbox-list li{align-items:flex-start;flex-direction:column;gap:3px}}
