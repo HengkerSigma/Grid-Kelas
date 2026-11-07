@@ -1185,40 +1185,52 @@ function renderHome(force){
   if(OVERVIEW_SUBTAB==='exhibition')$('homeLede').textContent='Ruang sertifikat, dokumentasi kelas, dan agenda seminar akademik.';
 }
 function superLicensePanel(){
+  const selected=dv('ser-jenis','ser')==='makrab'?'makrab':(dv('ser-jenis','ser')==='dok'?'dok':'ser');
   const mine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id]))
-    .filter(x=>x.no===ME&&['ser','dok'].includes(x.jenis)).sort((a,b)=>(b.at||0)-(a.at||0));
+    .filter(x=>x.no===ME&&x.jenis===selected).sort((a,b)=>(b.at||0)-(a.at||0));
   let h='<div class="panel" id="superLicensePanel"><h3 class="ph3">Super License</h3>'+
-    '<p class="s" style="margin-bottom:12px">Simpan sertifikat dan dokumentasi pribadi dalam satu tempat. Unggah foto atau PDF, lalu buka kembali kapan pun dibutuhkan.</p>';
-  if(ME&&AS){
-    h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-jenis">Jenis berkas</label><select id="ser-jenis" data-dr="ser-jenis"><option value="ser"'+(dv('ser-jenis','ser')==='ser'?' selected':'')+'>Sertifikat</option><option value="dok"'+(dv('ser-jenis','ser')==='dok'?' selected':'')+'>Dokumentasi</option></select></div>'+
-      '<div class="field"><label for="ser-judul">Nama sertifikat atau dokumen</label>'+
-      '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="Contoh: Sertifikat Workshop atau Dokumentasi Praktikum"></div>'+
-      '<div class="row2"><label class="btn sm pickfile">'+((PEND.ser||PEND.dok)?'Ganti berkas':'Pilih Sertifikat atau Dokumen')+
-      '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+((PEND.ser||PEND.dok)?esc((PEND.ser||PEND.dok).name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
-      '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button>'+
-      (superLicenseDriveUrl?'<a class="btn" href="'+esc(superLicenseDriveUrl)+'" target="_blank" rel="noopener noreferrer">Simpan ke Google Drive <span aria-hidden="true">&#8599;</span></a>':'')+'</div>'+
-      (superLicenseDriveUrl?'<span class="s">Google Drive tetap tersedia sebagai penyimpanan tambahan.</span>':'<span class="s">Berkas yang diunggah tersimpan secara privat di Super License.</span>')+'</div>';
-  }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan sertifikat atau dokumentasi pribadi.</p>';
-  const makrabMine=Object.keys(S.be).map(id=>Object.assign({id:id},S.be[id])).filter(x=>x.no===ME&&x.jenis==='makrab').sort((a,b)=>(b.at||0)-(a.at||0))[0]||null;
-  h+='<details class="makrab-dropdown" id="makrabProofPanel"><summary><span><b>Dokumentasi Absensi Makrab</b><small>Event khusus · November 2026</small></span><span class="chip">EVENT KHUSUS</span></summary><div class="makrab-event"><span class="makrab-event-tag">'+MAKRAB_EVENT_TAG+'</span><p class="s">Periode pengumpulan: 1–30 November 2026. Tenggat berakhir 30 November 2026 pukul 23.59 WIB.</p>';
-  if(!ME||!AS)h+='<p class="empty">Masuk sebagai mahasiswa untuk mengunggah bukti absensi Makrab.</p>';
-  else if(makrabMine)h+='<div class="makrab-submission"><span class="chip done">'+makrabStatus(makrabMine)+'</span>'+fileHtml(makrabMine.file,true)+'<span class="s">Dikirim '+fmtTime(makrabMine.at)+'</span></div>';
-  else if(Date.now()>MAKRAB_DEADLINE_AT)h+='<p class="empty">Tenggat telah berakhir. Status: Terlambat.</p>';
-  else h+='<div class="stack"><div class="row2"><label class="btn sm pickfile">'+(PEND.makrab?'Ganti bukti':'Pilih bukti absensi')+'<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" data-file="makrab"></label><span class="s">'+(PEND.makrab?esc(PEND.makrab.name||'Berkas siap'):'Foto atau PDF · Maksimal 20 MB')+'</span></div><button type="button" class="btn pri" data-act="makrab-save"'+(PEND.makrab?'':' disabled')+'>Kirim Bukti Absen Makrab</button></div>';
-  h+='</div></details>';
-  if(!mine.length)return h+'<p class="empty">Belum ada sertifikat atau dokumen.</p></div>';
-  h+='<ul>';
-  mine.forEach(x=>{
-    const kind=x.jenis==='dok'?'Dokumentasi':'Sertifikat';
-    const status='Tersimpan privat di Super License';
-    const del=berDel===x.id
-      ?'<span class="row2"><button type="button" class="btn sm pri" data-act="ber-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ber-del-no">Batal</button></span>'
-      :'<button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus dari daftar</button>';
-    h+='<li class="it"><div><b>'+esc(x.judul||kind)+'</b><span class="chip">'+kind+'</span>'+fileHtml(x.file,true)+
-      '<span class="s">'+fmtTime(x.at)+' · '+esc(status)+'</span>'+
-      '</div>'+del+'</li>';
-  });
-  return h+'</ul></div>';
+    '<p class="s" style="margin-bottom:12px">Simpan sertifikat dan dokumentasi pribadi dalam satu tempat. Unggah foto atau PDF, lalu buka kembali kapan pun dibutuhkan.</p>'+
+    '<div class="field" style="margin-bottom:14px"><label for="ser-jenis">Jenis berkas</label><select id="ser-jenis" data-dr="ser-jenis">'+
+    '<option value="ser"'+(selected==='ser'?' selected':'')+'>Sertifikat</option>'+
+    '<option value="dok"'+(selected==='dok'?' selected':'')+'>Dokumentasi</option>'+
+    '<option value="makrab"'+(selected==='makrab'?' selected':'')+'>Dokumentasi Absensi Makrab</option></select></div>';
+  if(selected==='makrab'){
+    const makrabMine=mine[0]||null;
+    h+='<div class="panel makrab-event-card"><div class="makrab-event"><div class="row2" style="justify-content:space-between;align-items:center"><b>Dokumentasi Absensi Makrab</b><span class="chip">EVENT KHUSUS</span></div>'+
+      '<span class="makrab-event-tag">'+MAKRAB_EVENT_TAG+'</span><p class="s">Periode pengumpulan: 1–30 November 2026. Tenggat berakhir 30 November 2026 pukul 23.59 WIB.</p>';
+    if(!ME||!AS)h+='<p class="empty">Masuk sebagai mahasiswa untuk mengunggah bukti absensi Makrab.</p>';
+    else if(makrabMine)h+='<div class="makrab-submission"><span class="chip done">'+makrabStatus(makrabMine)+'</span>'+fileHtml(makrabMine.file,true)+'<span class="s">Dikirim '+fmtTime(makrabMine.at)+'</span></div>';
+    else if(Date.now()>MAKRAB_DEADLINE_AT)h+='<p class="empty">Tenggat telah berakhir. Status: Terlambat.</p>';
+    else h+='<div class="stack"><div class="row2"><label class="btn sm pickfile">'+(PEND.makrab?'Ganti bukti':'Pilih bukti absensi')+'<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" data-file="makrab"></label><span class="s">'+(PEND.makrab?esc(PEND.makrab.name||'Berkas siap'):'Foto atau PDF · Maksimal 20 MB')+'</span></div><button type="button" class="btn pri" data-act="makrab-save"'+(PEND.makrab?'':' disabled')+'>Kirim Bukti Absen Makrab</button></div>';
+    h+='</div></div>';
+  }else{
+    const kindLabel=selected==='dok'?'Dokumentasi':'Sertifikat';
+    if(ME&&AS){
+      h+='<div class="stack" style="margin-bottom:16px"><div class="field"><label for="ser-judul">Nama '+(selected==='dok'?'dokumentasi':'sertifikat')+'</label>'+
+        '<input id="ser-judul" data-dr="ser-judul" type="text" maxlength="100" value="'+esc(dv('ser-judul',''))+'" placeholder="'+(selected==='dok'?'Contoh: Dokumentasi Praktikum':'Contoh: Sertifikat Workshop')+'"></div>'+
+        '<div class="row2"><label class="btn sm pickfile">'+((PEND.ser||PEND.dok)?'Ganti berkas':'Pilih '+kindLabel)+
+        '<input type="file" accept="image/*,application/pdf" data-file="ser"></label><span class="s">'+((PEND.ser||PEND.dok)?esc((PEND.ser||PEND.dok).name||'Berkas siap'):'Foto atau PDF, maksimal 20 MB')+'</span></div>'+
+        '<div class="row2"><button type="button" class="btn pri" data-act="ber-save" data-j="ser">Simpan ke Super License</button>'+
+        (superLicenseDriveUrl?'<a class="btn" href="'+esc(superLicenseDriveUrl)+'" target="_blank" rel="noopener noreferrer">Simpan ke Google Drive <span aria-hidden="true">&#8599;</span></a>':'')+'</div>'+
+        (superLicenseDriveUrl?'<span class="s">Google Drive tetap tersedia sebagai penyimpanan tambahan.</span>':'<span class="s">Berkas yang diunggah tersimpan secara privat di Super License.</span>')+'</div>';
+    }else h+='<p class="empty">Masuk sebagai mahasiswa untuk melihat dan menambahkan '+kindLabel.toLowerCase()+'.</p>';
+    if(!mine.length)h+='<p class="empty">Belum ada '+(selected==='dok'?'dokumentasi':'sertifikat')+'.</p>';
+    else{
+      h+='<ul>';
+      mine.forEach(x=>{
+        const kind=x.jenis==='dok'?'Dokumentasi':'Sertifikat';
+        const status='Tersimpan privat di Super License';
+        const del=berDel===x.id
+          ?'<span class="row2"><button type="button" class="btn sm pri" data-act="ber-del-yes" data-id="'+esc(x.id)+'">Hapus</button><button type="button" class="btn sm" data-act="ber-del-no">Batal</button></span>'
+          :'<button type="button" class="btn sm" data-act="ber-del" data-id="'+esc(x.id)+'">Hapus dari daftar</button>';
+        h+='<li class="it"><div><b>'+esc(x.judul||kind)+'</b><span class="chip">'+kind+'</span>'+fileHtml(x.file,true)+
+          '<span class="s">'+fmtTime(x.at)+' · '+esc(status)+'</span>'+
+          '</div>'+del+'</li>';
+      });
+      h+='</ul>';
+    }
+  }
+  return h+'</div>';
 }
 function classArchivePanel(){
   const canEdit=adm()||(ME!=null&&S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true);
@@ -2911,6 +2923,7 @@ document.addEventListener('change',async e=>{
     return;
   }
   if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;
+  if(t.id==='ser-jenis'){renderExhibition();return;}
   if(['wa-category','wa-course','wa-meeting','wa-date','wa-combine'].includes(t.id)){const p=$('wa-preview');if(p){p.value=buildWhatsAppTemplate();DR['wa-preview']=p.value;}return;}
   if(t.id==='f-tipe'){
     const p=t.value==='platform';
