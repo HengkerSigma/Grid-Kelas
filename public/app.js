@@ -62,6 +62,9 @@ let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_O
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null,PROFILE_EDITING=false,presenceTimer=null;
+const PRESENCE_TTL=90000;
+function makePresenceSessionId(){try{const bytes=new Uint8Array(16);window.crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}catch(e){return Array.from({length:32},()=>Math.floor(Math.random()*16).toString(16)).join('');}}
+const PRESENCE_SESSION_ID=makePresenceSessionId();
 
 const dlg=$('dlg'),box=$('dbox');
 const isAd=no=>!!(S.ak[PAD(no)]&&S.ak[PAD(no)].admin===true);
@@ -195,10 +198,13 @@ function focusOwnStrip(behavior){
   const max=Math.max(0,r.scrollWidth-r.clientWidth);
   r.scrollTo({left:Math.max(0,Math.min(max,target)),behavior:behavior||'auto'});
 }
-function presenceOnline(no){const p=S.pr&&S.pr[PAD(no)];return !!(p&&Number(p.lastSeen)>0&&Date.now()-Number(p.lastSeen)<120000);}
-function writePresence(){if(!ME||!db||(!AUTH&&!uid))return;db.doc('presence/'+PAD(ME)).set({no:Number(ME),lastSeen:Date.now()}).catch(e=>console.warn('Presence tidak dapat diperbarui:',e));}
-function startPresence(){if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null;}if(!ME||!db||(!AUTH&&!uid))return;writePresence();presenceTimer=setInterval(writePresence,30000);}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')writePresence();});
+function presenceOnline(no){const now=Date.now();return Object.values(S.pr||{}).some(p=>Number(p.no)===Number(no)&&Number(p.lastSeen)>0&&now-Number(p.lastSeen)<PRESENCE_TTL);}
+function presencePath(no){return 'presence/'+PAD(no)+'-'+PRESENCE_SESSION_ID;}
+function writePresence(active=true){if(!ME||!db||(!AUTH&&!uid))return Promise.resolve();return db.doc(presencePath(ME)).set({no:Number(ME),lastSeen:active?Date.now():0,sessionId:PRESENCE_SESSION_ID}).catch(e=>console.warn('Presence tidak dapat diperbarui:',e));}
+function startPresence(){if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null;}if(!ME||!db||(!AUTH&&!uid))return;writePresence(true);presenceTimer=setInterval(()=>writePresence(true),30000);}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')writePresence(true);});
+window.addEventListener('pagehide',()=>writePresence(false));
+window.addEventListener('pageshow',()=>{if(ME)startPresence();});
 function renderStrip(){
   let h='';
   for(let n=1;n<=N;n++){
@@ -2044,7 +2050,7 @@ async function setMe(no){
 async function clearMe(){
   const oldNo=ME;
   if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null;}
-  if(oldNo&&db){try{await db.doc('presence/'+PAD(oldNo)).set({no:Number(oldNo),lastSeen:0});}catch(e){}}
+  if(oldNo&&db){try{await writePresence(false);}catch(e){}}
   if(AUTH){await AUTH.logout();ME=null;SK=null;refreshAll();return;}
   if(uid&&db){await db.doc('data/users/'+uid+'/profil').delete();}
   else{ME=null;try{localStorage.removeItem('gk_me');}catch(e){}refreshAll();}
@@ -2921,7 +2927,7 @@ refreshAll();
 updateLiveClock();
 setInterval(updateLiveClock,1000);
 setInterval(()=>{if(D&&D.kind==='hasil')loadHasil(true);},20000);
-setInterval(()=>{renderStrip();renderStudents();},30000); // time tower tetap segar selama dibuka
+setInterval(()=>{renderStrip();renderStudents();},15000); // perbarui status online saat heartbeat kedaluwarsa
 let liveSig='';
 setInterval(()=>{const s=today()+'|'+courseList().filter(c=>inSession(c)).map(c=>c.k).join();if(s!==liveSig){liveSig=s;refreshAll();}},30000);
 
