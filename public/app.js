@@ -73,8 +73,12 @@ function makePresenceSessionId(){try{const bytes=new Uint8Array(16);window.crypt
 const PRESENCE_SESSION_ID=makePresenceSessionId();
 
 const dlg=$('dlg'),box=$('dbox');
-const isAd=no=>!!(S.ak[PAD(no)]&&S.ak[PAD(no)].admin===true);
-const adm=()=>(isAdmin&&ownerMode)||(ME!=null&&isAd(ME));
+let studentPreviewMode=false;
+const hasAdminRole=no=>!!(S.ak[PAD(no)]&&S.ak[PAD(no)].admin===true);
+const isAd=no=>hasAdminRole(no)&&!(studentPreviewMode&&Number(no)===4);
+const hasRealAdminAccess=()=>!!((isAdmin&&ownerMode)||(ME!=null&&hasAdminRole(ME)));
+const canPreviewStudentMode=()=>Number(ME)===4&&hasRealAdminAccess();
+const adm=()=>hasRealAdminAccess()&&!studentPreviewMode;
 const dv=(k,def)=>DR[k]!==undefined?DR[k]:def;
 
 const APP_TZ='Asia/Jakarta',SEMESTER_ANCHOR_MEETING=9,SEMESTER_ANCHOR_DATE='2026-10-31';
@@ -480,7 +484,13 @@ function toggleMobileNav(force){
   trigger.setAttribute('aria-expanded',String(open));
 }
 function renderHeader(){
-  const lb=$('loginBtn'),chip=$('meChip'),na=$('navAdmin');
+  const lb=$('loginBtn'),chip=$('meChip'),na=$('navAdmin'),previewBtn=$('modePreviewBtn');
+  if(previewBtn){
+    const eligible=canPreviewStudentMode();
+    previewBtn.hidden=!eligible;
+    previewBtn.textContent=studentPreviewMode?'Kembali ke Pengelola':'Mode Mahasiswa';
+    previewBtn.setAttribute('aria-pressed',String(studentPreviewMode));
+  }
   const navToggle=document.querySelector('[data-mobile-nav-toggle]');
   if(navToggle)navToggle.setAttribute('aria-expanded',String($('top').classList.contains('mobile-nav-open')));
   lb.textContent=ME?('No. '+ME):'Masuk / Daftar';
@@ -2322,6 +2332,15 @@ document.addEventListener('click',async e=>{
   }
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,d=b.dataset;
+  if(a==='toggle-preview-mode'){
+    if(!canPreviewStudentMode())return;
+    if(dlg.open){toast('Tutup dialog yang sedang terbuka sebelum berganti mode.');return;}
+    studentPreviewMode=!studentPreviewMode;
+    if(studentPreviewMode&&view==='pengelola')setView('beranda',true);
+    refreshAll();
+    toast(studentPreviewMode?'Pratinjau Mode Mahasiswa aktif.':'Kembali ke Mode Pengelola.');
+    return;
+  }
   if(TOUR_DEMO_ACTIVE&&!TOUR_SAFE_ACTIONS.has(a)){e.preventDefault();e.stopPropagation();toast('Mode tutorial: aksi perubahan data dinonaktifkan.');return;}
   switch(a){
     case 'send-greeting':{await sendGreeting();break;}
