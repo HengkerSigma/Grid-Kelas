@@ -5,7 +5,7 @@ const $=id=>document.getElementById(id);
 const PAD=n=>String(n).padStart(2,'0');
 const ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>ESC[c]);
-const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/[0-9a-f]{32}(?:\?v=\d+)?$/.test(u));
+const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/(?:[0-9a-f]{32}|s\\d{2})(?:\?v=\d+)?$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
 let superLicenseDriveUrl='';
