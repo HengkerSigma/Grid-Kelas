@@ -59,7 +59,7 @@ let ownerMode=false,view='beranda',annDel=null,ANN_EDIT=null,tkDel=null,berDel=n
 const PEND={ser:null,dok:null,maktab:null,archive:null,seminar:null};
 const MAKTAB_START_AT=Date.UTC(2026,9,31,17,0,0,0),MAKTAB_DEADLINE_AT=Date.UTC(2026,10,30,16,59,59,999),MAKTAB_EVENT_TAG='BUKTI ABSEN MAKTAB';
 function maktabWindowOpen(now){now=Number(now)||Date.now();return now>=MAKTAB_START_AT&&now<=MAKTAB_DEADLINE_AT;}
-function maktabStatus(item,now){now=Number(now)||Date.now();if(item&&Number(item.at)>0)return Number(item.at)<=MAKTAB_DEADLINE_AT?'Sudah Mengumpulkan':'Terlambat';return now>MAKTAB_DEADLINE_AT?'Tidak Mengumpulkan':'Belum Mengumpulkan';}
+function maktabStatus(item,now){now=Number(now)||Date.now();if(item&&Number(item.at)>0)return Number(item.at)<=MAKTAB_DEADLINE_AT?'Sudah Mengumpulkan':'Terlambat';return now>MAKTAB_DEADLINE_AT?'Terlambat':'Belum Mengumpulkan';}
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{},pr:{}};
 let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
@@ -1203,7 +1203,7 @@ function superLicensePanel(){
   h+='<details class="maktab-dropdown" id="maktabProofPanel" open><summary><span><b>Bukti Absen Maktab</b><small>Dokumentasi event khusus · November 2026</small></span><span class="chip">EVENT KHUSUS</span></summary><div class="maktab-event"><span class="maktab-event-tag">'+MAKTAB_EVENT_TAG+'</span><p class="s">Periode pengumpulan: 1–30 November 2026. Tenggat berakhir 30 November 2026 pukul 23.59 WIB.</p>';
   if(!ME||!AS)h+='<p class="empty">Masuk sebagai mahasiswa untuk mengunggah bukti absensi Maktab.</p>';
   else if(maktabMine)h+='<div class="maktab-submission"><span class="chip done">'+maktabStatus(maktabMine)+'</span>'+fileHtml(maktabMine.file,true)+'<span class="s">Dikirim '+fmtTime(maktabMine.at)+'</span></div>';
-  else if(Date.now()>MAKTAB_DEADLINE_AT)h+='<p class="empty">Tenggat telah berakhir. Status: Tidak Mengumpulkan.</p>';
+  else if(Date.now()>MAKTAB_DEADLINE_AT)h+='<p class="empty">Tenggat telah berakhir. Status: Terlambat.</p>';
   else h+='<div class="stack"><div class="row2"><label class="btn sm pickfile">'+(PEND.maktab?'Ganti bukti':'Pilih bukti absensi')+'<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" data-file="maktab"></label><span class="s">'+(PEND.maktab?esc(PEND.maktab.name||'Berkas siap'):'Foto atau PDF · Maksimal 20 MB')+'</span></div><button type="button" class="btn pri" data-act="maktab-save"'+(PEND.maktab?'':' disabled')+'>Kirim Bukti Absen Maktab</button></div>';
   h+='</div></details>';
   if(!mine.length)return h+'<p class="empty">Belum ada sertifikat atau dokumen.</p></div>';
