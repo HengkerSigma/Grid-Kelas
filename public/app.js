@@ -622,8 +622,14 @@ function homeTiles(no){
   const hubSummary=!hasIndividual&&!hasConstructor?'Belum ada tugas individu atau Constructor':!hasIndividual?'Belum ada tugas individu':!hasConstructor?'Belum ada tugas Constructor':pitSummary+' · '+groupSummary;
   const flags=(pit.open.length||pit.dnf.length)?'<span class="pflags">'+['r','y','g'].filter(c=>pit.n[c]).map(c=>'<span class="pfl">'+flagSvg(c)+pit.n[c]+'</span>').join('')+(pit.dnf.length?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+pit.dnf.length+'</span>':'')+'</span>':'';
   const paddock=(groupOpen.length||groupDnf)?'<span class="pflags paddock-tires">'+['soft','medium','hard'].filter(c=>tires[c]).map(c=>'<span class="pfl">'+tireSvg(c)+tires[c]+'</span>').join('')+(groupDnf?'<span class="pfl pdnf"><span class="dnfb">DNF</span>'+groupDnf+'</span>':'')+'</span>':'';
+  const individualPending=pit.open.length,constructorPending=groupOpen.length;
+  const needsAction=individualPending+constructorPending>0;
   return '<div class="tiles">'+
-    '<button type="button" class="tile tilebtn tile-hub'+((pit.open.length||pit.dnf.length||groupOpen.length||groupDnf)?' task-alert':'')+'" data-act="open-pit" aria-haspopup="dialog"><div class="v hub-task-value">Individu '+pit.a+'/'+pit.b+' - '+groupDone+'/'+groupTotal+' Constructor</div><div class="l">Hub Tugas</div><div class="d">'+hubSummary+'</div>'+flags+paddock+'<span class="more">Buka Hub Tugas &rsaquo;</span></button>'+
+    '<button type="button" class="tile tilebtn tile-hub hub-task-compact'+(needsAction?' task-alert':'')+'" data-act="open-pit" aria-haspopup="dialog" style="display:flex;flex-direction:column;gap:12px;text-align:left;padding:16px 18px">'+
+      '<span style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%"><b style="font-size:1rem;color:var(--text)">Hub Tugas</b>'+(needsAction?'<span style="font-size:.68rem;font-weight:800;letter-spacing:.06em;color:var(--warn);white-space:nowrap">PERLU TINDAKAN</span>':'')+'</span>'+
+      '<span style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;font-size:.92rem"><span>👤 Tugas Individu</span><b style="font-variant-numeric:tabular-nums">'+(individualPending||'—')+'</b></span>'+
+      '<span style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;font-size:.92rem"><span>👥 Tugas Constructor</span><b style="font-variant-numeric:tabular-nums">'+(constructorPending||'—')+'</b></span>'+
+      '<span class="more" style="align-self:flex-start">Buka Hub Tugas &rsaquo;</span></button>'+
     '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
