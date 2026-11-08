@@ -1266,3 +1266,12 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .hub-pending-count.is-blinking{color:var(--warn);animation:hubTaskCountBlink 1.15s ease-in-out infinite}
 @keyframes hubTaskCountBlink{0%,100%{opacity:1}50%{opacity:.22}}
 @media(prefers-reduced-motion:reduce){.hub-pending-count.is-blinking{animation:none;opacity:1}}
+
+/* Hub Tugas: rapikan legenda bendera dan DNF pada layar kecil. */
+@media(max-width:600px){
+ .hub-task-legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 12px;align-items:center;font-size:.76rem;line-height:1.25}
+ .hub-task-legend li{display:flex;align-items:center;gap:6px;min-width:0;white-space:normal}
+ .hub-task-legend li .pflag{width:18px;height:18px;flex:0 0 18px}
+ .hub-task-legend li .dnfb{flex:0 0 auto;margin:0;padding:4px 6px;font-size:.62rem}
+ .hub-task-legend li span:last-child{min-width:0;overflow-wrap:anywhere}
+}
