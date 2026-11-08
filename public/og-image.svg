@@ -1,9 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Grid-Kelas F logo">
-  <rect width="1200" height="630" fill="#fff"/>
-  <g fill="#e10600" transform="translate(168 134) scale(13.2)">
-    <path d="M14 0H64L59 9H9Z"/>
-    <path d="M8 11H52L47 20H3Z"/>
-    <path d="M0 22H28L24 30H0Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Formula 1 ELSE3 — Grid Kelas</title>
+  <desc id="desc">More Than a Class, It's a Racing Team. A Formula 1 inspired academic class portal.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#050607"/><stop offset=".55" stop-color="#17191d"/><stop offset="1" stop-color="#390508"/></linearGradient>
+    <linearGradient id="red" x2="1" y2="0"><stop stop-color="#9d0000"/><stop offset=".55" stop-color="#f20b12"/><stop offset="1" stop-color="#8e0000"/></linearGradient>
+    <linearGradient id="track" x2="0" y2="1"><stop stop-color="#60636a"/><stop offset="1" stop-color="#16171b"/></linearGradient>
+    <pattern id="checks" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#fff"/><rect x="16" y="16" width="16" height="16" fill="#fff"/></pattern>
+    <filter id="glow"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <path d="M0 0H510L300 630H0Z" fill="#090a0c"/>
+  <path d="M0 0H165L0 165Z" fill="url(#red)"/>
+  <path d="M0 0H118L0 118Z" fill="#f10b12"/>
+  <path d="M560 0H1200V630H470Z" fill="#20232a" opacity=".45"/>
+  <path d="M660 0L1200 0V400L780 520Z" fill="#737984" opacity=".12"/>
+  <path d="M610 420L1200 255V630H480Z" fill="url(#track)"/>
+  <path d="M690 482L1200 337" stroke="#f3f3f3" stroke-width="20" opacity=".8"/>
+  <path d="M700 510L1200 368" stroke="#d9000b" stroke-width="20"/>
+  <path d="M745 546L1200 418" stroke="#f5f5f5" stroke-width="8" opacity=".8"/>
+  <g opacity=".18" stroke="#fff" stroke-width="2"><path d="M760 0L560 630M850 0L650 630M940 0L740 630M1030 0L830 630"/></g>
+  <g transform="translate(68 80)">
+    <path d="M0 38L48 0H142L105 34H59L39 51H91L57 78H0Z" fill="#ed0710"/>
+    <text x="172" y="40" fill="#fff" font-family="Arial,sans-serif" font-size="39" font-style="italic" font-weight="900" letter-spacing="1">FORMULA 1</text>
+    <text x="174" y="78" fill="#fff" font-family="Arial,sans-serif" font-size="31" font-style="italic" font-weight="800" letter-spacing="5">ELSE3</text>
+    <path d="M420 0V82" stroke="#fff" stroke-width="3" opacity=".8"/>
+    <g transform="translate(452 13)" fill="#fff"><rect width="20" height="20"/><rect x="22" y="22" width="20" height="20"/><rect x="44" width="20" height="20"/><rect y="44" width="20" height="20"/><rect x="44" y="44" width="20" height="20"/></g>
+    <text x="532" y="40" fill="#fff" font-family="Arial,sans-serif" font-size="29" font-weight="800">GRID</text>
+    <text x="532" y="75" fill="#fff" font-family="Arial,sans-serif" font-size="29" font-weight="800">KELAS</text>
   </g>
+  <g transform="translate(65 220)">
+    <text fill="#fff" font-family="Arial,sans-serif" font-size="58" font-style="italic" font-weight="900">More Than a Class,</text>
+    <text y="70" fill="#f10b12" font-family="Arial,sans-serif" font-size="58" font-style="italic" font-weight="900">It's a Racing Team.</text>
+    <path d="M0 91H330" stroke="#f10b12" stroke-width="7"/>
+    <text y="139" fill="#e6e6e8" font-family="Arial,sans-serif" font-size="21">Satu tempat untuk mengikuti perjalanan akademik,</text>
+    <text y="168" fill="#e6e6e8" font-family="Arial,sans-serif" font-size="21">membangun tim, dan mengabadikan pencapaian.</text>
+  </g>
+  <!-- Stylized open-wheel race car -->
+  <g transform="translate(645 230)">
+    <ellipse cx="300" cy="244" rx="275" ry="38" fill="#000" opacity=".65" filter="url(#glow)"/>
+    <path d="M48 176L90 137L188 112L245 69L377 68L445 113L535 130L565 170L523 190L80 195Z" fill="#08090b" stroke="#aeb2ba" stroke-width="3"/>
+    <path d="M172 117L255 75L363 76L411 116L343 133L211 132Z" fill="url(#red)"/>
+    <path d="M258 72L287 22L340 22L370 74Z" fill="#15171b" stroke="#f20b12" stroke-width="5"/>
+    <path d="M286 24L303 0L345 0L361 25Z" fill="#f10b12"/>
+    <path d="M78 142L20 130L0 143L24 160L100 166Z" fill="#08090b" stroke="#e10600" stroke-width="5"/>
+    <path d="M443 115L526 106L568 124L557 139L460 143Z" fill="#111318" stroke="#e10600" stroke-width="5"/>
+    <path d="M212 131L345 132L399 153L182 158Z" fill="#ed0710"/>
+    <path d="M150 166H440" stroke="#fff" stroke-width="5" opacity=".8"/>
+    <g fill="#050608" stroke="#656a72" stroke-width="5"><ellipse cx="110" cy="182" rx="43" ry="67"/><ellipse cx="470" cy="177" rx="43" ry="67"/><ellipse cx="218" cy="192" rx="38" ry="60"/><ellipse cx="384" cy="190" rx="38" ry="60"/></g>
+    <g fill="#d8dbe0"><path d="M105 126V238M465 120V234M214 137V247M380 135V245" stroke="#9da2aa" stroke-width="5"/></g>
+    <path d="M540 157L585 163L579 181L538 178Z" fill="#e10600"/>
+    <text x="270" y="111" fill="#fff" font-family="Arial,sans-serif" font-size="17" font-style="italic" font-weight="900">ELSE3</text>
+  </g>
+  <g transform="translate(58 478)">
+    <g fill="#fff" opacity=".96">
+      <rect width="16" height="16"/><rect x="32" width="16" height="16"/><rect x="16" y="16" width="16" height="16"/><rect x="48" y="16" width="16" height="16"/>
+    </g>
+    <g font-family="Arial,sans-serif" text-anchor="middle">
+      <g transform="translate(125 0)"><path d="M-31 23Q0 -9 31 23M-20 25V42M20 25V42M0 1V42" fill="none" stroke="#fff" stroke-width="4"/><text y="70" fill="#fff" font-size="18" font-weight="800">LINE-UP</text><text y="93" fill="#bbb" font-size="13">Kenali teman</text></g>
+      <g transform="translate(300 0)"><path d="M-18 2H18V42H-18Z M-9 -5H9V5H-9Z M-10 15H10M-10 25H10" fill="none" stroke="#fff" stroke-width="4"/><text y="70" fill="#fff" font-size="18" font-weight="800">HUB TUGAS</text><text y="93" fill="#bbb" font-size="13">Tugas &amp; kehadiran</text></g>
+      <g transform="translate(475 0)"><path d="M-23 5H23L17 29H-17Z M-12 30L-18 44M12 30L18 44" fill="none" stroke="#fff" stroke-width="4"/><text y="70" fill="#fff" font-size="18" font-weight="800">GRAND PRIX</text><text y="93" fill="#bbb" font-size="13">Riwayat akademik</text></g>
+      <g transform="translate(650 0)"><circle cy="12" r="10" fill="none" stroke="#fff" stroke-width="4"/><circle cx="-22" cy="21" r="8" fill="none" stroke="#fff" stroke-width="3"/><circle cx="22" cy="21" r="8" fill="none" stroke="#fff" stroke-width="3"/><text y="70" fill="#fff" font-size="18" font-weight="800">CONSTRUCTOR</text><text y="93" fill="#bbb" font-size="13">Bangun tim</text></g>
+      <g transform="translate(825 0)"><rect x="-25" y="0" width="50" height="39" rx="3" fill="none" stroke="#fff" stroke-width="4"/><path d="M-19 30L-4 14L7 24L15 17L23 30" fill="none" stroke="#fff" stroke-width="3"/><text y="70" fill="#fff" font-size="18" font-weight="800">CLASS ARCHIVE</text><text y="93" fill="#bbb" font-size="13">Dokumentasi kelas</text></g>
+      <g transform="translate(1000 0)"><path d="M-20 0H20V30H-20Z M-12 10H12M-12 18H8" fill="none" stroke="#fff" stroke-width="4"/><text y="70" fill="#fff" font-size="18" font-weight="800">SUPER LICENSE</text><text y="93" fill="#bbb" font-size="13">Sertifikat &amp; prestasi</text></g>
+    </g>
+  </g>
+  <path d="M0 594H1200V630H0Z" fill="#070809"/>
+  <path d="M0 590H1200" stroke="#ed0710" stroke-width="6"/>
+  <text x="68" y="619" fill="#fff" font-family="Arial,sans-serif" font-size="18" font-style="italic" font-weight="800" letter-spacing="7">FORMULA 1 ELSE3 — GRID KELAS</text>
+  <path d="M820 594H1200V630H820Z" fill="url(#red)"/>
+  <text x="1010" y="620" fill="#fff" font-family="Arial,sans-serif" font-size="21" font-style="italic" font-weight="900" text-anchor="middle" letter-spacing="2">JOIN THE GRID NOW!</text>
 </svg>
