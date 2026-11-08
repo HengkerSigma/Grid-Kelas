@@ -1258,3 +1258,11 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .mode-preview{background:var(--surface-2);color:var(--fg);border:1px solid var(--line);padding:8px 12px;font-size:.82rem}
 .mode-preview:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 @media(max-width:600px){.mode-preview{padding:7px 9px;font-size:.7rem;white-space:normal;max-width:112px;line-height:1.15}}
+
+
+/* Hub Tugas: count attention when there are unfinished tasks */
+.hub-pending-label{font-size:.72rem;font-weight:800;letter-spacing:.01em;color:var(--warn);white-space:nowrap;text-align:right}
+.hub-pending-count{font-variant-numeric:tabular-nums;font-weight:800;color:var(--text)}
+.hub-pending-count.is-blinking{color:var(--warn);animation:hubTaskCountBlink 1.15s ease-in-out infinite}
+@keyframes hubTaskCountBlink{0%,100%{opacity:1}50%{opacity:.22}}
+@media(prefers-reduced-motion:reduce){.hub-pending-count.is-blinking{animation:none;opacity:1}}
