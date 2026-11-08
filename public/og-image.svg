@@ -1,9 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Grid-Kelas F logo">
-  <rect width="1200" height="630" fill="#fff"/>
-  <g fill="#e10600" transform="translate(168 134) scale(13.2)">
-    <path d="M14 0H64L59 9H9Z"/>
-    <path d="M8 11H52L47 20H3Z"/>
-    <path d="M0 22H28L24 30H0Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Formula 1 ELSE3 — Grid Kelas</title>
+  <desc id="desc">Portal digital mahasiswa dengan identitas motorsport. More Than a Class, It's a Racing Team.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#08090c"/><stop offset=".58" stop-color="#17191e"/><stop offset="1" stop-color="#050608"/></linearGradient>
+    <linearGradient id="red" x2="1"><stop stop-color="#8d0000"/><stop offset=".52" stop-color="#ed1018"/><stop offset="1" stop-color="#ff4b43"/></linearGradient>
+    <linearGradient id="metal" x2="0" y2="1"><stop stop-color="#f8f8f8"/><stop offset="1" stop-color="#aeb3bc"/></linearGradient>
+    <pattern id="carbon" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M0 0h12v12H0zm12 12h12v12H12z" fill="#fff" opacity=".025"/></pattern>
+    <pattern id="checks" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M0 0h14v14H0zm14 14h14v14H14z" fill="#fff" opacity=".8"/></pattern>
+    <filter id="glow"><feGaussianBlur stdDeviation="12"/></filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#carbon)"/>
+  <path d="M0 470 420 350 1200 350v280H0Z" fill="#111318"/>
+  <path d="M0 525 500 390h700" fill="none" stroke="#343840" stroke-width="3"/>
+  <path d="M0 552 510 410h690" fill="none" stroke="url(#red)" stroke-width="8"/>
+  <path d="M0 580 510 438h690" fill="none" stroke="#fff" stroke-opacity=".13" stroke-width="2"/>
+  <path d="M0 0h16v630H0z" fill="url(#red)"/>
+  <path d="M34 48h140l-22 9H34zm0 18h104l-18 8H34z" fill="#e10600"/>
+  <g transform="translate(72 90)">
+    <path d="M0 20 38 0h48L48 20H0zm-8 24 38-20h48L40 44H-8z" fill="url(#red)"/>
+    <text x="100" y="35" fill="#f6f7f9" font-family="Arial,sans-serif" font-size="22" font-weight="700" letter-spacing="4">FORMULA 1</text>
+    <text x="98" y="116" fill="url(#metal)" font-family="Arial,sans-serif" font-size="100" font-weight="900" font-style="italic" letter-spacing="-5">ELSE3</text>
+    <path d="M100 136h480" stroke="url(#red)" stroke-width="6"/>
+    <text x="102" y="174" fill="#d7d9df" font-family="Arial,sans-serif" font-size="28" font-weight="700" letter-spacing="10">GRID KELAS</text>
+    <text x="102" y="220" fill="#bfc3cc" font-family="Arial,sans-serif" font-size="22" font-style="italic">More Than a Class, It's a <tspan fill="#ff3434" font-weight="700">Racing Team.</tspan></text>
   </g>
+  <g transform="translate(760 95)" opacity=".95">
+    <path d="M0 70h330" stroke="#e10600" stroke-width="3" opacity=".6"/>
+    <path d="M55 58h270l-24 12H30z" fill="#e10600" opacity=".18"/>
+    <path d="M90 40h210" stroke="#fff" stroke-opacity=".12" stroke-width="2"/>
+    <path d="M240 0h24v24h-24zm24 24h24v24h-24zm24-24h24v24h-24zm24 24h24v24h-24z" fill="#fff" opacity=".8"/>
+    <path d="M264 0h24v24h-24zm24 24h24v24h-24z" fill="#e10600"/>
+  </g>
+  <!-- Stylized single-seater silhouette -->
+  <g transform="translate(52 350)">
+    <ellipse cx="285" cy="190" rx="255" ry="26" fill="#e10600" opacity=".22" filter="url(#glow)"/>
+    <path d="M36 132h66l48-28 72-10 42-42h92l38 28 86 12 30 40h44v24H36z" fill="#111318" stroke="#737983" stroke-width="3"/>
+    <path d="M205 94 260 47h76l42 46-56 9h-92z" fill="#e10600"/>
+    <path d="M260 47h76l24 26h-96z" fill="#20242b"/>
+    <path d="M145 105h270l45 22H110z" fill="url(#red)"/>
+    <path d="M72 132h430" stroke="#f2f3f5" stroke-width="5"/>
+    <path d="M36 132h90l-22 14H36zm402 0h100l16 14H438z" fill="#e10600"/>
+    <circle cx="150" cy="154" r="42" fill="#08090b" stroke="#555b65" stroke-width="7"/>
+    <circle cx="150" cy="154" r="18" fill="#242932"/>
+    <circle cx="414" cy="154" r="42" fill="#08090b" stroke="#555b65" stroke-width="7"/>
+    <circle cx="414" cy="154" r="18" fill="#242932"/>
+    <path d="M238 97h105" stroke="#fff" stroke-opacity=".6" stroke-width="3"/>
+    <path d="M52 122h50m350 0h45" stroke="#ff4545" stroke-width="4"/>
+  </g>
+  <!-- Feature strip -->
+  <g transform="translate(610 405)" font-family="Arial,sans-serif" text-anchor="middle">
+    <g fill="#111419" stroke="#454a54" stroke-width="1.5">
+      <rect x="0" y="0" width="145" height="112" rx="9"/><rect x="155" y="0" width="145" height="112" rx="9"/>
+      <rect x="310" y="0" width="145" height="112" rx="9"/><rect x="465" y="0" width="145" height="112" rx="9"/>
+      <rect x="620" y="0" width="145" height="112" rx="9"/>
+    </g>
+    <g fill="none" stroke="#e10600" stroke-width="3"><path d="M10 2h125M165 2h125M320 2h125M475 2h125M630 2h125"/></g>
+    <g fill="#f5f6f8" font-size="17" font-weight="700">
+      <text x="72" y="48">LINE-UP</text><text x="227" y="48">HUB TUGAS</text><text x="382" y="42">GRAND PRIX</text><text x="382" y="63">&amp; HISTORY</text><text x="537" y="48">CONSTRUCTOR</text><text x="692" y="48">CLASS ARCHIVE</text>
+    </g>
+    <g fill="#e10600" font-size="24" font-weight="900">
+      <text x="72" y="83">01</text><text x="227" y="83">02</text><text x="382" y="83">03</text><text x="537" y="83">04</text><text x="692" y="83">05</text>
+    </g>
+  </g>
+  <path d="M0 608h1200v22H0z" fill="url(#red)"/>
+  <path d="M1035 0h165v165z" fill="url(#checks)" opacity=".14"/>
 </svg>
