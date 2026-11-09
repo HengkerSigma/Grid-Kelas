@@ -2402,7 +2402,7 @@ document.addEventListener('click',async e=>{
        if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal pertemuan tidak valid.');break;}
        const endDate=String($('attendance-session-end-date')&&$('attendance-session-end-date').value||'').trim();
        if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal mulai tidak valid.');break;}
-       if(endDate&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate)){toast('Tanggal berakhir tidak valid.');break;}
+       if(endDate&&!/^\d{4}-\d{2}-\d{2}$/.test(endDate)){toast('Tanggal berakhir tidak valid.');break;}
        if(endDate&&(!date||endDate<date)){toast('Tanggal berakhir harus sama atau setelah tanggal mulai.');break;}
        const ok=await run(()=>writeSession(k,n,{tanggal:date,tanggalAkhir:endDate}),'Periode absensi disimpan');
        if(ok){S.se[id]=Object.assign({},S.se[id],{tanggal:date,tanggalAkhir:endDate});renderAdmin(true);refreshAll();}
