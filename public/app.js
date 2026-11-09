@@ -1378,20 +1378,18 @@ function buildWhatsAppTemplate(){
   const includeAttendance=category==='attendance'||(combine&&category==='tasks');
   let taskCount=0,attendanceCount=0,seminarCount=0;
   if(includeTasks){
-    const rows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.task_title&&(!selected||selected.includes(x.course_code))).sort((a,b)=>String(a.deadline||'9999').localeCompare(String(b.deadline||'9999')));
+    const rows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.task_title&&(!selected||selected.includes(x.course_code))).sort((a,b)=>String(a.deadline||'9999').localeCompare(String(b.deadline||'9999'))||a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
     taskCount=rows.length;
     lines.push('\u{1F3C1} *PEMBARUAN TUGAS*');
-    if(rows.length===1){
-      const x=rows[0];
-      lines.push('\u{1F4DA} Mata kuliah: *'+cname(x.course_code)+'*','\u{1F4DD} Tugas: *'+x.task_title+'*');
-      if(x.meeting_number)lines.push('\u{1F522} Pertemuan: *'+x.meeting_number+'*');
-      if(x.deadline)lines.push('\u{1F4C5} Tenggat: *'+fmtDate(x.deadline)+'*');
-    }else if(rows.length>1){
-      lines.push('Ada beberapa tugas baru yang perlu kamu perhatikan!','');
-      rows.forEach(x=>{
-        lines.push('\u{1F4DA} *'+cname(x.course_code)+'*','• *'+x.task_title+'*');
-        if(x.meeting_number)lines.push('  Pertemuan: *'+x.meeting_number+'*');
-        if(x.deadline)lines.push('  Tenggat: *'+fmtDate(x.deadline)+'*');
+    if(rows.length){
+      const groups={};
+      rows.forEach(x=>{const key=x.deadline||'none';(groups[key]||(groups[key]=[])).push(x);});
+      Object.keys(groups).sort((a,b)=>a.localeCompare(b)).forEach(deadline=>{
+        lines.push(deadline==='none'?'\u{1F4C5} *Tanpa tenggat*':'\u{1F4C5} *Tenggat: '+fmtDate(deadline)+'*');
+        groups[deadline].forEach(x=>{
+          lines.push('\u{1F4DA} *'+cname(x.course_code)+'* · '+(x.meeting_number?'Pertemuan *'+x.meeting_number+'*':'Tugas'), '• *'+x.task_title+'*');
+        });
+        lines.push('');
       });
     }else lines.push('Belum ada pembaruan tugas untuk pilihan ini.');
     lines.push('');
@@ -1404,16 +1402,15 @@ function buildWhatsAppTemplate(){
       const activeOnDate=start?date>=start&&date<=end:scheduleAttendanceState(courseData,n)==='open';
       if(!activeOnDate)return false;
       return !isPlatformCourse(courseData)||!!platOf(k,n);
-    }).map(se=>({course:se.k,meeting:Number(se.n),url:platOf(se.k,Number(se.n))}))
+    }).map(se=>({course:se.k,meeting:Number(se.n),start:se.tanggal||date,end:se.tanggalAkhir||se.tanggal||date}))
       .sort((a,b)=>a.course.localeCompare(b.course)||a.meeting-b.meeting);
     attendanceCount=rows.length;
     lines.push('\u{1F6A6} *ABSEN DIBUKA*');
     if(rows.length){
-      rows.forEach(x=>{
-        lines.push('\u{1F4DA} *'+cname(x.course)+'* · Pertemuan *'+x.meeting+'*');
-        lines.push('  Silakan isi absensi melalui Grid-Kelas.');
-      });
-      lines.push('\u{1F4C5} Jadwal: *'+fmtDate(date)+'*');
+      rows.forEach(x=>lines.push('\u{1F4DA} *'+cname(x.course)+'* · Pertemuan *'+x.meeting+'*'));
+      const starts=rows.map(x=>x.start).filter(Boolean).sort(),ends=rows.map(x=>x.end).filter(Boolean).sort();
+      const periodStart=starts[0]||date,periodEnd=ends[ends.length-1]||periodStart;
+      lines.push('\u{1F4C5} Periode: *'+fmtDate(periodStart)+(periodEnd!==periodStart?' – '+fmtDate(periodEnd):'')+'*');
     }else lines.push('Belum ada sesi absensi aktif untuk pilihan ini pada tanggal tersebut.');
     lines.push('');
   }
@@ -1425,12 +1422,13 @@ function buildWhatsAppTemplate(){
     else lines.push('Belum ada seminar pada tanggal yang dipilih.');
     lines.push('');
   }
-  let cta='Periksa pembaruan terbaru di Grid-Kelas agar tidak ada informasi penting yang terlewat.';
-  if(taskCount&&attendanceCount)cta='Periksa tugas yang diperbarui dan segera selesaikan absensimu!';
-  else if(taskCount)cta=taskCount===1?'Segera periksa instruksi dan selesaikan tugasmu sebelum tenggat berakhir!':'Atur strategi pengerjaanmu dan pastikan tidak ada tenggat yang terlewat!';
-  else if(attendanceCount)cta='Segera buka forum dan selesaikan absensimu sesuai jadwal!';
-  else if(seminarCount)cta='Lihat informasi seminar dan manfaatkan kesempatan untuk mendaftar!';
-  lines.push('\u{1F3CE}\u{FE0F} '+cta,'','\u{1F449} *BUKA GRID-KELAS*',location.origin);
+  if(category!=='attendance'||(combine&&category==='attendance'&&taskCount)){
+    let cta='Periksa pembaruan terbaru di Grid-Kelas agar tidak ada informasi penting yang terlewat.';
+    if(taskCount&&attendanceCount)cta='Periksa tugas yang diperbarui dan selesaikan absensimu sesuai periode!';
+    else if(taskCount)cta=taskCount===1?'Segera periksa instruksi dan selesaikan tugasmu sebelum tenggat berakhir!':'Atur strategi pengerjaanmu dan pastikan tidak ada tenggat yang terlewat!';
+    else if(seminarCount)cta='Lihat informasi seminar dan manfaatkan kesempatan untuk mendaftar!';
+    lines.push('\u{1F3CE}\u{FE0F} '+cta,'','\u{1F449} *BUKA GRID-KELAS*',location.origin);
+  }
   return lines.join('\n').trim();
 }
 function renderAdmin(force=false){
