@@ -4,10 +4,10 @@
  * Pure helpers extracted from the legacy app.js IIFE.
  * Keep this file dependency-free: no DOM, app state, storage, or network access.
  *
- * Integration note:
- * app.js remains the runtime entry point for this phase. The legacy PAD/esc
- * declarations are intentionally left untouched until a separate, explicitly
- * tested bridge is introduced; this avoids changing script order or scope here.
+ * Browser integration:
+ * index.html loads this classic script before public/app.js. The app keeps its
+ * existing local PAD/esc names as aliases to these exported helpers, preserving
+ * its current call sites and IIFE scope.
  */
 
 /**

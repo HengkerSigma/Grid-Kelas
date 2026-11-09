@@ -2,9 +2,10 @@
 'use strict';
 const N=32,PERT=16,LBL={H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa',K:'Kelas Berjalan'};
 const $=id=>document.getElementById(id);
-const PAD=n=>String(n).padStart(2,'0');
-const ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
-const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>ESC[c]);
+const coreUtils=window.GridKelasCoreUtils;
+if(!coreUtils)throw new Error('GridKelasCoreUtils belum dimuat. Periksa urutan script di index.html.');
+const PAD=coreUtils.pad2;
+const esc=coreUtils.escapeHtml;
 const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/(?:[0-9a-f]{32}|s\d{2})(?:\?v=\d+)?$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
