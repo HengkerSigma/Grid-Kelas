@@ -1411,8 +1411,7 @@ function buildWhatsAppTemplate(){
     if(rows.length){
       rows.forEach(x=>{
         lines.push('\u{1F4DA} *'+cname(x.course)+'* · Pertemuan *'+x.meeting+'*');
-        if(x.url)lines.push('  Link: '+x.url);
-        else lines.push('  Isi absensi melalui Grid-Kelas');
+        lines.push('  Silakan isi absensi melalui Grid-Kelas.');
       });
       lines.push('\u{1F4C5} Jadwal: *'+fmtDate(date)+'*');
     }else lines.push('Belum ada sesi absensi aktif untuk pilihan ini pada tanggal tersebut.');
