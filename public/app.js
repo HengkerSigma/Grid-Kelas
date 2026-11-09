@@ -1371,7 +1371,7 @@ function teamRadioPanel(anns){
 
 function buildWhatsAppTemplate(){
   const category=($('wa-category')||{}).value||'tasks',course=($('wa-course')||{}).value||'all';
-  const meeting=Number(($('wa-meeting')||{}).value)||1,date=($('wa-date')||{}).value||today();
+  const date=($('wa-date')||{}).value||today();
   const combine=!!(($('wa-combine')||{}).checked),selected=course==='all'?null:[course];
   const lines=['\u{1F4FB} *01ELSE003 | Team Radio*',''];
   const includeTasks=category==='tasks'||(combine&&category==='attendance');
@@ -1397,18 +1397,25 @@ function buildWhatsAppTemplate(){
     lines.push('');
   }
   if(includeAttendance){
-    const rows=[];(selected||Object.keys(S.pl)).forEach(k=>{
-      const d=S.pl[k]||{};if(d.enabled===false)return;
-      const url=(d.links||{})[meeting]||((Number(d.meeting_number)===meeting)?d.url:'');
-      if(okHttps(url))rows.push({course:k,url:url});
-    });
+    const rows=Object.keys(S.se||{}).map(id=>S.se[id]).filter(se=>{
+      const k=se&&se.k,n=Number(se&&se.n),courseData=k&&S.co[k];
+      if(!se||!courseData||!Number.isInteger(n)||n<1||n>PERT||(selected&&!selected.includes(k))||se.closed)return false;
+      const start=se.tanggal||'',end=se.tanggalAkhir||start;
+      const activeOnDate=start?date>=start&&date<=end:scheduleAttendanceState(courseData,n)==='open';
+      if(!activeOnDate)return false;
+      return !isPlatformCourse(courseData)||!!platOf(k,n);
+    }).map(se=>({course:se.k,meeting:Number(se.n),url:platOf(se.k,Number(se.n))}))
+      .sort((a,b)=>a.course.localeCompare(b.course)||a.meeting-b.meeting);
     attendanceCount=rows.length;
     lines.push('\u{1F6A6} *ABSEN DIBUKA*');
-    if(rows.length===1){
-      lines.push('\u{1F4DA} Mata kuliah: *'+cname(rows[0].course)+'*','\u{1F522} Pertemuan: *'+meeting+'*','\u{1F4C5} Jadwal: *'+fmtDate(date)+'*');
-    }else if(rows.length>1){
-      rows.forEach(x=>lines.push('\u{1F4DA} *'+cname(x.course)+'* · Pertemuan *'+meeting+'*'));
-    }else lines.push('Belum ada tautan absensi untuk pilihan ini.');
+    if(rows.length){
+      rows.forEach(x=>{
+        lines.push('\u{1F4DA} *'+cname(x.course)+'* · Pertemuan *'+x.meeting+'*');
+        if(x.url)lines.push('  Link: '+x.url);
+        else lines.push('  Isi absensi melalui Grid-Kelas');
+      });
+      lines.push('\u{1F4C5} Jadwal: *'+fmtDate(date)+'*');
+    }else lines.push('Belum ada sesi absensi aktif untuk pilihan ini pada tanggal tersebut.');
     lines.push('');
   }
   if(category==='seminar'){
@@ -1530,7 +1537,7 @@ function renderAdmin(force=false){
   h+='<div class="panel whatsapp-notification-panel"><h3 class="ph3">Bagikan pembaruan ke WhatsApp</h3><p class="s">Susun pesan dari data Grid-Kelas, edit pratinjau, lalu buka WhatsApp untuk memilih grup kelas.</p>'+
     '<div class="cu-form"><div class="field"><label for="wa-category">Jenis pesan</label><select id="wa-category"><option value="tasks">Tugas</option><option value="attendance">Absensi</option><option value="seminar">Seminar</option></select></div>'+
     '<div class="field"><label for="wa-course">Mata kuliah</label><select id="wa-course"><option value="all">Semua mata kuliah</option>'+cl.map(c=>'<option value="'+esc(c.k)+'">'+esc(c.nama)+'</option>').join('')+'</select></div>'+
-    '<div class="field"><label for="wa-meeting">Pertemuan absensi</label><select id="wa-meeting">'+Array.from({length:PERT},(_,i)=>'<option value="'+(i+1)+'">Pertemuan '+(i+1)+'</option>').join('')+'</select></div>'+
+    '<p class="s">Nomor pertemuan absensi diambil otomatis dari sesi masing-masing mata kuliah yang aktif pada tanggal pilihan.</p>'+
     '<div class="field"><label for="wa-date">Tanggal pembaruan</label><input id="wa-date" type="date" value="'+today()+'"></div>'+
     '<label class="notification-combine"><input type="checkbox" id="wa-combine"> Gabungkan pembaruan tugas dan absensi dalam satu pesan</label>'+
     '<div class="field" style="grid-column:1/-1"><label for="wa-preview">Template pesan (bisa diedit)</label><textarea id="wa-preview" data-dr="wa-preview" rows="10" maxlength="5000">'+esc(buildWhatsAppTemplate())+'</textarea></div>'+
@@ -3083,7 +3090,7 @@ document.addEventListener('change',async e=>{
     return;
   }
   if(t.id==='ser-jenis'){renderExhibition();return;}
-  if(['wa-category','wa-course','wa-meeting','wa-date','wa-combine'].includes(t.id)){const p=$('wa-preview');if(p){p.value=buildWhatsAppTemplate();DR['wa-preview']=p.value;}return;}
+  if(['wa-category','wa-course','wa-date','wa-combine'].includes(t.id)){const p=$('wa-preview');if(p){p.value=buildWhatsAppTemplate();DR['wa-preview']=p.value;}return;}
   if(t.id==='f-tipe'){
     const p=t.value==='platform';
     $('f-ruang-l').textContent=p?'Nama platform':'Nama ruangan';
