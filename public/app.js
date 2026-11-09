@@ -3019,6 +3019,18 @@ document.addEventListener('click',async e=>{
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;});
 document.addEventListener('change',async e=>{
   const t=e.target;
+  // Keep the attendance course/meeting state in sync with the visible selectors.
+  // Otherwise the create-session button can retain a stale course key until "Muat tautan pilihan" is clicked.
+  if(adm()&&ADMIN_NOTIFY_TAB==='attendance'&&['notify-platform-course','notify-platform-meeting'].includes(t.id)){
+    const course=$('notify-platform-course'),meeting=$('notify-platform-meeting');
+    if(course&&meeting){
+      PLATFORM_FORM_COURSE=course.value;
+      PLATFORM_FORM_MEETING=Number(meeting.value)||1;
+      ATTENDANCE_SESSION_DELETE=null;
+      renderAdmin(true);
+    }
+    return;
+  }
   if(t.matches&&t.matches('select[data-export-scope]')){
     const range=dlg&&dlg.querySelector('[data-export-range="'+t.dataset.exportScope+'"]');
     if(range){range.hidden=t.value!=='range';range.style.display=t.value==='range'?'flex':'none';}
