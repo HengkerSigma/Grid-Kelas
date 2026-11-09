@@ -2401,7 +2401,7 @@ document.addEventListener('click',async e=>{
        if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){toast('Sesi absensi tidak ditemukan.');break;}
        if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal pertemuan tidak valid.');break;}
        const endDate=String($('attendance-session-end-date')&&$('attendance-session-end-date').value||'').trim();
-       if(date&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){toast('Tanggal mulai tidak valid.');break;}
+       if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal mulai tidak valid.');break;}
        if(endDate&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate)){toast('Tanggal berakhir tidak valid.');break;}
        if(endDate&&(!date||endDate<date)){toast('Tanggal berakhir harus sama atau setelah tanggal mulai.');break;}
        const ok=await run(()=>writeSession(k,n,{tanggal:date,tanggalAkhir:endDate}),'Periode absensi disimpan');
@@ -2561,7 +2561,7 @@ document.addEventListener('click',async e=>{
     case 'manager-forum-student':{
       if(!adm())break;
       const k=d.k,n=Number(d.n),student=Number(d.student),id=k+'_'+PAD(n),course=S.co[k],session=S.se[id]||{};
-      if(!course||!isPlatformCourse(course)||n<1||n>PERT||!inSession(course)||!platOf(k,n)||!Number.isInteger(student)||student<1||student>N||!['done','not-done'].includes(d.status)){
+      if(!course||!isPlatformCourse(course)||n<1||n>PERT||scheduleAttendanceState(course,n)!=='open'||!platOf(k,n)||!Number.isInteger(student)||student<1||student>N||!['done','not-done'].includes(d.status)){
         toast('Konfirmasi forum tidak tersedia atau sesi sudah berubah.');break;
       }
       const present=Object.assign({},session.present||{});
@@ -3127,6 +3127,7 @@ document.addEventListener('change',async e=>{
     const f=t.files&&t.files[0],kind=t.dataset.file,tid=t.dataset.id;
     t.value='';
     if(!f||!ME)return;
+    if(kind==='bukti'&&D&&scheduleAttendanceState(S.co[D.key],D.pert)!=='open'){toast('Periode absensi pertemuan ini sudah berakhir atau ditutup.');return;}
     if(kind==='seminar'){
       if(!adm()){toast('Hanya pengelola yang dapat menambahkan poster seminar.');return;}
       if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih poster JPG, PNG, atau WebP.');return;}
