@@ -1518,6 +1518,7 @@ function renderAdmin(force=false){
     const proofEntries=selectedSession&&selectedSession.bukti?Object.values(selectedSession.bukti).filter(x=>x&&x.id).length:0;
     h+='<div class="panel"><h3 class="ph3">Kelola sesi absensi</h3><p class="s">Hapus sesi absensi untuk mata kuliah dan pertemuan yang sedang dipilih. Semua status kehadiran dan bukti pada sesi tersebut akan ikut dihapus.</p>'+
       (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi · '+(selectedSession.closed?'Sesi ditutup':'Sesi terbuka')+'</p>'+
+         '<div class="cu-form"><div class="field"><label for="attendance-session-date">Tanggal pertemuan</label><input id="attendance-session-date" type="date" value="'+esc(selectedSession.tanggal||'')+'"></div><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-date-save" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Simpan tanggal pertemuan</button></div><p class="s">Jika dua pertemuan berlangsung pada hari yang sama, atur tanggal yang sama pada masing-masing sesi.</p></div>'+
         (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Hapus sesi absensi pertemuan '+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi absensi tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>'+(chosenCourse?'<button type="button" class="btn sm pri" data-act="attendance-session-create" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Buat / buka sesi absensi</button>':'') )+'</div>';
     h+=attendancePanel;
   }
@@ -2389,7 +2390,16 @@ document.addEventListener('click',async e=>{
       PLATFORM_FORM_MEETING=Number($('notify-platform-meeting').value)||defaultPert(PLATFORM_FORM_COURSE);
       renderAdmin();break;
     }
-    case 'attendance-session-create':{
+    case 'attendance-session-date-save':{
+       if(!adm())break;
+       const k=d.k,n=Number(d.n),date=String($('attendance-session-date')&&$('attendance-session-date').value||'').trim(),id=k+'_'+PAD(n);
+       if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){toast('Sesi absensi tidak ditemukan.');break;}
+       if(date&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){toast('Tanggal pertemuan tidak valid.');break;}
+       const ok=await run(()=>writeSession(k,n,{tanggal:date}),'Tanggal pertemuan disimpan');
+       if(ok){S.se[id]=Object.assign({},S.se[id],{tanggal:date});renderAdmin(true);refreshAll();}
+       break;
+     }
+     case 'attendance-session-create':{
       if(!adm())break;
       const k=d.k,n=Number(d.n),id=k+'_'+PAD(n);
       if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
