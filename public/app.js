@@ -2394,7 +2394,7 @@ document.addEventListener('click',async e=>{
        if(!adm())break;
        const k=d.k,n=Number(d.n),date=String($('attendance-session-date')&&$('attendance-session-date').value||'').trim(),id=k+'_'+PAD(n);
        if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){toast('Sesi absensi tidak ditemukan.');break;}
-       if(date&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){toast('Tanggal pertemuan tidak valid.');break;}
+       if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal pertemuan tidak valid.');break;}
        const ok=await run(()=>writeSession(k,n,{tanggal:date}),'Tanggal pertemuan disimpan');
        if(ok){S.se[id]=Object.assign({},S.se[id],{tanggal:date});renderAdmin(true);refreshAll();}
        break;
