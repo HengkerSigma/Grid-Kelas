@@ -1517,8 +1517,8 @@ function renderAdmin(force=false){
     const attendanceEntries=selectedSession&&selectedSession.present?Object.values(selectedSession.present).filter(Boolean).length:0;
     const proofEntries=selectedSession&&selectedSession.bukti?Object.values(selectedSession.bukti).filter(x=>x&&x.id).length:0;
     h+='<div class="panel"><h3 class="ph3">Kelola sesi absensi</h3><p class="s">Hapus sesi absensi untuk mata kuliah dan pertemuan yang sedang dipilih. Semua status kehadiran dan bukti pada sesi tersebut akan ikut dihapus.</p>'+
-      (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi · '+(selectedSession.closed?'Sesi ditutup':'Sesi terbuka')+'</p>'+
-         '<div class="cu-form"><div class="field"><label for="attendance-session-date">Tanggal pertemuan</label><input id="attendance-session-date" type="date" value="'+esc(selectedSession.tanggal||'')+'"></div><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-date-save" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Simpan tanggal pertemuan</button></div><p class="s">Jika dua pertemuan berlangsung pada hari yang sama, atur tanggal yang sama pada masing-masing sesi.</p></div>'+
+      (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal)+(selectedSession.tanggalAkhir&&selectedSession.tanggalAkhir!==selectedSession.tanggal?' – '+fmtDate(selectedSession.tanggalAkhir):''):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi · '+(selectedSession.closed?'Sesi ditutup':'Sesi terbuka')+'</p>'+
+         '<div class="cu-form"><div class="field"><label for="attendance-session-date">Tanggal mulai</label><input id="attendance-session-date" type="date" value="'+esc(selectedSession.tanggal||'')+'"></div><div class="field"><label for="attendance-session-end-date">Tanggal berakhir</label><input id="attendance-session-end-date" type="date" min="'+esc(selectedSession.tanggal||'')+'" value="'+esc(selectedSession.tanggalAkhir||selectedSession.tanggal||'')+'"></div><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-date-save" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Simpan periode absensi</button></div><p class="s">Tombol absensi tersedia sejak tanggal mulai sampai tanggal berakhir. Pengelola tetap bisa menutup sesi lebih awal.</p></div>'+
         (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Hapus sesi absensi pertemuan '+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi absensi tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>'+(chosenCourse?'<button type="button" class="btn sm pri" data-act="attendance-session-create" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Buat / buka sesi absensi</button>':'') )+'</div>';
     h+=attendancePanel;
   }
@@ -1836,7 +1836,7 @@ function absenStudent(c,scheduleMode){
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
   const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):attendanceMissingStatus(n,se,true,c.k);
   h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+
-    (se&&Object.keys(se).length&&!se.closed&&isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n)?'<div class="drv"><p class="s"><b>Sudah Mengerjakan Forum Diskusi?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'" data-n="'+n+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'" data-n="'+n+'">Belum</button></div></div>':'')+
+    (se&&Object.keys(se).length&&!se.closed&&isPlatformCourse(c)&&scheduleAttendanceState(c,n)==='open'&&platOf(c.k,n)?'<div class="drv"><p class="s"><b>Sudah Mengerjakan Forum Diskusi?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'" data-n="'+n+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'" data-n="'+n+'">Belum</button></div></div>':'')+
     (bk&&bk.id?'<div><b class="s">Bukti absensi</b>'+fileHtml(bk)+'</div>':'<span class="s">Tidak ada bukti yang dilampirkan pada pertemuan ini.</span>')+'</div>';
   const a=stats(ME).by[c.k]||{h:0,t:0};
   h+='<p class="sum"><span>Hadir '+a.h+' dari '+a.t+' pertemuan terisi</span></p>';
@@ -1852,11 +1852,11 @@ function absenAdmin(c){
   if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!se)h+='<p class="empty"><b>'+esc(attendanceMissingStatus(n,se,false,c.k))+'.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
-  if(ME&&se&&!se.closed&&isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n)){
+  if(ME&&se&&!se.closed&&isPlatformCourse(c)&&scheduleAttendanceState(c,n)==='open'&&platOf(c.k,n)){
     const ownStatus=p[ME]?(LBL[p[ME]]||p[ME]):attendanceMissingStatus(n,se,true,c.k);
     h+='<div class="tcard manager-forum-check"><div><b>Sudah Mengerjakan Forum Diskusi?</b><br><span class="s">Konfirmasi forum diskusi untuk akun pengelola sendiri · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status absensi saya: <b>'+esc(ownStatus)+'</b></span></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div></div>';
   }
-  const canConfirmPlatform=!!(se&&!se.closed&&isPlatformCourse(c)&&inSession(c)&&platOf(c.k,n));
+  const canConfirmPlatform=!!(se&&!se.closed&&isPlatformCourse(c)&&scheduleAttendanceState(c,n)==='open'&&platOf(c.k,n));
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
     const status=p[i]?(LBL[p[i]]||p[i]):attendanceMissingStatus(n,se,false,c.k);
@@ -1870,6 +1870,12 @@ function scheduleAttendanceState(c,meeting,now){
   if(meeting instanceof Date){now=meeting;meeting=defaultPert(c.k);}
   const n=Number(meeting)||defaultPert(c.k),currentSession=S.se[c.k+'_'+PAD(n)];
   if(currentSession&&currentSession.closed)return 'closed';
+  if(currentSession&&currentSession.tanggal){
+    const date=today(),start=currentSession.tanggal,end=currentSession.tanggalAkhir||start;
+    if(date<start)return 'future';
+    if(date>end)return 'expired';
+    return 'open';
+  }
   now=now||new Date();
   if(!onDay(c,jakartaWeekday(now)))return 'future';
   const r=jamRange(c);if(!r)return 'open';
@@ -1878,9 +1884,8 @@ function scheduleAttendanceState(c,meeting,now){
 }
 function scheduleAttendanceMeetings(c){
   const date=today(),matches=Object.values(S.se||{}).filter(se=>{
-    const n=Number(se&&se.n);
-    return se&&se.k===c.k&&Number.isInteger(n)&&n>=1&&n<=PERT&&
-      (se.tanggal===date||(!se.tanggal&&meetingDate(n)===date));
+    const n=Number(se&&se.n),start=se&&(se.tanggal||meetingDate(n)),end=se&&(se.tanggalAkhir||start);
+    return se&&se.k===c.k&&Number.isInteger(n)&&n>=1&&n<=PERT&&start&&date>=start&&date<=end;
   }).map(se=>Number(se.n));
   if(matches.length)return Array.from(new Set(matches)).sort((a,b)=>a-b);
   // Pertahankan perilaku lama untuk sesi yang belum memiliki tanggal eksplisit.
@@ -1914,7 +1919,7 @@ function absenBtn(c){
     if(!session)return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi belum dibuka</button>';
     if(state==='future')return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi belum dibuka</button>';
     if(state==='closed')return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi ditutup pengelola</button>';
-    if(state==='passed')return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi sudah terlewat</button>';
+    if(state==='passed'||state==='expired')return '<button type="button" class="btn sm" disabled>P'+n+' · Periode absensi berakhir</button>';
     if(weekdayPlatform){
       if(!platOf(c.k,n))return '<button type="button" class="btn sm" disabled>P'+n+' · Link absensi belum tersedia</button>';
       return '<button type="button" class="btn sm pri" data-act="platform-attendance-open" data-k="'+esc(c.k)+'" data-n="'+n+'">Isi absen P'+n+' <span aria-hidden="true">&#8599;</span></button>';
@@ -2395,8 +2400,12 @@ document.addEventListener('click',async e=>{
        const k=d.k,n=Number(d.n),date=String($('attendance-session-date')&&$('attendance-session-date').value||'').trim(),id=k+'_'+PAD(n);
        if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){toast('Sesi absensi tidak ditemukan.');break;}
        if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal pertemuan tidak valid.');break;}
-       const ok=await run(()=>writeSession(k,n,{tanggal:date}),'Tanggal pertemuan disimpan');
-       if(ok){S.se[id]=Object.assign({},S.se[id],{tanggal:date});renderAdmin(true);refreshAll();}
+       const endDate=String($('attendance-session-end-date')&&$('attendance-session-end-date').value||'').trim();
+       if(date&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){toast('Tanggal mulai tidak valid.');break;}
+       if(endDate&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate)){toast('Tanggal berakhir tidak valid.');break;}
+       if(endDate&&(!date||endDate<date)){toast('Tanggal berakhir harus sama atau setelah tanggal mulai.');break;}
+       const ok=await run(()=>writeSession(k,n,{tanggal:date,tanggalAkhir:endDate}),'Periode absensi disimpan');
+       if(ok){S.se[id]=Object.assign({},S.se[id],{tanggal:date,tanggalAkhir:endDate});renderAdmin(true);refreshAll();}
        break;
      }
      case 'attendance-session-create':{
@@ -2567,13 +2576,15 @@ document.addEventListener('click',async e=>{
     case 'forum-done':{
       if(!ME)break;
       if(!canWrite){toast('Absensi belum dapat disimpan. Periksa koneksi atau izin akun.');break;}
-      const k=d.k,n=Number(d.n)||(D&&D.pert)||defaultPert(k);await run(()=>saveScheduleAttendance(k,n),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
+      const k=d.k,n=Number(d.n)||(D&&D.pert)||defaultPert(k);
+      if(!S.co[k]||scheduleAttendanceState(S.co[k],n)!=='open'){toast('Periode absensi pertemuan ini sudah berakhir atau ditutup.');break;}
+      await run(()=>saveScheduleAttendance(k,n),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
     case 'forum-not-done':{const n=Number(d.n)||(D&&D.pert)||defaultPert(d.k),u=platOf(d.k,n);if(u)openExternalRedirect(u,'mengerjakan forum diskusi',d.k,n);else toast('Link forum belum diatur.');break;}
     case 'platform-attendance-open':{
       if(!ME||!canWrite)break;
       const k=d.k,n=Number(d.n)||defaultPert(k),u=platOf(k,n);
-      if(!S.co[k]||n<1||n>PERT||!S.se[k+'_'+PAD(n)]){toast('Sesi absensi pertemuan ini tidak tersedia. Muat ulang halaman.');break;}
+      if(!S.co[k]||n<1||n>PERT||!S.se[k+'_'+PAD(n)]||scheduleAttendanceState(S.co[k],n)!=='open'){toast('Sesi absensi pertemuan ini tidak tersedia atau periodenya berakhir.');break;}
       if(u)openD('course',k,'absen',n);else toast('Link absensi Mentari belum diatur.');
       break;
     }
@@ -2670,7 +2681,7 @@ document.addEventListener('click',async e=>{
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
-      if(D.kind==='attendance'&&(!ME||scheduleAttendanceState(S.co[D.key])!=='open'||(S.se[D.key+'_'+PAD(D.pert)]&&S.se[D.key+'_'+PAD(D.pert)].closed))){toast('Waktu pengisian absensi sudah ditutup.');break;}
+      if(D.kind==='attendance'&&(!ME||scheduleAttendanceState(S.co[D.key],D.pert)!=='open')){toast('Waktu pengisian absensi sudah ditutup.');break;}
       const no=+d.no,c=D.key,session=S.se[c+'_'+PAD(D.pert)]||{},cur=(session.present||{})[no]||'';
       if(!adm()&&no!==ME)break;
       if(d.st==='K'&&!(session.bukti&&session.bukti[no]&&session.bukti[no].id)){alert('Berkas bukti belum dikirim. Silakan unggah foto atau PDF bukti absensi terlebih dahulu sebelum memilih status Kelas Berjalan.');break;}
