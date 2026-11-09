@@ -1517,8 +1517,8 @@ function renderAdmin(force=false){
     const attendanceEntries=selectedSession&&selectedSession.present?Object.values(selectedSession.present).filter(Boolean).length:0;
     const proofEntries=selectedSession&&selectedSession.bukti?Object.values(selectedSession.bukti).filter(x=>x&&x.id).length:0;
     h+='<div class="panel"><h3 class="ph3">Kelola sesi absensi</h3><p class="s">Hapus sesi absensi untuk mata kuliah dan pertemuan yang sedang dipilih. Semua status kehadiran dan bukti pada sesi tersebut akan ikut dihapus.</p>'+
-      (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi</p>'+
-        (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Hapus sesi absensi pertemuan '+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi absensi tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>')+'</div>';
+      (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi · '+(selectedSession.closed?'Sesi ditutup':'Sesi terbuka')+'</p>'+
+        (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Hapus sesi absensi pertemuan '+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi absensi tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>'+(chosenCourse?'<button type="button" class="btn sm pri" data-act="attendance-session-create" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Buat / buka sesi absensi</button>':'') )+'</div>';
     h+=attendancePanel;
   }
   if(ADMIN_NOTIFY_TAB==='seminar'){
@@ -2371,6 +2371,21 @@ document.addEventListener('click',async e=>{
       PLATFORM_FORM_COURSE=$('notify-platform-course').value;
       PLATFORM_FORM_MEETING=Number($('notify-platform-meeting').value)||defaultPert(PLATFORM_FORM_COURSE);
       renderAdmin();break;
+    }
+    case 'attendance-session-create':{
+      if(!adm())break;
+      const k=d.k,n=Number(d.n),id=k+'_'+PAD(n);
+      if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
+      if(S.se[id]){toast('Sesi absensi sudah tersedia.');PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;renderAdmin(true);break;}
+      const ok=await run(async()=>{
+        await db.doc('sessions/'+id).set({k:k,n:n,tanggal:'',topik:'',present:{},bukti:{},closed:false,createdAt:Date.now()});
+      },'Sesi absensi '+(S.co[k].nama||k)+' pertemuan '+n+' berhasil dibuat dan dibuka');
+      if(ok){
+        S.se[id]={k:k,n:n,tanggal:'',topik:'',present:{},bukti:{},closed:false};
+        PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;ATTENDANCE_SESSION_DELETE=null;
+        refreshAll();renderAdmin(true);
+      }
+      break;
     }
     case 'attendance-session-delete':{
       if(!adm())break;
