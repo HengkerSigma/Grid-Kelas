@@ -47,7 +47,7 @@ const SCHEDULE_WEEKDAYS = Object.freeze(['Minggu', 'Senin', 'Selasa', 'Rabu', 'K
 function hariRange(course) {
   let a = String(course.hari || '').trim();
   let b = String(course.hariSampai || '').trim();
-  const match = a.split(/\\s*[-–—]\\s*/);
+  const match = a.split(/\s*[-–—]\s*/);
   if (match.length === 2) {
     a = match[0];
     b = match[1];
@@ -76,7 +76,7 @@ function onDay(course, dayName) {
 
 /** Parse a course time range into minutes since midnight. */
 function jamRange(course) {
-  const match = /(\\d{1,2})\\s*[.:]\\s*(\\d{2})\\s*(?:-|–|—|s\\/d|sd|sampai)\\s*(\\d{1,2})\\s*[.:]\\s*(\\d{2})/i.exec(String(course.jam || ''));
+  const match = /(\d{1,2})\s*[.:]\s*(\d{2})\s*(?:-|–|—|s\/d|sd|sampai)\s*(\d{1,2})\s*[.:]\s*(\d{2})/i.exec(String(course.jam || ''));
   if (!match || +match[1] > 23 || +match[3] > 23 || +match[2] > 59 || +match[4] > 59) return null;
   const start = +match[1] * 60 + +match[2];
   const end = +match[3] * 60 + +match[4];
