@@ -90,7 +90,7 @@ function attendanceMissingStatus(meeting,se,student,courseCode){
  if(attendanceIsPast(n,se,k))return 'Absensi sudah terlewat';
  return student?'Belum mengisi':'Belum diisi';
 }
-const greetingText=(name,birthday)=>greetingUtils.greetingText(name,birthday,jakartaParts());
+const greetingText=(name,birthday)=>greetingUtils.greetingText(esc(name||'Mahasiswa'),birthday,jakartaParts());
 function semesterMeetingNow(){return coreUtils.semesterMeetingNow(today(),SEMESTER_ANCHOR_DATE,SEMESTER_ANCHOR_MEETING,PERT);}
 const meetingPhase=coreUtils.meetingPhase;
 function updateLiveClock(){const el=$('liveClock');if(!el)return;const now=new Date();el.dateTime=now.toISOString();el.textContent=new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now)+' WIB';}
