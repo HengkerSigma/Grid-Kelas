@@ -579,7 +579,7 @@ async function view(p, data, sess) {
     const present = isObj(data.present) ? data.present : {};
     const rec = Object.keys(present).some((k) => !!present[k]);
     if (admin) return Object.assign({}, data, { rec: rec });
-    const out = { k: data.k, n: data.n, tanggal: data.tanggal || '', topik: data.topik || '', rec: rec, closed: data.closed === true, present: {}, bukti: {} };
+    const out = { k: data.k, n: data.n, tanggal: data.tanggal || '', tanggalAkhir: data.tanggalAkhir || '', topik: data.topik || '', rec: rec, closed: data.closed === true, present: {}, bukti: {} };
     if (me) {
       if (present[me]) out.present[me] = present[me];
       if (isObj(data.bukti) && data.bukti[me]) out.bukti[me] = data.bukti[me];
@@ -838,7 +838,7 @@ async function decide(method, p, body, sess, existing) {
     if (admin) {
       if (method === 'PATCH') {
         if (!existing) return ERR_MISSING;
-        const b = Object.assign(clone(existing), pick(body, ['tanggal', 'topik']));
+        const b = Object.assign(clone(existing), pick(body, ['tanggal', 'tanggalAkhir', 'topik']));
         if (typeof body.closed === 'boolean') b.closed = body.closed;
         if (isObj(body.present)) b.present = Object.assign({}, b.present, body.present);
         if (isObj(body.bukti)) b.bukti = Object.assign({}, b.bukti, body.bukti);
