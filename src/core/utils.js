@@ -83,7 +83,49 @@ function jamRange(course) {
   return end > start ? { s: start, e: end } : null;
 }
 
-const coreUtils = Object.freeze({ pad2, escapeHtml, hariRange, hariLabel, onDay, jamRange });
+
+/**
+ * Calculate the calendar date for a semester meeting using an anchor meeting/date.
+ * Date-only arithmetic is performed in UTC to avoid local timezone/DST drift.
+ */
+function meetingDate(anchorDate, anchorMeeting, meetingNumber) {
+  const parts = String(anchorDate).split('-').map(Number);
+  if (parts.length !== 3 || parts.some(value => !Number.isInteger(value))) {
+    throw new TypeError('anchorDate must use YYYY-MM-DD format');
+  }
+  const [year, month, day] = parts;
+  const date = new Date(Date.UTC(year, month - 1, day - (Number(anchorMeeting) - Number(meetingNumber)) * 7));
+  if (Number.isNaN(date.getTime())) throw new TypeError('Invalid semester meeting parameters');
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Determine the current semester meeting from a date-only string.
+ * The result is clamped to the configured semester meeting range.
+ */
+function semesterMeetingNow(currentDate, anchorDate, anchorMeeting, totalMeetings) {
+  const current = String(currentDate).split('-').map(Number);
+  const anchor = String(anchorDate).split('-').map(Number);
+  if (current.length !== 3 || anchor.length !== 3 ||
+      current.concat(anchor).some(value => !Number.isInteger(value))) {
+    throw new TypeError('Dates must use YYYY-MM-DD format');
+  }
+  const currentMs = Date.UTC(current[0], current[1] - 1, current[2]);
+  const anchorMs = Date.UTC(anchor[0], anchor[1] - 1, anchor[2]);
+  const weeks = Math.floor((currentMs - anchorMs) / 604800000);
+  return Math.max(1, Math.min(Number(totalMeetings), Number(anchorMeeting) + weeks));
+}
+
+/** Return the academic phase label for a meeting number. */
+function meetingPhase(meetingNumber) {
+  const number = Number(meetingNumber);
+  return number <= 7 ? 'Pra-UTS' : number === 8 ? 'UTS' : '';
+}
+
+const coreUtils = Object.freeze({
+  pad2, escapeHtml, hariRange, hariLabel, onDay, jamRange,
+  meetingDate, semesterMeetingNow, meetingPhase
+});
 
 if (typeof module === 'object' && module.exports) {
   module.exports = coreUtils;
