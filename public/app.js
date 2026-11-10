@@ -6,6 +6,8 @@ const coreUtils=window.GridKelasCoreUtils;
 if(!coreUtils)throw new Error('GridKelasCoreUtils belum dimuat. Periksa urutan script di index.html.');
 const PAD=coreUtils.pad2;
 const esc=coreUtils.escapeHtml;
+const exportUtils=window.GridKelasExportUtils;
+if(!exportUtils)throw new Error('GridKelasExportUtils belum dimuat. Periksa urutan script di index.html.');
 const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/(?:[0-9a-f]{32}|s\d{2})(?:\?v=\d+)?$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
@@ -1687,18 +1689,18 @@ function buildCourseRecap(segment,format){
     });
   }
   if(!rows.length){toast(scope==='all'?'Belum ada data untuk diekspor.':scope==='range'?'Tidak ada data pada rentang pertemuan yang dipilih.':'Tidak ada data pada pertemuan yang dipilih.');return;}
-  const safe=s=>String(s||'').replace(/[^a-z0-9_-]+/gi,'-').replace(/^-+|-+$/g,'');
+  const safe=exportUtils.sanitizeFilenamePart;
   const scopeFile=scope==='all'?'Seluruh-Pertemuan':scope==='range'?'Pertemuan-'+rangeStart+'-sampai-'+rangeEnd:'Pertemuan-'+scope;
   const filename='Rekap-'+(segment==='absen'?'Absensi':'Pengumpulan-Tugas')+'-'+safe(c.k)+'-'+scopeFile+(personalExport?'-Data-Pribadi':'');
   if(format==='csv'){
-    const csv=[headers].concat(rows).map(row=>row.map(value=>'"'+String(value==null?'':value).replace(/"/g,'""')+'"').join(',')).join('\\r\\n');
+    const csv=exportUtils.serializeCsv([headers].concat(rows));
     const blob=new Blob(['\\ufeff',csv],{type:'text/csv;charset=utf-8;'});
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=filename+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }else if(format==='xlsx'){
     if(!window.XLSX){toast('Pustaka XLSX belum berhasil dimuat. Muat ulang halaman dan coba lagi.');return;}
     const data=[headers].concat(rows),sheet=XLSX.utils.aoa_to_sheet(data);
-    sheet['!cols']=headers.map((h,i)=>({wch:Math.min(38,Math.max(12,...data.slice(0,100).map(r=>String(r[i]||'').length+2)))}));
+    sheet['!cols']=exportUtils.estimateColumnWidths(headers,data);
     const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,sheet,'Rekap');
     XLSX.writeFile(book,filename+'.xlsx');
   }else if(format==='pdf'){
