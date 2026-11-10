@@ -22,28 +22,8 @@ const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';
 const SIL='<svg class="sil" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="34" r="18"/><path d="M12 100c2-27 18-42 38-42s36 15 38 42z"/></svg>';
 const FLAG=(function(){let r='';for(let y=0;y<3;y++)for(let x=0;x<4;x++)if((x+y)%2===0)r+='<rect x="'+(6+x*4)+'" y="'+(3+y*4)+'" width="4" height="4" fill="#111"/>';return '<svg class="flag" viewBox="0 0 24 24" role="img" aria-label="Admin"><title>Admin</title><path d="M4.5 2v20" stroke="#8a8a99" stroke-width="2" stroke-linecap="round"/><rect x="6" y="3" width="16" height="12" fill="#fff" stroke="#8a8a99" stroke-width="1"/>'+r+'</svg>';})();
 const HARI=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
-const HARI_ALL=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']; // urutan Date.getDay()
 // Tugas yang sudah melewati tenggat langsung dipindahkan dari daftar aktif ke History.
-/* Jadwal boleh satu hari atau rentang (Senin–Jumat). Data lama berupa teks "Senin-Jumat" juga dikenali. */
-function hariRange(c){
-  let a=String(c.hari||'').trim(),b=String(c.hariSampai||'').trim();
-  const m=a.split(/\s*[-–—]\s*/);if(m.length===2){a=m[0];b=m[1];}
-  const i=HARI_ALL.indexOf(a),j=b?HARI_ALL.indexOf(b):-1,ok=i>=0&&j>=0&&j!==i;
-  return{a:a,b:ok?b:'',i:i,j:ok?j:-1};
-}
-const hariLabel=c=>{const r=hariRange(c);return r.b?r.a+'–'+r.b:r.a;};
-function onDay(c,dayN){
-  const r=hariRange(c),k=HARI_ALL.indexOf(dayN);
-  if(r.j<0)return r.a===dayN;
-  return r.i<=r.j?(k>=r.i&&k<=r.j):(k>=r.i||k<=r.j);
-}
-/* Jam kuliah ditulis bebas ("08:00-10:30", "08.00 - 10.30 WIB"). Bila tidak terbaca, dianggap berlangsung sepanjang hari jadwal. */
-function jamRange(c){
-  const m=/(\d{1,2})\s*[.:]\s*(\d{2})\s*(?:-|–|—|s\/d|sd|sampai)\s*(\d{1,2})\s*[.:]\s*(\d{2})/i.exec(String(c.jam||''));
-  if(!m||+m[1]>23||+m[3]>23||+m[2]>59||+m[4]>59)return null;
-  const s=+m[1]*60+ +m[2],e=+m[3]*60+ +m[4];
-  return e>s?{s:s,e:e}:null;
-}
+const { hariRange, hariLabel, onDay, jamRange } = coreUtils;
 function inSession(c,now){
   now=now||new Date();
   if(!onDay(c,jakartaWeekday(now)))return false;
