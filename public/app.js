@@ -69,7 +69,7 @@ function jakartaWeekday(date){return new Intl.DateTimeFormat('id-ID',{timeZone:A
 function formatDateTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date(ms));}catch(e){return '';}}
 function fmtDate(s){if(!s)return '';const p=String(s).split('-');if(p.length!==3)return esc(s);try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric'}).format(new Date(Date.UTC(+p[0],+p[1]-1,+p[2],12)));}catch(e){return esc(s);}}
 function fmtTime(ms){try{return new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(ms));}catch(e){return '';}}
-function meetingDate(n){const p=SEMESTER_ANCHOR_DATE.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]-(SEMESTER_ANCHOR_MEETING-Number(n))*7));return d.toISOString().slice(0,10);}
+const meetingDate=n=>coreUtils.meetingDate(SEMESTER_ANCHOR_DATE,SEMESTER_ANCHOR_MEETING,n);
 function attendanceIsPast(meeting,se,courseCode){
  const date=se&&se.tanggal?se.tanggal:meetingDate(meeting);return !!date&&date<today();}
 function attendanceMissingStatus(meeting,se,student,courseCode){
@@ -85,8 +85,8 @@ function attendanceMissingStatus(meeting,se,student,courseCode){
  return student?'Belum mengisi':'Belum diisi';
 }
 function greetingText(name,birthday){const p=jakartaParts(),minutes=Number(p.hour)*60+Number(p.minute),n=esc(name||'Mahasiswa');if(birthday&&/^\d{4}-\d{2}-\d{2}$/.test(birthday)&&birthday.slice(5)===p.month+'-'+p.day)return{title:'Selamat Ulang Tahun, '+n+'! 🎂',subtitle:'Semoga tahun ini penuh pencapaian dan hal baik. Have a great lap!'};if(minutes>=240&&minutes<=600)return{title:'Selamat Pagi, '+n,subtitle:'Semangat menjalani hari!'};if(minutes>=601&&minutes<=899)return{title:'Selamat Siang, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=900&&minutes<=1079)return{title:'Selamat Sore, '+n,subtitle:'Bagaimana hari ini?'};if(minutes>=1080&&minutes<=1319)return{title:'Selamat Malam, '+n,subtitle:'Kerja bagus hari ini, jangan lupa istirahat, ya!'};return{title:'Selamat Malam, '+n,subtitle:'Ini waktunya istirahat!'};}
-function semesterMeetingNow(){const p=today().split('-').map(Number),a=SEMESTER_ANCHOR_DATE.split('-').map(Number),weeks=Math.floor((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(a[0],a[1]-1,a[2]))/604800000);return Math.max(1,Math.min(PERT,SEMESTER_ANCHOR_MEETING+weeks));}
-function meetingPhase(n){return Number(n)<=7?'Pra-UTS':Number(n)===8?'UTS':'';}
+function semesterMeetingNow(){return coreUtils.semesterMeetingNow(today(),SEMESTER_ANCHOR_DATE,SEMESTER_ANCHOR_MEETING,PERT);}
+const meetingPhase=coreUtils.meetingPhase;
 function updateLiveClock(){const el=$('liveClock');if(!el)return;const now=new Date();el.dateTime=now.toISOString();el.textContent=new Intl.DateTimeFormat('id-ID',{timeZone:APP_TZ,weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now)+' WIB';}
 const photo=key=>{const m=S.md[key],src=m&&(m.url||m.data);return src&&((m.url&&/^https:\/\//.test(src))||okImg(src))?'<img src="'+esc(src)+'" alt="">':SIL;};
 const stu=n=>S.st[PAD(n)]||null;
