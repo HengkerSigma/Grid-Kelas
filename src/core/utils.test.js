@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { hariRange, hariLabel, onDay, jamRange } = require('./utils');
+const { hariRange, hariLabel, onDay, jamRange, meetingDate, semesterMeetingNow, meetingPhase } = require('./utils');
 
 test('parses a single weekday', () => {
   assert.deepEqual(hariRange({ hari: 'Senin' }), { a: 'Senin', b: '', i: 1, j: -1 });
@@ -35,4 +35,27 @@ test('rejects invalid or non-increasing time ranges', () => {
 test('parses supported time separators and formats', () => {
   assert.deepEqual(jamRange({ jam: '08.00 - 10.30 WIB' }), { s: 480, e: 630 });
   assert.deepEqual(jamRange({ jam: '08:00 sampai 10:30' }), { s: 480, e: 630 });
+});
+
+
+test('calculates meeting dates before and after the semester anchor', () => {
+  assert.equal(meetingDate('2026-10-31', 9, 1), '2026-03-07');
+  assert.equal(meetingDate('2026-10-31', 9, 8), '2026-10-24');
+  assert.equal(meetingDate('2026-10-31', 9, 9), '2026-10-31');
+  assert.equal(meetingDate('2026-10-31', 9, 10), '2026-11-07');
+});
+
+test('clamps the current meeting to the semester boundaries', () => {
+  assert.equal(semesterMeetingNow('2026-10-30', '2026-10-31', 9, 16), 8);
+  assert.equal(semesterMeetingNow('2026-10-31', '2026-10-31', 9, 16), 9);
+  assert.equal(semesterMeetingNow('2026-11-07', '2026-10-31', 9, 16), 10);
+  assert.equal(semesterMeetingNow('2026-01-01', '2026-10-31', 9, 16), 1);
+  assert.equal(semesterMeetingNow('2027-12-31', '2026-10-31', 9, 16), 16);
+});
+
+test('labels semester phases consistently', () => {
+  assert.equal(meetingPhase(1), 'Pra-UTS');
+  assert.equal(meetingPhase(7), 'Pra-UTS');
+  assert.equal(meetingPhase(8), 'UTS');
+  assert.equal(meetingPhase(9), '');
 });
