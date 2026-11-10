@@ -41,6 +41,7 @@ const MAKRAB_START_AT = Date.UTC(2026, 9, 31, 17, 0, 0, 0);
 const MAKRAB_DEADLINE_AT = Date.UTC(2026, 10, 30, 16, 59, 59, 999);
 const SESSION_MS = 30 * 24 * 3600 * 1000;
 const FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+const activityModel = require('./src/features/courses/activity-model.js');
 const STATIC = {
   '/': ['public/index.html', 'text/html; charset=utf-8'],
   '/index.html': ['public/index.html', 'text/html; charset=utf-8'],
@@ -52,6 +53,7 @@ const STATIC = {
   '/export-utils.js': ['src/core/export-utils.js', 'text/javascript; charset=utf-8'],
   '/file-utils.js': ['src/core/file-utils.js', 'text/javascript; charset=utf-8'],
   '/greeting-utils.js': ['src/core/greeting-utils.js', 'text/javascript; charset=utf-8'],
+  '/activity-model.js': ['src/features/courses/activity-model.js', 'text/javascript; charset=utf-8'],
   '/og-image-v2-32.png': ['public/og-image-v2-32.png', 'image/png']
 };
 const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: " + SUPA_ORIGIN + "; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' " + SUPA_ORIGIN + "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
@@ -582,7 +584,7 @@ async function view(p, data, sess) {
     const present = isObj(data.present) ? data.present : {};
     const rec = Object.keys(present).some((k) => !!present[k]);
     if (admin) return Object.assign({}, data, { rec: rec });
-    const out = { k: data.k, n: data.n, tanggal: data.tanggal || '', tanggalAkhir: data.tanggalAkhir || '', topik: data.topik || '', rec: rec, closed: data.closed === true, present: {}, bukti: {} };
+    const out = { k: data.k, n: data.n, activity_mode: data.activity_mode || null, tanggal: data.tanggal || '', tanggalAkhir: data.tanggalAkhir || '', topik: data.topik || '', rec: rec, closed: data.closed === true, present: {}, bukti: {} };
     if (me) {
       if (present[me]) out.present[me] = present[me];
       if (isObj(data.bukti) && data.bukti[me]) out.bukti[me] = data.bukti[me];
@@ -834,8 +836,12 @@ async function decide(method, p, body, sess, existing) {
   }
   if (root === 'sessions') {
     if (parts.length !== 2) return ERR_FORBID;
-    const m = /^([A-Za-z0-9]{2,8})_(\d\d)$/.exec(id);
-    if (!m || Number(m[2]) < 1 || Number(m[2]) > PERT) return ERR_FORBID;
+    const identity = activityModel.parseAttendanceSessionKey(id);
+    if (!identity || identity.meetingNumber > PERT) return ERR_FORBID;
+    const requestedMode = body && body.activity_mode;
+    if (requestedMode !== undefined && !['online', 'tatap_muka'].includes(requestedMode)) return ERR_BAD('Jenis aktivitas absensi tidak valid.');
+    if (identity.activityMode && requestedMode && identity.activityMode !== requestedMode) return ERR_BAD('Jenis aktivitas tidak cocok dengan identitas sesi.');
+    const activityMode = identity.activityMode || requestedMode || (existing && existing.activity_mode) || '';
     if (method === 'DELETE') return admin ? { del: true } : ERR_FORBID;
     if (method === 'POST') return ERR_FORBID;
     if (admin) {
@@ -848,7 +854,8 @@ async function decide(method, p, body, sess, existing) {
         if (Object.keys(isObj(b.present)?b.present:{}).some((no)=>b.present[no]==='K'&&!(b.bukti&&b.bukti[no]&&b.bukti[no].id))) return ERR_BAD('Kelas Berjalan memerlukan file bukti mahasiswa tersebut.');
         return { data: b };
       }
-      const created = { k: m[1], n: Number(m[2]), tanggal: String(body.tanggal || ''), topik: String(body.topik || '').slice(0, 120), present: isObj(body.present) ? body.present : {}, bukti: isObj(body.bukti) ? body.bukti : {}, closed: body.closed === true };
+      const created = { k: identity.courseCode, n: identity.meetingNumber, tanggal: String(body.tanggal || ''), topik: String(body.topik || '').slice(0, 120), present: isObj(body.present) ? body.present : {}, bukti: isObj(body.bukti) ? body.bukti : {}, closed: body.closed === true };
+        if (activityMode) created.activity_mode = activityMode;
       if (Object.keys(created.present).some((no)=>created.present[no]==='K'&&!(created.bukti[no]&&created.bukti[no].id))) return ERR_BAD('Kelas Berjalan memerlukan file bukti mahasiswa tersebut.');
       return { data: created };
     }
@@ -856,8 +863,9 @@ async function decide(method, p, body, sess, existing) {
     if (method === 'PUT' && existing) return ERR_FORBID;
     if (method === 'PATCH' && !existing) return ERR_MISSING;
     if (existing && existing.closed) return ERR_FORBID;
-    if (!onlyKeys(body, method === 'PUT' ? ['k', 'n', 'tanggal', 'topik', 'present', 'bukti'] : ['present', 'bukti'])) return ERR_FORBID;
-    const out = existing ? clone(existing) : { k: m[1], n: Number(m[2]), tanggal: '', topik: '', present: {}, bukti: {} };
+    if (!onlyKeys(body, method === 'PUT' ? ['k', 'n', 'tanggal', 'topik', 'present', 'bukti', 'activity_mode'] : ['present', 'bukti'])) return ERR_FORBID;
+    const out = existing ? clone(existing) : { k: identity.courseCode, n: identity.meetingNumber, tanggal: '', topik: '', present: {}, bukti: {} };
+    if (activityMode) out.activity_mode = activityMode;
     if (!isObj(out.present)) out.present = {};
     if (!isObj(out.bukti)) out.bukti = {};
     if (body.present !== undefined) {

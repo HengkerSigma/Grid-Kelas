@@ -46,3 +46,11 @@ test('rejects invalid course codes and meeting numbers', () => {
   assert.throws(() => model.attendanceSessionKey('FIS', MODE.ONLINE, 17), RangeError);
   assert.throws(() => model.attendanceSessionKey('FIS', MODE.ONLINE, 1.5), RangeError);
 });
+
+test('parses legacy and namespaced attendance session keys', () => {
+  assert.deepEqual(model.parseAttendanceSessionKey('FIS_14'), { courseCode: 'FIS', activityMode: null, meetingNumber: 14 });
+  assert.deepEqual(model.parseAttendanceSessionKey('FIS_online_01'), { courseCode: 'FIS', activityMode: MODE.ONLINE, meetingNumber: 1 });
+  assert.deepEqual(model.parseAttendanceSessionKey('FIS_tatap_muka_01'), { courseCode: 'FIS', activityMode: MODE.TATAP_MUKA, meetingNumber: 1 });
+  assert.equal(model.parseAttendanceSessionKey('FIS_online_17'), null);
+  assert.equal(model.parseAttendanceSessionKey('FIS_bad_01'), null);
+});
