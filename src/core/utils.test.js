@@ -39,7 +39,7 @@ test('parses supported time separators and formats', () => {
 
 
 test('calculates meeting dates before and after the semester anchor', () => {
-  assert.equal(meetingDate('2026-10-31', 9, 1), '2026-03-07');
+  assert.equal(meetingDate('2026-10-31', 9, 1), '2026-09-05');
   assert.equal(meetingDate('2026-10-31', 9, 8), '2026-10-24');
   assert.equal(meetingDate('2026-10-31', 9, 9), '2026-10-31');
   assert.equal(meetingDate('2026-10-31', 9, 10), '2026-11-07');
