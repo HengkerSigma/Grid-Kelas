@@ -8,6 +8,8 @@ const PAD=coreUtils.pad2;
 const esc=coreUtils.escapeHtml;
 const exportUtils=window.GridKelasExportUtils;
 if(!exportUtils)throw new Error('GridKelasExportUtils belum dimuat. Periksa urutan script di index.html.');
+const fileUtils=window.GridKelasFileUtils;
+if(!fileUtils)throw new Error('GridKelasFileUtils belum dimuat. Periksa urutan script di index.html.');
 const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/(?:[0-9a-f]{32}|s\d{2})(?:\?v=\d+)?$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
@@ -177,29 +179,29 @@ function tugasStat(no){let a=0,b=0;(TOUR_DEMO_ACTIVE?Object.keys(S.tu).map(id=>O
 const pct=(h,t)=>t?Math.round(h/t*100):null;
 function fileHtml(f,sm){
   if(!f||!okId(f.id))return '';
-  const img=/^image\//.test(f.type||''),src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;
+  const img=fileUtils.isImageMime(f.type),src=fileUtils.fileSource(f,okId);
   return '<a class="fl'+(sm?' sm':'')+'" href="'+esc(src)+'" target="_blank" rel="noopener noreferrer">'+(img&&!sm?'<img class="thumb" src="'+esc(src)+'" alt="">':'')+'<span>'+esc(f.name||'Berkas')+'</span></a>';
 }
 function taskImagesHtml(images,taskId){
   if(!Array.isArray(images)||!images.length)return '';
-  return '<div class="task-image-grid" aria-label="Lampiran foto tugas">'+images.map((f,i)=>{if(!f||!okId(f.id))return '';const src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;return '<button type="button" class="task-image-thumb" data-act="task-image-open" data-id="'+esc(taskId)+'" data-index="'+i+'" aria-label="Buka foto '+(i+1)+' dari '+images.length+'"><img src="'+esc(src)+'" alt="'+esc(f.name||('Foto '+(i+1)))+'" loading="lazy"><span>Foto '+(i+1)+'</span></button>';}).join('')+'</div>';
+  return '<div class="task-image-grid" aria-label="Lampiran foto tugas">'+images.map((f,i)=>{if(!f||!okId(f.id))return '';const src=fileUtils.fileSource(f,okId);return '<button type="button" class="task-image-thumb" data-act="task-image-open" data-id="'+esc(taskId)+'" data-index="'+i+'" aria-label="Buka foto '+(i+1)+' dari '+images.length+'"><img src="'+esc(src)+'" alt="'+esc(f.name||('Foto '+(i+1)))+'" loading="lazy"><span>Foto '+(i+1)+'</span></button>';}).join('')+'</div>';
 }
 function courseUpdateTaskPreview(update,id,compact){
   const images=update&&Array.isArray(update.task_attachments)?update.task_attachments.filter(f=>f&&okId(f.id)):[];
   if(!images.length)return '';
-  const f=images[0],src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;
+  const f=images[0],src=fileUtils.fileSource(f,okId);
   return '<button type="button" class="cu-task-photo-link'+(compact?' compact':'')+'" data-act="course-update-image-open" data-id="'+esc(id)+'" data-index="0" aria-label="Lihat foto tugas">'+
     '<img src="'+esc(src)+'" alt="Foto tugas / soal" loading="lazy"><span>Lihat Tugas</span>'+(images.length>1?'<small>+'+(images.length-1)+' foto</small>':'')+'</button>';
 }
 function cuImageEditorHtml(images){
   if(!Array.isArray(images)||!images.length)return '<p class="s">Belum ada foto lampiran.</p>';
-  return '<div class="cu-image-list">'+images.map((f,i)=>{const src=f.url&&/^https:\/\//i.test(f.url)?f.url:'/_blob/'+f.id;return '<div class="cu-image-item"><img src="'+esc(src)+'" alt="'+esc(f.name||('Foto '+(i+1)))+'"><span>'+esc(f.name||('Foto '+(i+1)))+'</span><button type="button" class="btn sm" data-act="cu-image-remove" data-index="'+i+'">Hapus</button></div>';}).join('')+'</div>';
+  return '<div class="cu-image-list">'+images.map((f,i)=>{const src=fileUtils.fileSource(f,okId);return '<div class="cu-image-item"><img src="'+esc(src)+'" alt="'+esc(f.name||('Foto '+(i+1)))+'"><span>'+esc(f.name||('Foto '+(i+1)))+'</span><button type="button" class="btn sm" data-act="cu-image-remove" data-index="'+i+'">Hapus</button></div>';}).join('')+'</div>';
 }
 function openTaskGallery(images,index){
   if(!Array.isArray(images)||!images.length)return;
   let current=Math.max(0,Math.min(images.length-1,Number(index)||0));
   const dialog=document.createElement('dialog');dialog.className='task-gallery-dialog';
-  const source=f=>f&&f.url&&/^https:\/\//i.test(f.url)?f.url:(f&&okId(f.id)?'/_blob/'+f.id:'');
+  const source=f=>fileUtils.fileSource(f,okId);
   const paint=()=>{const f=images[current],src=source(f);dialog.innerHTML='<div class="task-gallery-head"><span>Foto '+(current+1)+' / '+images.length+'</span><button type="button" class="btn sm" data-gallery-close>Tutup</button></div><div class="task-gallery-stage"><button type="button" class="btn sm task-gallery-nav" data-gallery-prev '+(current===0?'disabled':'')+' aria-label="Foto sebelumnya">‹</button><img src="'+esc(src)+'" alt="'+esc(f&&f.name||'Lampiran tugas')+'"><button type="button" class="btn sm task-gallery-nav" data-gallery-next '+(current===images.length-1?'disabled':'')+' aria-label="Foto berikutnya">›</button></div><div class="task-gallery-foot">'+esc(f&&f.name||('Foto '+(current+1)))+' · Gunakan gerakan cubit untuk memperbesar</div>';dialog.querySelector('[data-gallery-close]').addEventListener('click',()=>dialog.close());const prev=dialog.querySelector('[data-gallery-prev]'),next=dialog.querySelector('[data-gallery-next]');if(prev)prev.addEventListener('click',()=>{current--;paint();});if(next)next.addEventListener('click',()=>{current++;paint();});};
   dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});dialog.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'&&current>0){current--;paint();}else if(e.key==='ArrowRight'&&current<images.length-1){current++;paint();}});dialog.addEventListener('close',()=>dialog.remove());document.body.appendChild(dialog);paint();dialog.showModal();
 }
