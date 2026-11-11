@@ -914,6 +914,14 @@ async function decide(method, p, body, sess, existing) {
         out.subs.__meta = Object.assign({}, out.subs.__meta || {}, { closed: body.closed });
         return { data: out };
       }
+      if (onlyKeys(body, ['review'])) {
+        if (!admin || !isObj(body.review) || Object.keys(body.review).length !== 1) return ERR_FORBID;
+        const entry = Object.entries(body.review)[0], no = Number(entry[0]), status = entry[1];
+        if (!Number.isInteger(no) || no < 1 || no > N || !['sudah','belum'].includes(status)) return ERR_BAD('Status pemeriksaan tugas tidak valid.');
+        const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
+        out.subs.__review = Object.assign({}, isObj(out.subs.__review) ? out.subs.__review : {}, { [String(no)]: status });
+        return { data: out };
+      }
       if (onlyKeys(body, ['subs'])) {
         if (existing.closed || (dayDiffWib(existing.tenggat) !== null && dayDiffWib(existing.tenggat) < 0)) return ERR_BAD('Tugas sudah ditutup atau tenggat sudah lewat. Pengumpulan ditutup.');
         const me = String(sess.no);
