@@ -19,16 +19,9 @@ function normalizeActivityMode(value, legacyMode) {
     ? ACTIVITY_MODES.ONLINE
     : ACTIVITY_MODES.TATAP_MUKA;
 }
-
-/**
- * Resolve the meaning of existing, untyped sessions from the course's current
- * delivery configuration. Platform courses historically used online attendance;
- * room courses historically used face-to-face attendance.
- */
 function legacyActivityMode(courseKind) {
   return courseKind === 'platform' ? ACTIVITY_MODES.ONLINE : ACTIVITY_MODES.TATAP_MUKA;
 }
-
 function validateIdentity(courseCode, meetingNumber) {
   const code = String(courseCode || '').trim();
   const meeting = Number(meetingNumber);
@@ -38,15 +31,6 @@ function validateIdentity(courseCode, meetingNumber) {
   }
   return { code, meeting };
 }
-
-/**
- * Build the attendance-session document key.
- *
- * The activity matching the course's historical behavior keeps the existing
- * `${courseCode}_${NN}` key. The additional activity receives a namespaced key,
- * preventing online and face-to-face sessions with the same meeting number from
- * overwriting one another.
- */
 function attendanceSessionKey(courseCode, activityMode, meetingNumber, legacyMode) {
   const identity = validateIdentity(courseCode, meetingNumber);
   const fallback = normalizeActivityMode(legacyMode);
@@ -56,21 +40,22 @@ function attendanceSessionKey(courseCode, activityMode, meetingNumber, legacyMod
     ? identity.code + '_' + suffix
     : identity.code + '_' + mode + '_' + suffix;
 }
-
+/** Parse legacy and namespaced session IDs without guessing their course mode. */
+function parseAttendanceSessionKey(value) {
+  const match = /^([A-Za-z0-9]{2,8})_(?:(online|tatap_muka)_)?(\d{2})$/.exec(String(value || ''));
+  if (!match) return null;
+  const meeting = Number(match[3]);
+  if (meeting < 1 || meeting > MAX_MEETINGS) return null;
+  return { courseCode: match[1], activityMode: match[2] || null, meetingNumber: meeting };
+}
 /** Resolve an old session's activity mode without rewriting stored data. */
 function resolveSessionActivityMode(session, courseKind) {
   const fallback = legacyActivityMode(courseKind);
   return normalizeActivityMode(session && session.activity_mode, fallback);
 }
-
 const activityModel = Object.freeze({
-  ACTIVITY_MODES,
-  MAX_MEETINGS,
-  normalizeActivityMode,
-  legacyActivityMode,
-  attendanceSessionKey,
-  resolveSessionActivityMode
+  ACTIVITY_MODES, MAX_MEETINGS, normalizeActivityMode, legacyActivityMode,
+  attendanceSessionKey, parseAttendanceSessionKey, resolveSessionActivityMode
 });
-
 if (typeof module === 'object' && module.exports) module.exports = activityModel;
 if (typeof window !== 'undefined') window.GridKelasActivityModel = activityModel;
