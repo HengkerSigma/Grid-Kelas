@@ -1996,7 +1996,7 @@ function tugasAdmin(c){
       return '<div class="admin-task-stack">'+managerCard+(ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+groupTaskCard(t,ownGroup,ownSub,!!(ownGroup&&Number(ownGroup.principal)===Number(ME)))+'</div>':'')+'</div>';
     }
     const keys=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).map(Number).sort((a,b)=>a-b);
-    const review=isObj(subs.__review)?subs.__review:{};
+    const review=subs.__review&&typeof subs.__review==='object'&&!Array.isArray(subs.__review)?subs.__review:{};
     const reviewed=Array.from({length:N},(_,i)=>i+1).filter(no=>review[String(no)]==='sudah').length;
     const reviewList='<details class="task-review-manager"><summary>Status pemeriksaan ('+reviewed+'/'+N+' sudah)</summary><ul class="subs task-review-list">'+Array.from({length:N},(_,i)=>i+1).map(no=>{const status=review[String(no)]==='sudah'?'sudah':'belum';return '<li><b>No. '+no+' · '+esc(nameOf(no))+'</b><span class="task-review-actions"><button type="button" class="btn sm'+(status==='sudah'?' pri':'')+'" data-act="task-review-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="sudah" aria-pressed="'+(status==='sudah')+'">Sudah</button><button type="button" class="btn sm'+(status==='belum'?' pri':'')+'" data-act="task-review-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="belum" aria-pressed="'+(status==='belum')+'">Belum</button></span></li>';}).join('')+'</ul></details>';
     const mine=ME&&subs[ME]?subs[ME]:null;
