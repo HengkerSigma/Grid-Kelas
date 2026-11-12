@@ -1206,7 +1206,17 @@ function renderHome(force){
   const td=today(),dayN=jakartaWeekday();
   const tasks=taskList();
   const anns=Object.keys(S.an).map(id=>Object.assign({id:id},S.an[id])).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8);
-  const cl=courseList(),sched=cl.filter(c=>onDay(c,dayN));
+  const cl=courseList(),scheduleByCourse=new Map(cl.filter(c=>onDay(c,dayN)).map(c=>[c.k,c]));
+  // Tambahkan mata kuliah Ruangan yang memiliki sesi Tatap Muka aktif hari ini,
+  // meskipun hari kegiatan tersebut berbeda dari jadwal mingguan regulernya.
+  Object.entries(S.se||{}).forEach(([id,se])=>{
+    if(!se||!se.k||!S.co[se.k]||isPlatformCourse(S.co[se.k]))return;
+    if(attendanceModeForSession(se,id)!=='tatap_muka')return;
+    const n=Number(se.n),start=String(se.tanggal||''),end=String(se.tanggalAkhir||start);
+    if(!Number.isInteger(n)||n<1||n>PERT||!start||td<start||td>end)return;
+    if(!scheduleByCourse.has(se.k))scheduleByCourse.set(se.k,Object.assign({},S.co[se.k],{_attendanceOnly:true,_attendanceMeeting:n}));
+  });
+  const sched=Array.from(scheduleByCourse.values());
   let h='';
   if(ME){
     const st=stats(ME),a=st.tot,p=pct(a.h,a.t),ts=tugasStat(ME),belum=ts.b-ts.a;
@@ -1335,8 +1345,8 @@ function schedPanel(sched,dayN){
     return as-bs;
   });
   let li='';
-  ordered.forEach(c=>{li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang)+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
-  const needsAttendance=!!ME&&sched.some(c=>inSession(c)&&scheduleAttendanceMeetings(c).some(n=>{const se=S.se[c.k+'_'+PAD(n)];return !(se&&se.present&&se.present[ME]);}));
+  ordered.forEach(c=>{const scheduleMeta=c._attendanceOnly?'Tatap muka · Pertemuan '+c._attendanceMeeting+' · '+fmtDate(today()):(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang);li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+scheduleMeta+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
+  const needsAttendance=!!ME&&sched.some(c=>scheduleAttendanceMeetings(c).some(n=>{const se=scheduleAttendanceSession(c,n);return !!se&&(!!se.tanggal||inSession(c))&&!(se.present&&se.present[ME]);}));
   return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah hari ini, selamat bersantai.':'Tidak ada kuliah hari ini.')+'</p>')+'</div>';
 }
 function annPanel(anns){
@@ -1873,9 +1883,13 @@ function absenAdmin(c){
 }
 
 /* Tombol absensi pada jadwal menjadi satu-satunya pintu pengisian absensi. */
+function scheduleAttendanceSession(c,meeting){
+  const n=Number(meeting)||defaultPert(c.k);
+  return S.se[attendanceSessionId(c.k,n,legacyAttendanceMode(c.k))]||null;
+}
 function scheduleAttendanceState(c,meeting,now){
   if(meeting instanceof Date){now=meeting;meeting=defaultPert(c.k);}
-  const n=Number(meeting)||defaultPert(c.k),currentSession=S.se[c.k+'_'+PAD(n)];
+  const n=Number(meeting)||defaultPert(c.k),currentSession=scheduleAttendanceSession(c,n);
   if(currentSession&&currentSession.closed)return 'closed';
   if(currentSession&&currentSession.tanggal){
     const date=today(),start=currentSession.tanggal,end=currentSession.tanggalAkhir||start;
@@ -1890,10 +1904,11 @@ function scheduleAttendanceState(c,meeting,now){
   return t<r.s?'future':t>=r.e?'passed':'open';
 }
 function scheduleAttendanceMeetings(c){
-  const date=today(),matches=Object.values(S.se||{}).filter(se=>{
+  const date=today(),expectedMode=legacyAttendanceMode(c.k),matches=Object.entries(S.se||{}).filter(([id,se])=>{
     const n=Number(se&&se.n),start=se&&(se.tanggal||meetingDate(n)),end=se&&(se.tanggalAkhir||start);
-    return se&&se.k===c.k&&Number.isInteger(n)&&n>=1&&n<=PERT&&start&&date>=start&&date<=end;
-  }).map(se=>Number(se.n));
+    return se&&se.k===c.k&&Number.isInteger(n)&&n>=1&&n<=PERT&&
+      attendanceModeForSession(se,id)===expectedMode&&start&&date>=start&&date<=end;
+  }).map(([,se])=>Number(se.n));
   if(matches.length)return Array.from(new Set(matches)).sort((a,b)=>a-b);
   // Pertahankan perilaku lama untuk sesi yang belum memiliki tanggal eksplisit.
   return [defaultPert(c.k)];
@@ -1921,7 +1936,7 @@ function absenBtn(c){
   if(!ME)return '';
   const range=hariRange(c),weekdayPlatform=!!platConfigOf(c.k)&&range.a==='Senin'&&range.b==='Jumat';
   return scheduleAttendanceMeetings(c).map(n=>{
-    const state=scheduleAttendanceState(c,n),session=S.se[c.k+'_'+PAD(n)],status=session&&session.present&&session.present[ME];
+    const state=scheduleAttendanceState(c,n),session=scheduleAttendanceSession(c,n),status=session&&session.present&&session.present[ME];
     if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
     if(!session)return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi belum dibuka</button>';
     if(state==='future')return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi belum dibuka</button>';
