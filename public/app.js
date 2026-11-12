@@ -1537,7 +1537,8 @@ function renderAdmin(force=false){
     '<button type="button" class="student-subtab" data-act="admin-main-tab" data-tab="students" role="tab" aria-selected="'+(ADMIN_MAIN_TAB==='students')+'">MAHASISWA</button></div><div id="admin-academic"'+(ADMIN_MAIN_TAB==='academic'?'':' hidden')+'><section class="panel notification-center" id="notification-update-center"><div class="notification-center-head"><div><span class="constructor-kicker">TEAM RADIO · ADMIN CONTROL</span><h3 class="ph3">Notification Update Center</h3><p class="s">Pusat pengelolaan pembaruan tugas, tautan absensi, dan seminar. Pengiriman WhatsApp dilakukan manual oleh pengelola.</p></div></div>'+
     '<div class="notification-tabs" role="tablist" aria-label="Jenis pembaruan">'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="tasks" aria-selected="'+(ADMIN_NOTIFY_TAB==='tasks')+'">Tugas &amp; Mata Kuliah</button>'+
-    '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="attendance" aria-selected="'+(ADMIN_NOTIFY_TAB==='attendance')+'">Absensi</button>'+\n     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="recap" aria-selected="'+(ADMIN_NOTIFY_TAB==='recap')+'">Rekap WhatsApp</button>'+
+    '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="attendance" aria-selected="'+(ADMIN_NOTIFY_TAB==='attendance')+'">Absensi</button>'+ 
+     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="recap aria-selected="'+(ADMIN_NOTIFY_TAB==='recap')+'">Rekap WhatsApp</button>'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="seminar" aria-selected="'+(ADMIN_NOTIFY_TAB==='seminar')+'">Seminar</button></div>';
   const anns=Object.keys(S.an).map(id=>Object.assign({id:id},S.an[id])).sort((a,b)=>(b.at||0)-(a.at||0));
   const annEdit=ANN_EDIT&&S.an[ANN_EDIT]?Object.assign({id:ANN_EDIT},S.an[ANN_EDIT]):null;
@@ -1609,7 +1610,8 @@ function renderAdmin(force=false){
         (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Hapus sesi absensi '+attendanceModeLabel(chosenActivity)+' P'+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi '+attendanceModeLabel(chosenActivity).toLowerCase()+' tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>'+(chosenCourse?'<button type="button" class="btn sm pri" data-act="attendance-session-create" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Buat sesi '+attendanceModeLabel(chosenActivity)+' P'+chosenMeeting+'</button>':'') )+'</div>';
     h+=attendancePanel;
   }
-  if(ADMIN_NOTIFY_TAB==='recap'){h+=participationRecapPanel(cl);}\n  if(ADMIN_NOTIFY_TAB==='seminar'){
+  if(ADMIN_NOTIFY_TAB==='recap'){h+=participationRecapPanel(cl);}
+  if(ADMIN_NOTIFY_TAB==='seminar'){
     const seminars=Object.keys(S.pc).map(id=>Object.assign({id:id},S.pc[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     h+='<div class="seminar-admin"><h3 class="ph3">Tambah seminar ke Paddock Club</h3><div class="field"><label for="pc-title">Judul seminar</label><input id="pc-title" data-dr="pc-title" type="text" maxlength="160" value="'+esc(dv('pc-title',''))+'" placeholder="Masukkan judul seminar"></div><div class="field"><label for="pc-registration-type">Metode pendaftaran</label><select id="pc-registration-type" data-dr="pc-registration-type"><option value="link"'+(dv('pc-registration-type','link')==='link'?' selected':'')+'>Link pendaftaran</option><option value="contact"'+(dv('pc-registration-type','link')==='contact'?' selected':'')+'>Nomor contact person</option></select></div><div class="field" id="pc-link-field"'+(dv('pc-registration-type','link')==='link'?'':' style="display:none"')+'><label for="pc-link">Link pendaftaran</label><input id="pc-link" data-dr="pc-link" type="url" inputmode="url" value="'+esc(dv('pc-link',''))+'" placeholder="https://..."></div><div class="field" id="pc-contact-field"'+(dv('pc-registration-type','link')==='contact'?'':' style="display:none"')+'><label for="pc-contact">Nomor WhatsApp contact person</label><input id="pc-contact" data-dr="pc-contact" type="tel" inputmode="tel" maxlength="20" value="'+esc(dv('pc-contact',''))+'" placeholder="Contoh: 081234567890"></div><div class="field" id="pc-contact-name-field"'+(dv('pc-registration-type','link')==='contact'?'':' style="display:none"')+'><label for="pc-contact-name">Nama pemilik nomor</label><input id="pc-contact-name" data-dr="pc-contact-name" type="text" maxlength="80" value="'+esc(dv('pc-contact-name',''))+'" placeholder="Nama contact person"></div><div class="field"><label for="pc-price">Harga seminar</label><input id="pc-price" data-dr="pc-price" type="text" maxlength="40" value="'+esc(dv('pc-price',''))+'" placeholder="Contoh: Gratis atau Rp50.000"></div><div class="row2"><label class="btn sm pickfile">'+(PEND.seminar?'Ganti poster':'Pilih poster')+'<input type="file" accept="image/jpeg,image/png,image/webp" data-file="seminar"></label><span class="s">'+(PEND.seminar?esc(PEND.seminar.name||'Poster siap diunggah'):'Poster JPG, PNG, atau WebP · maksimal 20 MB')+'</span></div><div class="row2"><button type="button" class="btn pri" data-act="seminar-save"'+(ME&&AS?'':' disabled')+'>Terbitkan seminar</button></div></div>'+
       '<div class="panel"><h3 class="ph3">Seminar terdaftar</h3>'+(seminars.length?'<ul class="notification-link-list">'+seminars.map(x=>'<li><b>'+esc(x.title||'Seminar')+'</b> · '+(okHttps(x.registrationUrl)?'<a href="'+esc(x.registrationUrl)+'" target="_blank" rel="noopener">Link pendaftaran</a>':'Tanpa tautan')+' · <button type="button" class="btn sm" data-act="seminar-del" data-id="'+esc(x.id)+'">Hapus</button></li>').join('')+'</ul>':'<p class="empty">Belum ada seminar.</p>')+'</div>';
@@ -2597,7 +2599,15 @@ document.addEventListener('click',async e=>{
       break;
     }
     case 'wa-generate':{if(!adm())break;const msg=buildWhatsAppTemplate();$('wa-preview').value=msg;DR['wa-preview']=msg;toast('Template pesan diperbarui.');break;}
-    case 'participation-recap-copy':{\n      if(!adm())break;\n      const field=$('participation-recap-text'),msg=String(field&&field.value||'').trim();\n      if(!msg){toast('Tidak ada rekap untuk disalin.');break;}\n      try{if(!navigator.clipboard||!window.isSecureContext)throw new Error('Clipboard API tidak tersedia');await navigator.clipboard.writeText(msg);toast('Rekap berhasil disalin. Tempelkan ke grup WhatsApp kelas.');}\n      catch(e){if(field){field.focus();field.select();try{document.execCommand('copy');toast('Rekap disalin. Tempelkan ke grup WhatsApp kelas.');}catch(err){toast('Salin manual teks rekap yang tampil.');}}}\n      break;\n    }\n    case 'wa-share':{
+    case 'participation-recap-copy':{
+      if(!adm())break;
+      const field=$('participation-recap-text'),msg=String(field&&field.value||'').trim();
+      if(!msg){toast('Tidak ada rekap untuk disalin.');break;}
+      try{if(!navigator.clipboard||!window.isSecureContext)throw new Error('Clipboard API tidak tersedia');await navigator.clipboard.writeText(msg);toast('Rekap berhasil disalin. Tempelkan ke grup WhatsApp kelas.');}
+      catch(e){if(field){field.focus();field.select();try{document.execCommand('copy');toast('Rekap disalin. Tempelkan ke grup WhatsApp kelas.');}catch(err){toast('Salin manual teks rekap yang tampil.');}}}
+      break;
+    }
+    case 'wa-share':{
       if(!adm())break;
       const msg=String($('wa-preview').value||'').trim();
       if(!msg){toast('Susun atau isi pesan terlebih dahulu.');break;}
@@ -3235,7 +3245,18 @@ document.addEventListener('click',async e=>{
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;});
 document.addEventListener('change',async e=>{
   const t=e.target;
-  if(t.matches&&t.matches('select[data-participation-filter]')){\n    if(!adm()||ADMIN_NOTIFY_TAB!=='recap')return;\n    const key=t.dataset.participationFilter;\n    if(key==='course'){PARTICIPATION_RECAP.course=t.value;PARTICIPATION_RECAP.task='';}\n    else if(key==='meeting'){PARTICIPATION_RECAP.meeting=t.value;PARTICIPATION_RECAP.task='';}\n    else if(key==='type'){PARTICIPATION_RECAP.type=t.value;PARTICIPATION_RECAP.status=t.value==='attendance'?'missing':'submitted';PARTICIPATION_RECAP.task='';}\n    else if(key==='mode')PARTICIPATION_RECAP.mode=t.value;\n    else if(key==='status')PARTICIPATION_RECAP.status=t.value;\n    else if(key==='task')PARTICIPATION_RECAP.task=t.value;\n    renderAdmin(true);return;\n  }\n  if(t.matches&&t.matches('input[data-attendance-select]')){
+  if(t.matches&&t.matches('select[data-participation-filter]')){
+    if(!adm()||ADMIN_NOTIFY_TAB!=='recap')return;
+    const key=t.dataset.participationFilter;
+    if(key==='course'){PARTICIPATION_RECAP.course=t.value;PARTICIPATION_RECAP.task='';}
+    else if(key==='meeting'){PARTICIPATION_RECAP.meeting=t.value;PARTICIPATION_RECAP.task='';}
+    else if(key==='type'){PARTICIPATION_RECAP.type=t.value;PARTICIPATION_RECAP.status=t.value==='attendance'?'missing':'submitted';PARTICIPATION_RECAP.task='';}
+    else if(key==='mode')PARTICIPATION_RECAP.mode=t.value;
+    else if(key==='status')PARTICIPATION_RECAP.status=t.value;
+    else if(key==='task')PARTICIPATION_RECAP.task=t.value;
+    renderAdmin(true);return;
+  }
+  if(t.matches&&t.matches('input[data-attendance-select]')){
     const id=t.dataset.id,no=String(Number(t.dataset.no));
     if(!ATTENDANCE_REVIEW_SELECTIONS[id])ATTENDANCE_REVIEW_SELECTIONS[id]={};
     if(t.checked)ATTENDANCE_REVIEW_SELECTIONS[id][no]=true;
