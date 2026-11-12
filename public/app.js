@@ -2043,7 +2043,7 @@ function tugasAdmin(c){
       '<div><div class="track" aria-hidden="true"><i style="width:'+Math.round(cnt/N*100)+'%"></i></div><span class="s">'+cnt+' dari '+N+' mahasiswa sudah mengumpulkan</span></div>'+
       ownActions+reviewList+
       '<details><summary>Lihat pengumpulan ('+cnt+')</summary><ul class="subs" style="margin-top:8px">'+
-      (keys.length?keys.map(no=>{const sub=subs[no];return '<li><b>No. '+no+' · '+esc(nameOf(no))+'</b> · '+fmtTime(sub.at)+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">'+esc(sub.tautan)+'</a>':(sub.tautan?'<br>'+esc(sub.tautan):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):'')+'</li>';}).join(''):'<li>Belum ada yang mengumpulkan.</li>')+'</ul></details></article>';
+      (keys.length?keys.map(no=>{const sub=subs[no];return '<li><b>No. '+no+' · '+esc(nameOf(no))+'</b> · '+fmtTime(sub.at)+(sub.platformConfirmation?'<br><span class="chip done">Konfirmasi online · Sudah</span>':'')+(okUrl(sub.tautan)?'<br><a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">'+esc(sub.tautan)+'</a>':(sub.tautan?'<br>'+esc(sub.tautan):''))+(sub.catatan?'<br>'+esc(sub.catatan):'')+(sub.berkas&&sub.berkas.id?'<br>'+fileHtml(sub.berkas):'')+'</li>';}).join(''):'<li>Belum ada yang mengumpulkan.</li>')+'</ul></details></article>';
   };
   if(active.length)h+='<h3 class="ph3">Tugas aktif</h3>'+active.map(renderTask).join('');
   else h+='<p class="empty">Tidak ada tugas aktif.</p>';
