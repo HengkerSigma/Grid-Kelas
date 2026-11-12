@@ -933,7 +933,9 @@ async function decide(method, p, body, sess, existing) {
         const platformConfirmation = s.platformConfirmation === true;
         if (platformConfirmation) {
           const platform = await getDoc('platform/' + existing.k);
-          if (existing.mode === 'group' || !platform || platform.enabled === false || tautan || berkas) return ERR_FORBID;
+          const onlineTask = !!(existing.link && isHttpUrl(existing.link));
+          const platformTask = !!(platform && platform.enabled !== false);
+          if (existing.mode === 'group' || (!onlineTask && !platformTask) || tautan || berkas) return ERR_FORBID;
         } else if (!tautan && !berkas) return ERR_BAD('Unggah berkas atau isi tautan tugas.');
         const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
         out.subs[me] = { tautan, catatan, berkas, at: Date.now(), ...(platformConfirmation ? { platformConfirmation: true } : {}) }; return { data: out };
