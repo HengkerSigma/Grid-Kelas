@@ -1210,7 +1210,7 @@ function renderHome(force){
   // Tambahkan mata kuliah Ruangan yang memiliki sesi Tatap Muka aktif hari ini,
   // meskipun hari kegiatan tersebut berbeda dari jadwal mingguan regulernya.
   Object.entries(S.se||{}).forEach(([id,se])=>{
-    if(!se||!se.k||!S.co[se.k]||isPlatformCourse(S.co[se.k]))return;
+    if(!se||!se.k||!S.co[se.k])return;
     if(attendanceModeForSession(se,id)!=='tatap_muka')return;
     const n=Number(se.n),start=String(se.tanggal||''),end=String(se.tanggalAkhir||start);
     if(!Number.isInteger(n)||n<1||n>PERT||!start||td<start||td>end)return;
@@ -1523,15 +1523,13 @@ function renderAdmin(force=false){
       '<div class="row2"><button type="button" class="btn" data-act="platform-load"'+(chosenCourse?'':' disabled')+'>Muat tautan pilihan</button><button type="button" class="btn pri" data-act="platform-save"'+(chosenCourse?'':' disabled')+'>Simpan tautan absensi</button></div></div>'+
       '<p class="s">Kosongkan tautan untuk menghapus hanya pertemuan yang sedang dipilih.</p></div>';
     const defaultActivity=chosenCourse?legacyAttendanceMode(chosenCourse.k):'tatap_muka';
-    const chosenActivity=chosenCourse&&isPlatformCourse(chosenCourse)?'online':(['online','tatap_muka'].includes(PLATFORM_FORM_ACTIVITY)?PLATFORM_FORM_ACTIVITY:defaultActivity);
+    const chosenActivity=['online','tatap_muka'].includes(PLATFORM_FORM_ACTIVITY)?PLATFORM_FORM_ACTIVITY:defaultActivity;
     const selectedSessionId=chosenCourse?attendanceSessionId(chosenCourse.k,chosenMeeting,chosenActivity):'';
     const selectedSession=selectedSessionId?S.se[selectedSessionId]:null;
     const deletePending=!!selectedSession&&ATTENDANCE_SESSION_DELETE===selectedSessionId;
     const attendanceEntries=selectedSession&&selectedSession.present?Object.values(selectedSession.present).filter(Boolean).length:0;
     const proofEntries=selectedSession&&selectedSession.bukti?Object.values(selectedSession.bukti).filter(x=>x&&x.id).length:0;
-    const activityModeControl=chosenCourse&&isPlatformCourse(chosenCourse)
-      ?'<div class="field"><label>Jenis aktivitas</label><input type="text" value="Online (Platform)" disabled></div>'
-      :'<div class="field"><label for="notify-attendance-mode">Jenis aktivitas</label><select id="notify-attendance-mode"><option value="tatap_muka"'+(chosenActivity==='tatap_muka'?' selected':'')+'>Tatap muka</option><option value="online"'+(chosenActivity==='online'?' selected':'')+'>Online</option></select></div>';
+    const activityModeControl='<div class="field"><label for="notify-attendance-mode">Jenis aktivitas</label><select id="notify-attendance-mode"><option value="tatap_muka"'+(chosenActivity==='tatap_muka'?' selected':'')+'>Tatap muka</option><option value="online"'+(chosenActivity==='online'?' selected':'')+'>Online</option></select></div>';
     h+='<div class="panel"><h3 class="ph3">Kelola sesi absensi</h3><p class="s">Pilih jenis aktivitas untuk membedakan sesi tatap muka dan absensi online. Keduanya dapat memakai nomor pertemuan yang sama tanpa saling menimpa.</p>'+
       '<div class="cu-form">'+activityModeControl+'</div>'+
       (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+' · '+attendanceModeLabel(chosenActivity)+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal)+(selectedSession.tanggalAkhir&&selectedSession.tanggalAkhir!==selectedSession.tanggal?' – '+fmtDate(selectedSession.tanggalAkhir):''):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi · '+(selectedSession.closed?'Sesi ditutup':'Sesi terbuka')+'</p>'+
