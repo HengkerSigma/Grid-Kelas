@@ -1214,7 +1214,7 @@ function renderHome(force){
     if(attendanceModeForSession(se,id)!=='tatap_muka')return;
     const n=Number(se.n),start=String(se.tanggal||''),end=String(se.tanggalAkhir||start);
     if(!Number.isInteger(n)||n<1||n>PERT||!start||td<start||td>end)return;
-    if(!scheduleByCourse.has(se.k))scheduleByCourse.set(se.k,Object.assign({},S.co[se.k],{_attendanceOnly:true,_attendanceMeeting:n}));
+    if(!scheduleByCourse.has(se.k))scheduleByCourse.set(se.k,Object.assign({},S.co[se.k],{_attendanceOnly:true}));
   });
   const sched=Array.from(scheduleByCourse.values());
   let h='';
@@ -1345,7 +1345,7 @@ function schedPanel(sched,dayN){
     return as-bs;
   });
   let li='';
-  ordered.forEach(c=>{const scheduleMeta=c._attendanceOnly?'Tatap muka · Pertemuan '+c._attendanceMeeting+' · '+fmtDate(today()):(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang);li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+scheduleMeta+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
+  ordered.forEach(c=>{const scheduleMeta=c._attendanceOnly?'Tatap muka · '+fmtDate(today()):(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang);li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+scheduleMeta+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
   const needsAttendance=!!ME&&sched.some(c=>scheduleAttendanceMeetings(c).some(n=>{const se=scheduleAttendanceSession(c,n);return !!se&&(!!se.tanggal||inSession(c))&&!(se.present&&se.present[ME]);}));
   return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah hari ini, selamat bersantai.':'Tidak ada kuliah hari ini.')+'</p>')+'</div>';
 }
