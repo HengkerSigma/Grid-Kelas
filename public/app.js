@@ -1360,7 +1360,7 @@ function schedPanel(sched,dayN,tasksDueToday){
     const scheduleMeta=c._attendanceOnly
       ?attendanceModeLabel(mode)+' · '+fmtDate(today())
       :(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang);
-    li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+scheduleMeta+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'" data-mode="'+mode+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';
+    li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+scheduleMeta+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'" data-n="'+(scheduleAttendanceMeetings(c)[0]||defaultPert(c.k))+'" data-mode="'+mode+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';
   });
   const needsAttendance=!!ME&&sched.some(c=>scheduleAttendanceMeetings(c).some(n=>{
     const se=scheduleAttendanceSession(c,n);
@@ -2232,7 +2232,7 @@ async function writeSession(k,n,patch,mode){
   const ref=db.doc('sessions/'+attendanceSessionId(k,n,activity));
   try{await ref.update(patch);}
   catch(e){
-    const base={k:k,n:n,tanggal:'',topik:'',present:{},bukti:{},closed:false};
+    const base={k:k,n:n,activity_mode:activity,tanggal:'',topik:'',present:{},bukti:{},closed:false};
     const o=Object.assign({},base,patch);
     if(patch.present)o.present=Object.assign({},base.present,patch.present);
     if(patch.bukti)o.bukti=Object.assign({},base.bukti,patch.bukti);
@@ -2714,7 +2714,7 @@ document.addEventListener('click',async e=>{
       renderCourses();break;
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
-    case 'attendance-history':{if(!S.co[d.k]){toast('Mata kuliah tidak ditemukan.');break;}openD('course',d.k,'absen',defaultPert(d.k),d.mode);break;}
+    case 'attendance-history':{if(!S.co[d.k]){toast('Mata kuliah tidak ditemukan.');break;}openD('course',d.k,'absen',Number(d.n)||defaultPert(d.k),d.mode);break;}
     case 'schedule-attendance':{
       const c=S.co[d.k],n=Number(d.n)||defaultPert(d.k),mode=activityModel.normalizeActivityMode(d.mode,legacyAttendanceMode(d.k));
       const activityCourse=c?Object.assign({},c,{_activityMode:mode}):null;
@@ -3204,7 +3204,7 @@ document.addEventListener('change',async e=>{
     const f=t.files&&t.files[0],kind=t.dataset.file,tid=t.dataset.id;
     t.value='';
     if(!f||!ME)return;
-    if(kind==='bukti'&&D&&scheduleAttendanceState(S.co[D.key],D.pert)!=='open'){toast('Periode absensi pertemuan ini sudah berakhir atau ditutup.');return;}
+    if(kind==='bukti'&&D&&scheduleAttendanceState(Object.assign({},S.co[D.key]||{},{_activityMode:D.activityMode||legacyAttendanceMode(D.key)}),D.pert)!=='open'){toast('Periode absensi pertemuan ini sudah berakhir atau ditutup.');return;}
     if(kind==='seminar'){
       if(!adm()){toast('Hanya pengelola yang dapat menambahkan poster seminar.');return;}
       if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih poster JPG, PNG, atau WebP.');return;}
