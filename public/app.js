@@ -2572,7 +2572,7 @@ document.addEventListener('click',async e=>{
       if(mine){toast('Tugas ini sudah dikonfirmasi selesai.');break;}
       const payload={tautan:'',catatan:isPlatformCourse(S.co[t.k])?'Konfirmasi penyelesaian aktivitas platform Mentari.':'Konfirmasi penyelesaian tugas online.',berkas:null,at:Date.now(),platformConfirmation:true};
       const ok=await run(()=>db.doc('tugas/'+id).update({subs:{[ME]:payload}}),'Tugas platform dikonfirmasi selesai');
-      if(ok)renderDialog(true);
+      if(ok){renderDialog(true);loadHasil(true);}
       break;
     }
     case 'platform-task-not-done':{
@@ -2809,7 +2809,7 @@ document.addEventListener('click',async e=>{
         if(!okHttps(link)){toast('Tempel tautan tugas yang diawali https:// (Google Drive, Dropbox, dll.).');break;}
       }
       const ok=await run(()=>db.doc('tugas/'+id).update({subs:{[ME]:{tautan:link,catatan:cat.slice(0,500),berkas:berkas,at:Date.now()}}}),'Tugas dikumpulkan');
-      if(ok){D.subOpen=null;delete DR['sl-'+id];delete DR['sc-'+id];if(D.pending)delete D.pending[id];if(D.smode)delete D.smode[id];renderDialog(true);}
+      if(ok){D.subOpen=null;delete DR['sl-'+id];delete DR['sc-'+id];if(D.pending)delete D.pending[id];if(D.smode)delete D.smode[id];renderDialog(true);loadHasil(true);}
       break;
     }
     case 'smode':{
