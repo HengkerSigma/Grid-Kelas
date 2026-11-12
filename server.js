@@ -920,6 +920,12 @@ async function decide(method, p, body, sess, existing) {
         if (!Number.isInteger(no) || no < 1 || no > N || !['sudah','belum'].includes(status)) return ERR_BAD('Status pemeriksaan tugas tidak valid.');
         const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
         out.subs.__review = Object.assign({}, isObj(out.subs.__review) ? out.subs.__review : {}, { [String(no)]: status });
+        const key = String(no), current = out.subs[key];
+        if (status === 'sudah' && !current) {
+          out.subs[key] = { tautan: '', catatan: 'Dicatat oleh pengelola sebagai pengumpulan.', berkas: null, at: Date.now(), adminRecorded: true };
+        } else if (status === 'belum' && isObj(current) && current.adminRecorded === true) {
+          delete out.subs[key];
+        }
         return { data: out };
       }
       if (onlyKeys(body, ['subs'])) {
