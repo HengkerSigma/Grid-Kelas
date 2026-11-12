@@ -1968,13 +1968,16 @@ function smodeOf(id,mine){
   if(m)return m;
   return mine&&mine.berkas&&mine.berkas.id&&!mine.tautan&&AS?'file':'link';
 }
-/* Tombol tugas: "Kerjakan" membuka soal (LMS kampus / PDF / dll.), "Kumpulkan" mengirim file atau tautan hasil tugas. */
+/* Tugas Platform dan tugas online berbasis tautan cukup memakai konfirmasi Sudah/Belum. */
+function isConfirmationTask(t){
+  return !!(t&&(isPlatformCourse(S.co[t.k])||(t.link&&okUrl(t.link))));
+}
 function taskActions(t,mine){
-  const id=t.id,open=D.subOpen===id,locked=isLocked(t),can=ME&&canWrite&&!locked,platform=isPlatformCourse(S.co[t.k]);
-  if(platform){
+  const id=t.id,open=D.subOpen===id,locked=isLocked(t),can=ME&&canWrite&&!locked,platform=isPlatformCourse(S.co[t.k]),confirmation=isConfirmationTask(t);
+  if(confirmation){
     let h='<div class="platform-task-check">';
-    if(mine)h+='<p class="tdone"><b>&#10003; Tugas platform telah dikonfirmasi selesai.</b><br><span class="s">Dikonfirmasi '+fmtTime(mine.at)+'</span></p>';
-    else if(can)h+='<p class="s"><b>Apakah kamu sudah mengerjakan pre-test sampai kuesioner Mentari?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="platform-task-done" data-id="'+esc(id)+'">Ya</button><button type="button" class="btn sm" data-act="platform-task-not-done" data-id="'+esc(id)+'">Belum</button></div>';
+    if(mine)h+='<p class="tdone"><b>&#10003; Tugas telah dikonfirmasi selesai.</b><br><span class="s">Dikonfirmasi '+fmtTime(mine.at)+'</span></p>';
+    else if(can)h+='<p class="s"><b>'+(platform?'Apakah kamu sudah menyelesaikan aktivitas di platform Mentari?':'Apakah kamu sudah mengerjakan tugas online ini?')+'</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="platform-task-done" data-id="'+esc(id)+'">Sudah</button><button type="button" class="btn sm" data-act="platform-task-not-done" data-id="'+esc(id)+'">Belum</button></div>';
     return h+'</div>';
   }
   let h='<div class="row2 tact">'+(locked&&!mine?'<span class="dnfb">'+(t.closed?'DITUTUP':'DNF')+'</span><span class="s">'+(t.closed?'Tugas ditutup pengelola.':'Tenggat sudah lewat. Pengumpulan ditutup.')+'</span>':'');
@@ -2564,10 +2567,10 @@ document.addEventListener('click',async e=>{
     case 'platform-task-done':{
       if(!ME||!canWrite)break;
       const id=d.id,t=S.tu[id],mine=t&&t.subs?t.subs[ME]:null;
-      if(!t||t.mode==='group'||!isPlatformCourse(S.co[t.k])){toast('Tugas platform tidak ditemukan.');break;}
+      if(!t||t.mode==='group'||!isConfirmationTask(t)){toast('Tugas online tidak ditemukan.');break;}
       if(isLocked(t)){toast('Tenggat sudah lewat. Pengumpulan ditutup.');break;}
       if(mine){toast('Tugas ini sudah dikonfirmasi selesai.');break;}
-      const payload={tautan:'',catatan:'Konfirmasi penyelesaian tugas platform: pre-test hingga kuesioner Mentari.',berkas:null,at:Date.now(),platformConfirmation:true};
+      const payload={tautan:'',catatan:isPlatformCourse(S.co[t.k])?'Konfirmasi penyelesaian aktivitas platform Mentari.':'Konfirmasi penyelesaian tugas online.',berkas:null,at:Date.now(),platformConfirmation:true};
       const ok=await run(()=>db.doc('tugas/'+id).update({subs:{[ME]:payload}}),'Tugas platform dikonfirmasi selesai');
       if(ok)renderDialog(true);
       break;
@@ -2575,7 +2578,7 @@ document.addEventListener('click',async e=>{
     case 'platform-task-not-done':{
       if(!ME||!canWrite)break;
       const t=S.tu[d.id];
-      if(!t||t.mode==='group'||!isPlatformCourse(S.co[t.k])){toast('Tugas platform tidak ditemukan.');break;}
+      if(!t||t.mode==='group'||!isConfirmationTask(t)){toast('Tugas online tidak ditemukan.');break;}
       const url=(t.link&&okUrl(t.link))?t.link:platOf(t.k);
       const meeting=Number(t.meeting_number||t.pertemuan||t.meeting)||defaultPert(t.k);
       if(url)openExternalRedirect(url,'mengerjakan tugas',t.k,meeting,t.judul||t.title||'');
