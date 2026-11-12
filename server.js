@@ -915,17 +915,24 @@ async function decide(method, p, body, sess, existing) {
         return { data: out };
       }
       if (onlyKeys(body, ['review'])) {
-        if (!admin || !isObj(body.review) || Object.keys(body.review).length !== 1) return ERR_FORBID;
-        const entry = Object.entries(body.review)[0], no = Number(entry[0]), status = entry[1];
-        if (!Number.isInteger(no) || no < 1 || no > N || !['sudah','belum'].includes(status)) return ERR_BAD('Status pemeriksaan tugas tidak valid.');
+        if (!admin || !isObj(body.review)) return ERR_FORBID;
+        const entries = Object.entries(body.review);
+        if (!entries.length || entries.length > N || entries.some(([rawNo, status]) => {
+          const no = Number(rawNo);
+          return !/^(?:[1-9]|[12]\d|3[0-2])$/.test(rawNo) || !Number.isInteger(no) || no < 1 || no > N || !['sudah','belum'].includes(status);
+        })) return ERR_BAD('Status pemeriksaan tugas tidak valid.');
         const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
-        out.subs.__review = Object.assign({}, isObj(out.subs.__review) ? out.subs.__review : {}, { [String(no)]: status });
-        const key = String(no), current = out.subs[key];
-        if (status === 'sudah' && !current) {
-          out.subs[key] = { tautan: '', catatan: 'Dicatat oleh pengelola sebagai pengumpulan.', berkas: null, at: Date.now(), adminRecorded: true };
-        } else if (status === 'belum' && isObj(current) && current.adminRecorded === true) {
-          delete out.subs[key];
-        }
+        out.subs.__review = Object.assign({}, isObj(out.subs.__review) ? out.subs.__review : {});
+        const at = Date.now();
+        entries.forEach(([rawNo, status]) => {
+          const key = String(Number(rawNo)), current = out.subs[key];
+          out.subs.__review[key] = status;
+          if (status === 'sudah' && !current) {
+            out.subs[key] = { tautan: '', catatan: 'Dicatat oleh pengelola sebagai pengumpulan.', berkas: null, at: at, adminRecorded: true };
+          } else if (status === 'belum' && isObj(current) && current.adminRecorded === true) {
+            delete out.subs[key];
+          }
+        });
         return { data: out };
       }
       if (onlyKeys(body, ['subs'])) {
