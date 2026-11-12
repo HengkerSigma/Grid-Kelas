@@ -58,7 +58,7 @@ const MAKRAB_START_AT=Date.UTC(2026,9,31,17,0,0,0),MAKRAB_DEADLINE_AT=Date.UTC(2
 function makrabWindowOpen(now){now=Number(now)||Date.now();return now>=MAKRAB_START_AT&&now<=MAKRAB_DEADLINE_AT;}
 function makrabStatus(item,now){now=Number(now)||Date.now();if(item&&Number(item.at)>0)return Number(item.at)<=MAKRAB_DEADLINE_AT?'Sudah Mengumpulkan':'Terlambat';return now>MAKRAB_DEADLINE_AT?'Terlambat':'Belum Mengumpulkan';}
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{},pr:{}};
-let TASK_REVIEW_SELECTIONS={},CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,PLATFORM_FORM_ACTIVITY='',ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
+let TASK_REVIEW_SELECTIONS={},ATTENDANCE_REVIEW_SELECTIONS={},CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,PLATFORM_FORM_ACTIVITY='',ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null,PROFILE_EDITING=false,presenceTimer=null,greetingCooldownUntil=0,greetingCooldownTimer=null;
@@ -1891,7 +1891,7 @@ function absenStudent(c,scheduleMode){
   return h;
 }
 function absenAdmin(c){
-  const n=D.pert,activity=D.activityMode||legacyAttendanceMode(c.k),se=S.se[attendanceSessionId(c.k,n,activity)]||null,p=(se&&se.present)||{},bk=(se&&se.bukti)||{};
+  const n=D.pert,activity=D.activityMode||legacyAttendanceMode(c.k),sessionId=attendanceSessionId(c.k,n,activity),se=S.se[sessionId]||null,p=(se&&se.present)||{},bk=(se&&se.bukti)||{},selected=ATTENDANCE_REVIEW_SELECTIONS[sessionId]||{},selectedCount=Object.keys(selected).length;
   const cnt={H:0,I:0,S:0,A:0,K:0};
   for(let i=1;i<=N;i++){if(cnt[p[i]]!==undefined)cnt[p[i]]++;}
   const rec=cnt.H+cnt.I+cnt.S+cnt.A+cnt.K;
@@ -1900,6 +1900,7 @@ function absenAdmin(c){
   if((se&&(se.tanggal||se.topik))||(!se||!se.tanggal)&&attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!se)h+='<p class="empty"><b>'+esc(attendanceMissingStatus(n,se,false,c.k))+'.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
+  h+='<div class="tcard attendance-bulk-manager"><div><b>Pengisian status massal</b><br><span class="s" data-attendance-count="'+esc(sessionId)+'">'+selectedCount+' mahasiswa dipilih</span></div><div class="row2" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn sm" data-act="attendance-select-all" data-id="'+esc(sessionId)+'" data-attendance-select-all="'+esc(sessionId)+'">'+(selectedCount===N?'Batalkan pilih semua':'Pilih semua')+'</button><button type="button" class="btn sm pri" data-act="attendance-bulk-set" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+esc(activity)+'" data-status="H">Hadir</button><button type="button" class="btn sm" data-act="attendance-bulk-set" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+esc(activity)+'" data-status="I">Izin</button><button type="button" class="btn sm" data-act="attendance-bulk-set" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+esc(activity)+'" data-status="S">Sakit</button><button type="button" class="btn sm" data-act="attendance-bulk-set" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+esc(activity)+'" data-status="A">Alpa</button><button type="button" class="btn sm" data-act="attendance-bulk-set" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+esc(activity)+'" data-status="K">Kelas Berjalan</button><button type="button" class="btn sm" data-act="attendance-bulk-set" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+esc(activity)+'" data-status="clear">Hapus status</button></div><span class="s">Pilih mahasiswa melalui kotak centang di samping nomor absen, lalu terapkan satu status sekaligus.</span></div>';
   if(ME&&se&&!se.closed&&activity==='online'&&isPlatformCourse(c)&&scheduleAttendanceState(Object.assign({},c,{_activityMode:activity}),n)==='open'&&platOf(c.k,n)){
     const ownStatus=p[ME]?(LBL[p[ME]]||p[ME]):attendanceMissingStatus(n,se,true,c.k);
     h+='<div class="tcard manager-forum-check"><div><b>Sudah Mengerjakan Forum Diskusi?</b><br><span class="s">Konfirmasi forum diskusi untuk akun pengelola sendiri · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status absensi saya: <b>'+esc(ownStatus)+'</b></span></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div></div>';
@@ -1908,7 +1909,7 @@ function absenAdmin(c){
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
     const status=p[i]?(LBL[p[i]]||p[i]):attendanceMissingStatus(n,se,false,c.k);
-    h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an">'+i+'</span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span>'+(canConfirmPlatform?'<div class="row2 manager-student-attendance"><button type="button" class="btn sm pri" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="done">Sudah</button><button type="button" class="btn sm" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="not-done">Belum</button></div>':'')+'</li>';
+    h+='<li class="arow'+(ME===i?' mine-row':'')+'"><span class="an" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><input type="checkbox" data-attendance-select data-id="'+esc(sessionId)+'" data-no="'+i+'" aria-label="Pilih '+esc(nameOf(i))+'"'+(selected[String(i)]?' checked':'')+' style="width:14px;height:14px;margin:0"><span>'+i+'</span></span><span class="aav">'+photo('s'+PAD(i))+'</span><span class="anm">'+esc(nameOf(i))+'<br><span class="s">'+esc(status)+'</span>'+(bk[i]&&bk[i].id?'<br>'+fileHtml(bk[i],true):'')+'</span>'+(canConfirmPlatform?'<div class="row2 manager-student-attendance"><button type="button" class="btn sm pri" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="done">Sudah</button><button type="button" class="btn sm" data-act="manager-forum-student" data-k="'+esc(c.k)+'" data-n="'+n+'" data-student="'+i+'" data-status="not-done">Belum</button></div>':'')+'</li>';
   }
   return h+'</ol>';
 }
@@ -2777,6 +2778,30 @@ document.addEventListener('click',async e=>{
        const ok=await run(()=>writeSession(k,n,{closed:close},activity),close?'Absensi ditutup':'Absensi dibuka kembali');
        if(ok){S.se[id]=Object.assign({k:k,n:n,activity_mode:activity,tanggal:'',topik:'',present:{},bukti:{}},se,{closed:close});renderDialog(true);refreshAll();}break;
      }
+     case 'attendance-select-all':{
+       if(!adm()||!d.id)break;
+       const current=ATTENDANCE_REVIEW_SELECTIONS[d.id]||{};
+       ATTENDANCE_REVIEW_SELECTIONS[d.id]=Object.keys(current).length===N?{}:Object.fromEntries(Array.from({length:N},(_,i)=>[String(i+1),true]));
+       renderDialog(true);
+       break;
+     }
+     case 'attendance-bulk-set':{
+       if(!adm())break;
+       const k=d.k,n=Number(d.n),status=d.status,mode=d.mode||legacyAttendanceMode(k);
+       if(!k||!Number.isInteger(n)||n<1||n>PERT)break;
+       const id=attendanceSessionId(k,n,mode),selected=ATTENDANCE_REVIEW_SELECTIONS[id]||{},numbers=Object.keys(selected).map(Number).filter(no=>Number.isInteger(no)&&no>=1&&no<=N);
+       if(!numbers.length){toast('Pilih minimal satu mahasiswa terlebih dahulu.');break;}
+       if(!['H','I','S','A','K','clear'].includes(status))break;
+       const session=S.se[id]||{k:k,n:n,tanggal:'',topik:'',present:{},bukti:{},closed:false};
+       if(status==='K'&&numbers.some(no=>!(session.bukti&&session.bukti[no]&&session.bukti[no].id))){toast('Status Kelas Berjalan hanya dapat diterapkan kepada mahasiswa yang sudah melampirkan bukti absensi.');break;}
+       const label=status==='clear'?'menghapus status':('mengubah status menjadi '+(LBL[status]||status));
+       if(!confirm('Yakin '+label+' untuk '+numbers.length+' mahasiswa terpilih?'))break;
+       const present=Object.assign({},session.present||{});
+       numbers.forEach(no=>{if(status==='clear')delete present[String(no)];else present[String(no)]=status;});
+       const ok=await run(()=>writeSession(k,n,{present},mode),'Status absensi '+numbers.length+' mahasiswa diperbarui');
+       if(ok){S.se[id]=Object.assign({},session,{present:present});delete ATTENDANCE_REVIEW_SELECTIONS[id];renderDialog(true);refreshAll();}
+       break;
+     }
      case 'task-review-set':
      case 'task-review-bulk':{
        if(!adm())break;
@@ -3167,6 +3192,16 @@ document.addEventListener('click',async e=>{
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;});
 document.addEventListener('change',async e=>{
   const t=e.target;
+  if(t.matches&&t.matches('input[data-attendance-select]')){
+    const id=t.dataset.id,no=String(Number(t.dataset.no));
+    if(!ATTENDANCE_REVIEW_SELECTIONS[id])ATTENDANCE_REVIEW_SELECTIONS[id]={};
+    if(t.checked)ATTENDANCE_REVIEW_SELECTIONS[id][no]=true;
+    else delete ATTENDANCE_REVIEW_SELECTIONS[id][no];
+    const root=t.closest('.db')||document,count=root.querySelector('[data-attendance-count="'+id+'"]'),selectAll=root.querySelector('[data-attendance-select-all="'+id+'"]'),selectedCount=Object.keys(ATTENDANCE_REVIEW_SELECTIONS[id]).length;
+    if(count)count.textContent=selectedCount+' mahasiswa dipilih';
+    if(selectAll)selectAll.textContent=selectedCount===N?'Batalkan pilih semua':'Pilih semua';
+    return;
+  }
   if(t.matches&&t.matches('input[data-review-select]')){
     const id=t.dataset.id,no=String(Number(t.dataset.no));
     if(!TASK_REVIEW_SELECTIONS[id])TASK_REVIEW_SELECTIONS[id]={};
