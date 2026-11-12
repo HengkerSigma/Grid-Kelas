@@ -12,6 +12,8 @@ const fileUtils=window.GridKelasFileUtils;
 if(!fileUtils)throw new Error('GridKelasFileUtils belum dimuat. Periksa urutan script di index.html.');
 const greetingUtils=window.GridKelasGreetingUtils;
 if(!greetingUtils)throw new Error('GridKelasGreetingUtils belum dimuat. Periksa urutan script di index.html.');
+const activityModel=window.GridKelasActivityModel;
+if(!activityModel)throw new Error('GridKelasActivityModel belum dimuat. Periksa urutan script di index.html.');
 const okImg=u=>typeof u==='string'&&(/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/media\/(?:[0-9a-f]{32}|s\d{2})(?:\?v=\d+)?$/.test(u));
 const okUrl=u=>/^https?:\/\//i.test(u||'');
 const DRIVE_HOSTS=['drive.google.com','docs.google.com','drive.usercontent.google.com'];
@@ -23,6 +25,14 @@ const okHttps=u=>{try{return new URL(String(u||'').trim()).protocol==='https:';}
 const platConfigOf=k=>S.pl[k]&&S.pl[k].enabled!==false?S.pl[k]:null;
 const platOf=(k,meeting)=>{const d=platConfigOf(k),n=Number(meeting||defaultPert(k)),mapped=d&&d.links&&d.links[n],legacy=d&&Number(d.meeting_number||0)===n?d.url:'';const u=mapped||legacy;return u&&okHttps(u)?String(u).trim():'';};
 const isPlatformCourse=c=>!!(c&&c.k&&platConfigOf(c.k));
+const legacyAttendanceMode=k=>activityModel.legacyActivityMode(isPlatformCourse(S.co[k])?'platform':'ruangan');
+const attendanceSessionId=(k,n,mode)=>activityModel.attendanceSessionKey(k,mode,n,legacyAttendanceMode(k));
+const attendanceModeForSession=(session,id)=>{
+  const parsed=activityModel.parseAttendanceSessionKey(id);
+  if(parsed&&parsed.activityMode)return parsed.activityMode;
+  return activityModel.resolveSessionActivityMode(session,isPlatformCourse(S.co[session&&session.k])?'platform':'ruangan');
+};
+const attendanceModeLabel=mode=>mode==='online'?'Online':'Tatap muka';
 const okId=i=>/^[0-9a-f]{32}$/.test(i||'');
 const colr=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6b6b80';
 const SIL='<svg class="sil" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="34" r="18"/><path d="M12 100c2-27 18-42 38-42s36 15 38 42z"/></svg>';
@@ -48,7 +58,7 @@ const MAKRAB_START_AT=Date.UTC(2026,9,31,17,0,0,0),MAKRAB_DEADLINE_AT=Date.UTC(2
 function makrabWindowOpen(now){now=Number(now)||Date.now();return now>=MAKRAB_START_AT&&now<=MAKRAB_DEADLINE_AT;}
 function makrabStatus(item,now){now=Number(now)||Date.now();if(item&&Number(item.at)>0)return Number(item.at)<=MAKRAB_DEADLINE_AT?'Sudah Mengumpulkan':'Terlambat';return now>MAKRAB_DEADLINE_AT?'Terlambat':'Belum Mengumpulkan';}
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{},pr:{}};
-let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
+let CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,PLATFORM_FORM_ACTIVITY='',ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null,PROFILE_EDITING=false,presenceTimer=null,greetingCooldownUntil=0,greetingCooldownTimer=null;
@@ -1483,10 +1493,11 @@ function renderAdmin(force=false){
   const attendanceRows=Object.keys(S.se).map(id=>Object.assign({id:id},S.se[id])).filter(x=>x.k&&Number(x.n)>0).sort((a,b)=>String(b.tanggal||'').localeCompare(String(a.tanggal||''))||String(a.k).localeCompare(String(b.k))||Number(b.n)-Number(a.n));
   const attendanceList=attendanceRows.map(x=>{
     const n=Number(x.n),k=x.k,id=x.id,course=cl.find(c=>c.k===k),present=x.present||{},proof=x.bukti||{};
+    const mode=attendanceModeForSession(x,id);
     const count=Object.values(present).filter(Boolean).length,proofCount=Object.values(proof).filter(v=>v&&v.id).length;
     const pending=ATTENDANCE_SESSION_DELETE===id;
-    return '<li class="it"><div><b>'+esc(course?course.nama:cname(k))+' · Pertemuan '+n+'</b><span class="s">'+(x.tanggal?fmtDate(x.tanggal):'Tanggal belum diatur')+' · '+count+' status kehadiran · '+proofCount+' bukti</span></div>'+
-      (pending?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(k)+'" data-n="'+n+'">Hapus</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></span>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(k)+'" data-n="'+n+'">Hapus</button>')+'</li>';
+    return '<li class="it"><div><b>'+esc(course?course.nama:cname(k))+' · Pertemuan '+n+' · '+attendanceModeLabel(mode)+'</b><span class="s">'+(x.tanggal?fmtDate(x.tanggal):'Tanggal belum diatur')+' · '+count+' status kehadiran · '+proofCount+' bukti</span></div>'+
+      (pending?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(k)+'" data-n="'+n+'" data-mode="'+mode+'">Hapus</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></span>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(k)+'" data-n="'+n+'" data-mode="'+mode+'">Hapus</button>')+'</li>';
   }).join('');
   const attendancePanel='<div class="task-management-inline"><h4 class="ph3">Daftar absensi aktif</h4><p class="s">Kelola sesi absensi yang tersimpan. Menghapus sesi juga menghapus status, bukti, dan tautan absensi untuk pertemuan tersebut.</p>'+
     (attendanceList?'<ul>'+attendanceList+'</ul>':'<p class="empty">Belum ada sesi absensi aktif.</p>')+'</div>';
@@ -1501,15 +1512,21 @@ function renderAdmin(force=false){
       '<div class="field" style="grid-column:1/-1"><label for="notify-platform-url">Link absensi platform</label><input id="notify-platform-url" type="url" inputmode="url" maxlength="500" placeholder="https://..." value="'+esc(currentLink)+'"></div>'+
       '<div class="row2"><button type="button" class="btn" data-act="platform-load"'+(chosenCourse?'':' disabled')+'>Muat tautan pilihan</button><button type="button" class="btn pri" data-act="platform-save"'+(chosenCourse?'':' disabled')+'>Simpan tautan absensi</button></div></div>'+
       '<p class="s">Kosongkan tautan untuk menghapus hanya pertemuan yang sedang dipilih.</p></div>';
-    const selectedSessionId=chosenCourse?chosenCourse.k+'_'+PAD(chosenMeeting):'';
+    const defaultActivity=chosenCourse?legacyAttendanceMode(chosenCourse.k):'tatap_muka';
+    const chosenActivity=chosenCourse&&isPlatformCourse(chosenCourse)?'online':(['online','tatap_muka'].includes(PLATFORM_FORM_ACTIVITY)?PLATFORM_FORM_ACTIVITY:defaultActivity);
+    const selectedSessionId=chosenCourse?attendanceSessionId(chosenCourse.k,chosenMeeting,chosenActivity):'';
     const selectedSession=selectedSessionId?S.se[selectedSessionId]:null;
     const deletePending=!!selectedSession&&ATTENDANCE_SESSION_DELETE===selectedSessionId;
     const attendanceEntries=selectedSession&&selectedSession.present?Object.values(selectedSession.present).filter(Boolean).length:0;
     const proofEntries=selectedSession&&selectedSession.bukti?Object.values(selectedSession.bukti).filter(x=>x&&x.id).length:0;
-    h+='<div class="panel"><h3 class="ph3">Kelola sesi absensi</h3><p class="s">Hapus sesi absensi untuk mata kuliah dan pertemuan yang sedang dipilih. Semua status kehadiran dan bukti pada sesi tersebut akan ikut dihapus.</p>'+
-      (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal)+(selectedSession.tanggalAkhir&&selectedSession.tanggalAkhir!==selectedSession.tanggal?' – '+fmtDate(selectedSession.tanggalAkhir):''):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi · '+(selectedSession.closed?'Sesi ditutup':'Sesi terbuka')+'</p>'+
-         '<div class="cu-form"><div class="field"><label for="attendance-session-date">Tanggal mulai</label><input id="attendance-session-date" type="date" value="'+esc(selectedSession.tanggal||'')+'"></div><div class="field"><label for="attendance-session-end-date">Tanggal berakhir</label><input id="attendance-session-end-date" type="date" min="'+esc(selectedSession.tanggal||'')+'" value="'+esc(selectedSession.tanggalAkhir||selectedSession.tanggal||'')+'"></div><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-date-save" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Simpan periode absensi</button></div><p class="s">Tombol absensi tersedia sejak tanggal mulai sampai tanggal berakhir. Pengelola tetap bisa menutup sesi lebih awal.</p></div>'+
-        (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Hapus sesi absensi pertemuan '+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi absensi tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>'+(chosenCourse?'<button type="button" class="btn sm pri" data-act="attendance-session-create" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'">Buat / buka sesi absensi</button>':'') )+'</div>';
+    const activityModeControl=chosenCourse&&isPlatformCourse(chosenCourse)
+      ?'<div class="field"><label>Jenis aktivitas</label><input type="text" value="Online (Platform)" disabled></div>'
+      :'<div class="field"><label for="notify-attendance-mode">Jenis aktivitas</label><select id="notify-attendance-mode"><option value="tatap_muka"'+(chosenActivity==='tatap_muka'?' selected':'')+'>Tatap muka</option><option value="online"'+(chosenActivity==='online'?' selected':'')+'>Online</option></select></div>';
+    h+='<div class="panel"><h3 class="ph3">Kelola sesi absensi</h3><p class="s">Pilih jenis aktivitas untuk membedakan sesi tatap muka dan absensi online. Keduanya dapat memakai nomor pertemuan yang sama tanpa saling menimpa.</p>'+
+      '<div class="cu-form">'+activityModeControl+'</div>'+
+      (selectedSession?'<p><b>'+esc(chosenCourse.nama)+'</b> · Pertemuan '+chosenMeeting+' · '+attendanceModeLabel(chosenActivity)+(selectedSession.tanggal?' · '+fmtDate(selectedSession.tanggal)+(selectedSession.tanggalAkhir&&selectedSession.tanggalAkhir!==selectedSession.tanggal?' – '+fmtDate(selectedSession.tanggalAkhir):''):'')+'</p><p class="s">'+attendanceEntries+' data status kehadiran · '+proofEntries+' bukti absensi · '+(selectedSession.closed?'Sesi ditutup':'Sesi terbuka')+'</p>'+
+         '<div class="cu-form"><div class="field"><label for="attendance-session-date">Tanggal mulai</label><input id="attendance-session-date" type="date" value="'+esc(selectedSession.tanggal||'')+'"></div><div class="field"><label for="attendance-session-end-date">Tanggal berakhir</label><input id="attendance-session-end-date" type="date" min="'+esc(selectedSession.tanggal||'')+'" value="'+esc(selectedSession.tanggalAkhir||selectedSession.tanggal||'')+'"></div><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-date-save" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Simpan periode absensi</button></div><p class="s">Tombol absensi tersedia sejak tanggal mulai sampai tanggal berakhir. Pengelola tetap bisa menutup sesi lebih awal.</p></div>'+
+        (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Hapus sesi absensi '+attendanceModeLabel(chosenActivity)+' P'+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi '+attendanceModeLabel(chosenActivity).toLowerCase()+' tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>'+(chosenCourse?'<button type="button" class="btn sm pri" data-act="attendance-session-create" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Buat sesi '+attendanceModeLabel(chosenActivity)+' P'+chosenMeeting+'</button>':'') )+'</div>';
     h+=attendancePanel;
   }
   if(ADMIN_NOTIFY_TAB==='seminar'){
@@ -2162,8 +2179,9 @@ function loginDlg(){
 }
 
 /* ---------- writes ---------- */
-async function writeSession(k,n,patch){
-  const ref=db.doc('sessions/'+k+'_'+PAD(n));
+async function writeSession(k,n,patch,mode){
+  const activity=mode||legacyAttendanceMode(k);
+  const ref=db.doc('sessions/'+attendanceSessionId(k,n,activity));
   try{await ref.update(patch);}
   catch(e){
     const base={k:k,n:n,tanggal:'',topik:'',present:{},bukti:{},closed:false};
@@ -2386,84 +2404,82 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       PLATFORM_FORM_COURSE=$('notify-platform-course').value;
       PLATFORM_FORM_MEETING=Number($('notify-platform-meeting').value)||defaultPert(PLATFORM_FORM_COURSE);
+      PLATFORM_FORM_ACTIVITY=legacyAttendanceMode(PLATFORM_FORM_COURSE);
       renderAdmin();break;
     }
     case 'attendance-session-date-save':{
        if(!adm())break;
-       const k=d.k,n=Number(d.n),date=String($('attendance-session-date')&&$('attendance-session-date').value||'').trim(),id=k+'_'+PAD(n);
+       const k=d.k,n=Number(d.n),mode=activityModel.normalizeActivityMode(d.mode,legacyAttendanceMode(d.k)),id=attendanceSessionId(k,n,mode);
+       const date=String($('attendance-session-date')&&$('attendance-session-date').value||'').trim();
        if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){toast('Sesi absensi tidak ditemukan.');break;}
-       if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal pertemuan tidak valid.');break;}
+       if(date&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){toast('Tanggal mulai tidak valid.');break;}
        const endDate=String($('attendance-session-end-date')&&$('attendance-session-end-date').value||'').trim();
-       if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal mulai tidak valid.');break;}
-       if(endDate&&!/^\d{4}-\d{2}-\d{2}$/.test(endDate)){toast('Tanggal berakhir tidak valid.');break;}
+       if(endDate&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate)){toast('Tanggal berakhir tidak valid.');break;}
        if(endDate&&(!date||endDate<date)){toast('Tanggal berakhir harus sama atau setelah tanggal mulai.');break;}
-       const ok=await run(()=>writeSession(k,n,{tanggal:date,tanggalAkhir:endDate}),'Periode absensi disimpan');
+       const ok=await run(()=>writeSession(k,n,{tanggal:date,tanggalAkhir:endDate},mode),'Periode absensi disimpan');
        if(ok){S.se[id]=Object.assign({},S.se[id],{tanggal:date,tanggalAkhir:endDate});renderAdmin(true);refreshAll();}
        break;
      }
      case 'attendance-session-create':{
       if(!adm())break;
-      const k=d.k,n=Number(d.n),id=k+'_'+PAD(n);
+      const k=d.k,n=Number(d.n),mode=activityModel.normalizeActivityMode(d.mode,legacyAttendanceMode(d.k)),id=attendanceSessionId(k,n,mode);
       if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
-      if(S.se[id]){toast('Sesi absensi sudah tersedia.');PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;renderAdmin(true);break;}
+      if(S.se[id]){toast('Sesi absensi sudah tersedia.');PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;PLATFORM_FORM_ACTIVITY=mode;renderAdmin(true);break;}
       const ok=await run(async()=>{
-        await db.doc('sessions/'+id).set({k:k,n:n,tanggal:'',topik:'',present:{},bukti:{},closed:false,createdAt:Date.now()});
-      },'Sesi absensi '+(S.co[k].nama||k)+' pertemuan '+n+' berhasil dibuat dan dibuka');
+        await db.doc('sessions/'+id).set({k:k,n:n,activity_mode:mode,tanggal:'',topik:'',present:{},bukti:{},closed:false,createdAt:Date.now()});
+      },'Sesi absensi '+attendanceModeLabel(mode)+' '+(S.co[k].nama||k)+' pertemuan '+n+' berhasil dibuat dan dibuka');
       if(ok){
-        S.se[id]={k:k,n:n,tanggal:'',topik:'',present:{},bukti:{},closed:false};
-        PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;ATTENDANCE_SESSION_DELETE=null;
+        S.se[id]={k:k,n:n,activity_mode:mode,tanggal:'',topik:'',present:{},bukti:{},closed:false};
+        PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;PLATFORM_FORM_ACTIVITY=mode;ATTENDANCE_SESSION_DELETE=null;
         refreshAll();renderAdmin(true);
       }
       break;
     }
     case 'attendance-session-delete':{
       if(!adm())break;
-      const k=d.k,n=Number(d.n),id=k+'_'+PAD(n);
+      const k=d.k,n=Number(d.n),mode=activityModel.normalizeActivityMode(d.mode,legacyAttendanceMode(d.k)),id=attendanceSessionId(k,n,mode);
       if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){toast('Sesi absensi tidak ditemukan.');break;}
-      PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;ATTENDANCE_SESSION_DELETE=id;renderAdmin(true);break;
+      PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;PLATFORM_FORM_ACTIVITY=mode;ATTENDANCE_SESSION_DELETE=id;renderAdmin(true);break;
     }
     case 'attendance-session-delete-cancel':{
       if(!adm())break;ATTENDANCE_SESSION_DELETE=null;renderAdmin(true);break;
     }
     case 'attendance-session-delete-confirm':{
       if(!adm())break;
-      const k=d.k,n=Number(d.n),id=k+'_'+PAD(n);
+      const k=d.k,n=Number(d.n),mode=activityModel.normalizeActivityMode(d.mode,legacyAttendanceMode(d.k)),id=attendanceSessionId(k,n,mode);
       if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){ATTENDANCE_SESSION_DELETE=null;toast('Sesi absensi tidak ditemukan atau sudah dihapus.');renderAdmin(true);break;}
       const sessionSnapshot=Object.assign({},S.se[id]);
-      const platformSnapshot=S.pl[k]?Object.assign({},S.pl[k],{links:Object.assign({},S.pl[k].links||{})}):null;
+      const managesPlatformLink=isPlatformCourse(S.co[k])&&mode==='online';
+      const platformSnapshot=managesPlatformLink&&S.pl[k]?Object.assign({},S.pl[k],{links:Object.assign({},S.pl[k].links||{})}):null;
       const links=Object.assign({},platformSnapshot&&platformSnapshot.links||{});
-      const legacyMeeting=Number(platformSnapshot&&platformSnapshot.meeting_number||0);
-      // Jangan migrasikan URL legacy jika URL tersebut milik sesi yang sedang dihapus.
-      if(platformSnapshot&&platformSnapshot.url&&legacyMeeting>0&&legacyMeeting!==n&&
-         !Object.keys(links).some(key=>Number(key)===legacyMeeting)){
-        links[String(legacyMeeting)]=platformSnapshot.url;
+      let nextPlatform=null;
+      if(managesPlatformLink){
+        const legacyMeeting=Number(platformSnapshot&&platformSnapshot.meeting_number||0);
+        if(platformSnapshot&&platformSnapshot.url&&legacyMeeting>0&&legacyMeeting!==n&&
+           !Object.keys(links).some(key=>Number(key)===legacyMeeting))links[String(legacyMeeting)]=platformSnapshot.url;
+        Object.keys(links).forEach(key=>{if(Number(key)===n)delete links[key];});
+        const remaining=Object.keys(links).filter(key=>Number.isInteger(Number(key))&&Number(key)>0).sort((a,b)=>Number(a)-Number(b));
+        const latestKey=remaining.length?remaining[remaining.length-1]:'';
+        const latest=latestKey?Number(latestKey):0;
+        nextPlatform=remaining.length?Object.assign({},platformSnapshot||{},{links:links,enabled:true,meeting_number:latest,url:links[latestKey],updatedAt:Date.now()}):null;
       }
-      // Hapus semua variasi key untuk pertemuan yang sama, misalnya "9" dan "09".
-      Object.keys(links).forEach(key=>{
-        if(Number(key)===n)delete links[key];
-      });
-      const remaining=Object.keys(links).filter(key=>Number.isInteger(Number(key))&&Number(key)>0)
-        .sort((a,b)=>Number(a)-Number(b));
-      const latestKey=remaining.length?remaining[remaining.length-1]:'';
-      const latest=latestKey?Number(latestKey):0;
-      const nextPlatform=remaining.length
-        ?Object.assign({},platformSnapshot||{},{links:links,enabled:true,meeting_number:latest,url:links[latestKey],updatedAt:Date.now()})
-        :null;
       const ok=await run(async()=>{
         await db.doc('sessions/'+id).delete();
-        try{
-          if(nextPlatform)await db.doc('platform/'+k).set(nextPlatform);
-          else if(platformSnapshot)await db.doc('platform/'+k).delete();
-        }catch(error){
-          try{await db.doc('sessions/'+id).set(sessionSnapshot);}catch(restoreError){console.error('Gagal memulihkan sesi absensi setelah penghapusan tautan gagal.',restoreError);}
-          try{if(platformSnapshot)await db.doc('platform/'+k).set(platformSnapshot);else await db.doc('platform/'+k).delete();}catch(restoreError){console.error('Gagal memulihkan konfigurasi tautan absensi.',restoreError);}
-          throw error;
+        if(managesPlatformLink){
+          try{
+            if(nextPlatform)await db.doc('platform/'+k).set(nextPlatform);
+            else if(platformSnapshot)await db.doc('platform/'+k).delete();
+          }catch(error){
+            try{await db.doc('sessions/'+id).set(sessionSnapshot);}catch(restoreError){console.error('Gagal memulihkan sesi absensi setelah penghapusan tautan gagal.',restoreError);}
+            try{if(platformSnapshot)await db.doc('platform/'+k).set(platformSnapshot);else await db.doc('platform/'+k).delete();}catch(restoreError){console.error('Gagal memulihkan konfigurasi tautan absensi.',restoreError);}
+            throw error;
+          }
         }
-      },'Sesi dan tautan absensi pertemuan '+n+' berhasil dihapus');
+      },'Sesi absensi '+attendanceModeLabel(mode)+' pertemuan '+n+' berhasil dihapus');
       if(ok){
         delete S.se[id];
-        if(nextPlatform)S.pl[k]=nextPlatform;else delete S.pl[k];
-        ATTENDANCE_SESSION_DELETE=null;PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;refreshAll();renderAdmin(true);
+        if(managesPlatformLink){if(nextPlatform)S.pl[k]=nextPlatform;else delete S.pl[k];}
+        ATTENDANCE_SESSION_DELETE=null;PLATFORM_FORM_COURSE=k;PLATFORM_FORM_MEETING=n;PLATFORM_FORM_ACTIVITY=mode;refreshAll();renderAdmin(true);
       }
       break;
     }
@@ -3060,11 +3076,12 @@ document.addEventListener('change',async e=>{
   const t=e.target;
   // Keep the attendance course/meeting state in sync with the visible selectors.
   // Otherwise the create-session button can retain a stale course key until "Muat tautan pilihan" is clicked.
-  if(adm()&&ADMIN_NOTIFY_TAB==='attendance'&&['notify-platform-course','notify-platform-meeting'].includes(t.id)){
+  if(adm()&&ADMIN_NOTIFY_TAB==='attendance'&&['notify-platform-course','notify-platform-meeting','notify-attendance-mode'].includes(t.id)){
     const course=$('notify-platform-course'),meeting=$('notify-platform-meeting');
     if(course&&meeting){
       PLATFORM_FORM_COURSE=course.value;
       PLATFORM_FORM_MEETING=Number(meeting.value)||1;
+      PLATFORM_FORM_ACTIVITY=t.id==='notify-attendance-mode'?t.value:legacyAttendanceMode(PLATFORM_FORM_COURSE);
       ATTENDANCE_SESSION_DELETE=null;
       renderAdmin(true);
     }
