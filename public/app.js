@@ -1847,7 +1847,7 @@ function courseDlg(){
   const c=S.co[D.key];
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
   const activitySession=D.activityMode?S.se[attendanceSessionId(c.k,D.pert,D.activityMode)]:null;
-  const scheduleLabel=D.activityMode
+  const scheduleLabel=D.activityMode&&D.tab==='absen'
     ?attendanceModeLabel(D.activityMode)+' · '+fmtDate(activitySession&&activitySession.tanggal||today())
     :esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang);
   const head='<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button>'+
@@ -2743,7 +2743,7 @@ document.addEventListener('click',async e=>{
     case 'close':PROFILE_EDITING=false;dlg.close();break;
     case 'profile-edit':{if(!D||D.kind!=='student'||Number(D.key)!==Number(ME)||!canWrite)break;PROFILE_EDITING=true;renderDialog(true);break;}
     case 'profile-edit-cancel':PROFILE_EDITING=false;renderDialog(true);break;
-    case 'tab':D.tab=d.tab;D.confirmDel=null;if(D.tab!=='absen')D.activityMode=null;renderDialog(true);break;
+    case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
       const no=+d.no,c=D.key,activity=D.activityMode||legacyAttendanceMode(c),id=attendanceSessionId(c,D.pert,activity),session=S.se[id]||{},cur=(session.present||{})[no]||'';
