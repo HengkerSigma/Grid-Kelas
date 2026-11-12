@@ -2033,7 +2033,7 @@ function tugasAdmin(c){
     const keys=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).map(Number).sort((a,b)=>a-b);
     const review=subs.__review&&typeof subs.__review==='object'&&!Array.isArray(subs.__review)?subs.__review:{};
     const reviewed=Array.from({length:N},(_,i)=>i+1).filter(no=>review[String(no)]==='sudah').length;
-    const reviewList='<details class="task-review-manager"><summary>Status pemeriksaan ('+reviewed+'/'+N+' sudah)</summary><ul class="subs task-review-list">'+Array.from({length:N},(_,i)=>i+1).map(no=>{const status=review[String(no)]==='sudah'?'sudah':'belum';return '<li><b>No. '+no+' · '+esc(nameOf(no))+'</b><span class="task-review-actions"><button type="button" class="btn sm'+(status==='sudah'?' pri':'')+'" data-act="task-review-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="sudah" aria-pressed="'+(status==='sudah')+'">Sudah</button><button type="button" class="btn sm'+(status==='belum'?' pri':'')+'" data-act="task-review-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="belum" aria-pressed="'+(status==='belum')+'">Belum</button></span></li>';}).join('')+'</ul></details>';
+    const reviewList='<details class="task-review-manager"><summary>Status pemeriksaan ('+reviewed+'/'+N+' sudah)</summary><div class="row2 task-review-bulk-actions" style="margin:10px 0"><button type="button" class="btn sm pri" data-act="task-review-bulk" data-id="'+esc(t.id)+'" data-status="sudah">Tandai semua Sudah</button><button type="button" class="btn sm" data-act="task-review-bulk" data-id="'+esc(t.id)+'" data-status="belum">Tandai semua Belum</button></div><ul class="subs task-review-list">'+Array.from({length:N},(_,i)=>i+1).map(no=>{const status=review[String(no)]==='sudah'?'sudah':'belum';return '<li><b>No. '+no+' · '+esc(nameOf(no))+'</b><span class="task-review-actions"><button type="button" class="btn sm'+(status==='sudah'?' pri':'')+'" data-act="task-review-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="sudah" aria-pressed="'+(status==='sudah')+'">Sudah</button><button type="button" class="btn sm'+(status==='belum'?' pri':'')+'" data-act="task-review-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="belum" aria-pressed="'+(status==='belum')+'">Belum</button></span></li>';}).join('')+'</ul></details>';
     const mine=ME&&subs[ME]?subs[ME]:null;
     const ownActions=ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+taskActions(t,mine)+'</div>':'';
     return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3>'+
@@ -2732,21 +2732,29 @@ document.addEventListener('click',async e=>{
        const ok=await run(()=>writeSession(k,n,{closed:close}),close?'Absensi ditutup':'Absensi dibuka kembali');
        if(ok){S.se[k+'_'+PAD(n)]=Object.assign({k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}},se,{closed:close});renderDialog(true);refreshAll();}break;
      }
-     case 'task-review-set':{
+     case 'task-review-set':
+     case 'task-review-bulk':{
        if(!adm())break;
-       const id=d.id,no=Number(d.no),status=d.status;
-       if(!S.tu[id]||!Number.isInteger(no)||no<1||no>N||!['sudah','belum'].includes(status))break;
-       const ok=await run(()=>db.doc('tugas/'+id).update({review:{[String(no)]:status}}),'Status tugas diperbarui');
+       const id=d.id,status=d.status,task=S.tu[id];
+       if(!task||!['sudah','belum'].includes(status))break;
+       const numbers=d.act==='task-review-bulk'?Array.from({length:N},(_,i)=>i+1):[Number(d.no)];
+       if(numbers.some(no=>!Number.isInteger(no)||no<1||no>N))break;
+       if(d.act==='task-review-bulk'&&!confirm(status==='sudah'?'Tandai status pemeriksaan seluruh 32 mahasiswa sebagai Sudah?':'Ubah status pemeriksaan seluruh 32 mahasiswa menjadi Belum?'))break;
+       const review=Object.fromEntries(numbers.map(no=>[String(no),status]));
+       const ok=await run(()=>db.doc('tugas/'+id).update({review:review}),d.act==='task-review-bulk'?'Status pemeriksaan seluruh kelas diperbarui':'Status tugas diperbarui');
        if(ok){
-         const task=S.tu[id];
          if(!task.subs||typeof task.subs!=='object')task.subs={};
          if(!task.subs.__review||typeof task.subs.__review!=='object')task.subs.__review={};
-         task.subs.__review[String(no)]=status;
-         if(status==='sudah'&&!task.subs[String(no)]){
-           task.subs[String(no)]={tautan:'',catatan:'Dicatat oleh pengelola sebagai pengumpulan.',berkas:null,at:Date.now(),adminRecorded:true};
-         }else if(status==='belum'&&task.subs[String(no)]&&task.subs[String(no)].adminRecorded){
-           delete task.subs[String(no)];
-         }
+         const at=Date.now();
+         numbers.forEach(no=>{
+           const key=String(no);
+           task.subs.__review[key]=status;
+           if(status==='sudah'&&!task.subs[key]){
+             task.subs[key]={tautan:'',catatan:'Dicatat oleh pengelola sebagai pengumpulan.',berkas:null,at:at,adminRecorded:true};
+           }else if(status==='belum'&&task.subs[key]&&task.subs[key].adminRecorded){
+             delete task.subs[key];
+           }
+         });
          renderDialog(true);
          loadHasil(true);
        }
