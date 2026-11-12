@@ -25,6 +25,7 @@ const okHttps=u=>{try{return new URL(String(u||'').trim()).protocol==='https:';}
 const platConfigOf=k=>S.pl[k]&&S.pl[k].enabled!==false?S.pl[k]:null;
 const platOf=(k,meeting)=>{const d=platConfigOf(k),n=Number(meeting||defaultPert(k)),mapped=d&&d.links&&d.links[n],legacy=d&&Number(d.meeting_number||0)===n?d.url:'';const u=mapped||legacy;return u&&okHttps(u)?String(u).trim():'';};
 const isPlatformCourse=c=>!!(c&&c.k&&platConfigOf(c.k));
+const taskActivityModeOf=t=>{const mode=t&&t.activityMode;return mode==='online'||mode==='tatap_muka'?mode:(isPlatformCourse(S.co[t&&t.k])?'online':'tatap_muka');};
 const legacyAttendanceMode=k=>activityModel.legacyActivityMode(isPlatformCourse(S.co[k])?'platform':'ruangan');
 const attendanceSessionId=(k,n,mode)=>activityModel.attendanceSessionKey(k,mode,n,legacyAttendanceMode(k));
 const attendanceModeForSession=(session,id)=>{
@@ -1539,7 +1540,7 @@ function renderAdmin(force=false){
     '<div class="notification-tabs" role="tablist" aria-label="Jenis pembaruan">'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="tasks" aria-selected="'+(ADMIN_NOTIFY_TAB==='tasks')+'">Tugas &amp; Mata Kuliah</button>'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="attendance" aria-selected="'+(ADMIN_NOTIFY_TAB==='attendance')+'">Absensi</button>'+ 
-     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="recap aria-selected="'+(ADMIN_NOTIFY_TAB==='recap')+'">Rekap WhatsApp</button>'+
+     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="recap" aria-selected="'+(ADMIN_NOTIFY_TAB==='recap')+'">Rekap WhatsApp</button>'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="seminar" aria-selected="'+(ADMIN_NOTIFY_TAB==='seminar')+'">Seminar</button></div>';
   const anns=Object.keys(S.an).map(id=>Object.assign({id:id},S.an[id])).sort((a,b)=>(b.at||0)-(a.at||0));
   const annEdit=ANN_EDIT&&S.an[ANN_EDIT]?Object.assign({id:ANN_EDIT},S.an[ANN_EDIT]):null;
@@ -1566,6 +1567,7 @@ function renderAdmin(force=false){
     '<div class="field"><label for="cu-meeting">Pertemuan ke-</label><input id="cu-meeting" type="number" min="1" max="'+PERT+'" data-dr="cu-meeting" value="'+(edit?edit.meeting_number:dv('cu-meeting',1))+'"></div>'+
     '<div class="field"><label for="cu-title">Judul tugas (opsional)</label><input id="cu-title" maxlength="120" placeholder="Contoh: Tugas pertemuan 3" data-dr="cu-title" value="'+esc(edit?edit.task_title||'':dv('cu-title',''))+'"></div>'+
     '<div class="field"><label for="cu-mode">Jenis tugas</label><select id="cu-mode" data-dr="cu-mode"><option value="individual"'+((dv('cu-mode',edit&&edit.task_mode||linkedTask&&linkedTask.mode||'individual')==='individual')?' selected':'')+'>Individu</option><option value="group"'+((dv('cu-mode',edit&&edit.task_mode||linkedTask&&linkedTask.mode||'individual')==='group')?' selected':'')+'>Kelompok</option></select></div>'+
+    '<div class="field"><label for="cu-activity">Pelaksanaan tugas</label><select id="cu-activity" data-dr="cu-activity"><option value="tatap_muka"'+((dv('cu-activity',linkedTask?taskActivityModeOf(linkedTask):(isPlatformCourse(S.co[edit?edit.course_code:dv('cu-course',cl[0]&&cl[0].k)])?'online':'tatap_muka'))==='tatap_muka')?' selected':'')+'>Tatap Muka</option><option value="online"'+((dv('cu-activity',linkedTask?taskActivityModeOf(linkedTask):(isPlatformCourse(S.co[edit?edit.course_code:dv('cu-course',cl[0]&&cl[0].k)])?'online':'tatap_muka'))==='online')?' selected':'')+'>Online</option></select></div>'+
     '<div class="field"><label for="cu-task">Link tugas / materi / soal</label><input id="cu-task" data-dr="cu-task" type="url" placeholder="https://..." value="'+esc(edit?edit.task_url||'':dv('cu-task',''))+'"></div>'+
     '<div class="field"><label for="cu-submit">Link pengumpulan</label><input id="cu-submit" data-dr="cu-submit" type="url" placeholder="https://..." value="'+esc(edit?edit.submission_url||'':dv('cu-submit',''))+'"></div>'+
     '<div class="field"><label for="cu-deadline">Batas waktu pengumpulan</label><input id="cu-deadline" data-dr="cu-deadline" type="date" value="'+esc(edit?edit.deadline||'':dv('cu-deadline',''))+'"></div>'+
@@ -2050,7 +2052,7 @@ function smodeOf(id,mine){
 }
 /* Tugas Platform dan tugas online berbasis tautan cukup memakai konfirmasi Sudah/Belum. */
 function isConfirmationTask(t){
-  return !!(t&&(isPlatformCourse(S.co[t.k])||(t.link&&okUrl(t.link))));
+  return !!(t&&taskActivityModeOf(t)==='online');
 }
 function taskActions(t,mine){
   const id=t.id,open=D.subOpen===id,locked=isLocked(t),can=ME&&canWrite&&!locked,platform=isPlatformCourse(S.co[t.k]),confirmation=isConfirmationTask(t);
@@ -3032,21 +3034,22 @@ document.addEventListener('click',async e=>{
       const previousImages=CU_EDIT&&S.cu[CU_EDIT]&&Array.isArray(S.cu[CU_EDIT].task_attachments)?S.cu[CU_EDIT].task_attachments:[];
       const body={course_code:$('cu-course').value,meeting_number:Number($('cu-meeting').value),task_title:$('cu-title').value.trim(),task_url:$('cu-task').value.trim(),submission_url:$('cu-submit').value.trim(),deadline:$('cu-deadline').value||null,task_attachments:CU_PENDING_IMAGES.slice(0,10)};
       body.task_mode=$('cu-mode').value==='group'?'group':'individual';
+      body.task_activity_mode=$('cu-activity').value==='online'?'online':'tatap_muka';
       body.task_description=$('cu-desc').value.trim().slice(0,1000);
       if(!body.course_code||!S.co[body.course_code]||!Number.isInteger(body.meeting_number)||body.meeting_number<1||body.meeting_number>PERT){toast('Pilih mata kuliah dan pertemuan yang valid.');break;}
       if([body.task_url,body.submission_url].some(u=>u&&!/^https:\/\//i.test(u))){toast('Semua tautan tugas harus diawali https://');break;}
       if(body.task_title&&!body.task_url&&!body.task_description&&!body.task_attachments.length){toast('Isi link, petunjuk, atau unggah foto tugas/soal agar tugas memiliki instruksi.');break;}
-      const duplicate=Object.keys(S.cu).find(id=>id!==CU_EDIT&&S.cu[id].course_code===body.course_code&&Number(S.cu[id].meeting_number)===body.meeting_number);
+      const duplicate=Object.keys(S.cu).find(id=>id!==CU_EDIT&&S.cu[id].course_code===body.course_code&&Number(S.cu[id].meeting_number)===body.meeting_number&&taskActivityModeOf(S.tu[id]||{k:body.course_code})===body.task_activity_mode);
       if(duplicate){toast('Pembaruan untuk mata kuliah dan pertemuan ini sudah ada. Gunakan tombol Edit pada tabel.');break;}
       const ok=await run(async()=>{
         if(CU_EDIT)await db.doc('course_updates/'+CU_EDIT).update(body);
         else await db.collection('course_updates').add(body);
       },'Pembaruan mata kuliah dan tugas berhasil disimpan');
-      if(ok){const kept=new Set(CU_PENDING_IMAGES.map(f=>f&&f.id).filter(Boolean));const removed=previousImages.filter(f=>f&&f.id&&!kept.has(f.id));if(AS&&removed.length)await Promise.all(removed.map(f=>AS.delete(f.id).catch(()=>null)));CU_EDIT=null;CU_PENDING_IMAGES=[];['cu-course','cu-meeting','cu-title','cu-mode','cu-task','cu-submit','cu-deadline','cu-desc'].forEach(k=>delete DR[k]);}
+      if(ok){const kept=new Set(CU_PENDING_IMAGES.map(f=>f&&f.id).filter(Boolean));const removed=previousImages.filter(f=>f&&f.id&&!kept.has(f.id));if(AS&&removed.length)await Promise.all(removed.map(f=>AS.delete(f.id).catch(()=>null)));CU_EDIT=null;CU_PENDING_IMAGES=[];['cu-course','cu-meeting','cu-title','cu-mode','cu-activity','cu-task','cu-submit','cu-deadline','cu-desc'].forEach(k=>delete DR[k]);}
       refreshAll();break;
     }
-    case 'cu-edit':['cu-course','cu-meeting','cu-title','cu-mode','cu-task','cu-submit','cu-deadline','cu-desc'].forEach(k=>delete DR[k]);CU_EDIT=d.id;CU_PENDING_IMAGES=Array.isArray(S.cu[d.id]&&S.cu[d.id].task_attachments)?S.cu[d.id].task_attachments.slice(0,10):[];renderAdmin();$('course-update-panel').scrollIntoView({behavior:'smooth',block:'start'});break;
-    case 'cu-cancel':['cu-course','cu-meeting','cu-title','cu-mode','cu-task','cu-submit','cu-deadline','cu-desc'].forEach(k=>delete DR[k]);CU_EDIT=null;CU_PENDING_IMAGES=[];renderAdmin();break;
+    case 'cu-edit':['cu-course','cu-meeting','cu-title','cu-mode','cu-activity','cu-task','cu-submit','cu-deadline','cu-desc'].forEach(k=>delete DR[k]);CU_EDIT=d.id;CU_PENDING_IMAGES=Array.isArray(S.cu[d.id]&&S.cu[d.id].task_attachments)?S.cu[d.id].task_attachments.slice(0,10):[];renderAdmin();$('course-update-panel').scrollIntoView({behavior:'smooth',block:'start'});break;
+    case 'cu-cancel':['cu-course','cu-meeting','cu-title','cu-mode','cu-activity','cu-task','cu-submit','cu-deadline','cu-desc'].forEach(k=>delete DR[k]);CU_EDIT=null;CU_PENDING_IMAGES=[];renderAdmin();break;
     case 'cu-image-remove':{if(!adm())break;const i=Number(d.index);if(Number.isInteger(i)&&i>=0&&i<CU_PENDING_IMAGES.length){CU_PENDING_IMAGES.splice(i,1);const p=$('cu-attachments-preview');if(p)p.innerHTML=cuImageEditorHtml(CU_PENDING_IMAGES);}break;}
     case 'task-image-open':{const task=S.tu[d.id];if(task)openTaskGallery(task.lampiran,+d.index);break;}
     case 'course-update-image-open':{const update=S.cu[d.id];if(update)openTaskGallery(update.task_attachments,+d.index);break;}
