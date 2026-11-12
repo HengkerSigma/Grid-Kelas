@@ -1884,7 +1884,7 @@ function absenStudent(c,scheduleMode){
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
   const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):attendanceMissingStatus(n,se,true,c.k);
   h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+
-    (se&&Object.keys(se).length&&!se.closed&&isPlatformCourse(c)&&scheduleAttendanceState(c,n)==='open'&&platOf(c.k,n)?'<div class="drv"><p class="s"><b>Sudah Mengerjakan Forum Diskusi?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'" data-n="'+n+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'" data-n="'+n+'">Belum</button></div></div>':'')+
+    (se&&Object.keys(se).length&&!se.closed&&activity==='online'&&isPlatformCourse(c)&&scheduleAttendanceState(Object.assign({},c,{_activityMode:activity}),n)==='open'&&platOf(c.k,n)?'<div class="drv"><p class="s"><b>Sudah Mengerjakan Forum Diskusi?</b></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'" data-n="'+n+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'" data-n="'+n+'">Belum</button></div></div>':'')+
     (bk&&bk.id?'<div><b class="s">Bukti absensi</b>'+fileHtml(bk)+'</div>':'<span class="s">Tidak ada bukti yang dilampirkan pada pertemuan ini.</span>')+'</div>';
   const a=stats(ME).by[c.k]||{h:0,t:0};
   h+='<p class="sum"><span>Hadir '+a.h+' dari '+a.t+' pertemuan terisi</span></p>';
@@ -1900,11 +1900,11 @@ function absenAdmin(c){
   if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!se)h+='<p class="empty"><b>'+esc(attendanceMissingStatus(n,se,false,c.k))+'.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
-  if(ME&&se&&!se.closed&&isPlatformCourse(c)&&scheduleAttendanceState(c,n)==='open'&&platOf(c.k,n)){
+  if(ME&&se&&!se.closed&&activity==='online'&&isPlatformCourse(c)&&scheduleAttendanceState(Object.assign({},c,{_activityMode:activity}),n)==='open'&&platOf(c.k,n)){
     const ownStatus=p[ME]?(LBL[p[ME]]||p[ME]):attendanceMissingStatus(n,se,true,c.k);
     h+='<div class="tcard manager-forum-check"><div><b>Sudah Mengerjakan Forum Diskusi?</b><br><span class="s">Konfirmasi forum diskusi untuk akun pengelola sendiri · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status absensi saya: <b>'+esc(ownStatus)+'</b></span></p><div class="row2"><button type="button" class="btn sm pri" data-act="forum-done" data-k="'+esc(c.k)+'">Sudah</button><button type="button" class="btn sm" data-act="forum-not-done" data-k="'+esc(c.k)+'">Belum</button></div></div>';
   }
-  const canConfirmPlatform=!!(se&&!se.closed&&isPlatformCourse(c)&&scheduleAttendanceState(c,n)==='open'&&platOf(c.k,n));
+  const canConfirmPlatform=!!(se&&!se.closed&&activity==='online'&&isPlatformCourse(c)&&scheduleAttendanceState(Object.assign({},c,{_activityMode:activity}),n)==='open'&&platOf(c.k,n));
   h+='<ol class="alist">';
   for(let i=1;i<=N;i++){
     const status=p[i]?(LBL[p[i]]||p[i]):attendanceMissingStatus(n,se,false,c.k);
@@ -1928,6 +1928,7 @@ function scheduleAttendanceState(c,meeting,now){
     if(date>end)return 'expired';
     return 'open';
   }
+  if((c._activityMode||legacyAttendanceMode(c.k))!==legacyAttendanceMode(c.k))return 'future';
   now=now||new Date();
   if(!onDay(c,jakartaWeekday(now)))return 'future';
   const r=jamRange(c);if(!r)return 'open';
@@ -1981,10 +1982,10 @@ function absenBtn(c){
     return '<button type="button" class="btn sm pri" data-act="schedule-attendance" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+mode+'">Isi absen P'+n+'</button>';
   }).join('');
 }
-async function saveScheduleAttendance(k,meeting){
-  const n=Number(meeting)||defaultPert(k),id=k+'_'+PAD(n);
-  await writeSession(k,n,{present:{[ME]:'H'}});
-  const current=S.se[id]||{k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}};
+async function saveScheduleAttendance(k,meeting,mode){
+  const n=Number(meeting)||defaultPert(k),activity=activityModel.normalizeActivityMode(mode,legacyAttendanceMode(k)),id=attendanceSessionId(k,n,activity);
+  await writeSession(k,n,{present:{[ME]:'H'}},activity);
+  const current=S.se[id]||{k:k,n:n,activity_mode:activity,tanggal:'',topik:'',present:{},bukti:{}};
   S.se[id]=Object.assign({},current,{present:Object.assign({},current.present||{},{[ME]:'H'})});
   refreshAll();
 }
@@ -2591,7 +2592,7 @@ document.addEventListener('click',async e=>{
     }
     case 'auto-attend':{
       if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dan pastikan akun punya izin mengisi absen.');break;}
-      const k=d.k,n=Number(d.n)||defaultPert(k);await run(()=>saveScheduleAttendance(k,n),'Absensi berhasil terisi.');break;
+      const k=d.k,n=Number(d.n)||defaultPert(k);await run(()=>saveScheduleAttendance(k,n,d.mode),'Absensi berhasil terisi.');break;
     }
     case 'platform-task-done':{
       if(!ME||!canWrite)break;
@@ -2741,7 +2742,7 @@ document.addEventListener('click',async e=>{
     case 'close':PROFILE_EDITING=false;dlg.close();break;
     case 'profile-edit':{if(!D||D.kind!=='student'||Number(D.key)!==Number(ME)||!canWrite)break;PROFILE_EDITING=true;renderDialog(true);break;}
     case 'profile-edit-cancel':PROFILE_EDITING=false;renderDialog(true);break;
-    case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
+    case 'tab':D.tab=d.tab;D.confirmDel=null;if(D.tab!=='absen')D.activityMode=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
       const no=+d.no,c=D.key,activity=D.activityMode||legacyAttendanceMode(c),id=attendanceSessionId(c,D.pert,activity),session=S.se[id]||{},cur=(session.present||{})[no]||'';
