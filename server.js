@@ -197,7 +197,8 @@ async function deleteDoc(p) {
 function taskFromCourseUpdate(row) {
   if (!row || !row.task_title) return null;
   const subs = isObj(row.task_submissions) ? row.task_submissions : {};
-  return { k: row.course_code, judul: row.task_title, tenggat: row.deadline || '',
+  return { k: row.course_code, meeting_number: Number(row.meeting_number) || null,
+    judul: row.task_title, tenggat: row.deadline || '',
     deskripsi: row.task_description || '', link: row.task_url || '',
     lampiran: Array.isArray(row.task_attachments) ? row.task_attachments : [],
     mode: row.task_mode === 'group' ? 'group' : 'individual', closed: !!(subs.__meta && subs.__meta.closed),
