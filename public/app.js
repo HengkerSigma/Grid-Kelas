@@ -3242,7 +3242,13 @@ document.addEventListener('change',async e=>{
 });
 dlg.addEventListener('keydown',e=>{if(e.key==='Enter'&&D&&D.kind==='login'&&D.step==='form'&&(e.target.id==='lg-nim'||e.target.id==='lg-pw')){e.preventDefault();loginGo();}});
 dlg.addEventListener('close',()=>{D=null;});
-dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close();});
+let dlgBackdropPointerDown=false;
+dlg.addEventListener('pointerdown',e=>{dlgBackdropPointerDown=e.target===dlg;});
+dlg.addEventListener('click',e=>{
+  const closeFromBackdrop=e.target===dlg&&dlgBackdropPointerDown;
+  dlgBackdropPointerDown=false;
+  if(closeFromBackdrop)dlg.close();
+});
 
 /* student strip: arrows both ways and mouse drag */
 const rail=$('rail');
