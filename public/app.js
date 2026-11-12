@@ -58,7 +58,7 @@ const MAKRAB_START_AT=Date.UTC(2026,9,31,17,0,0,0),MAKRAB_DEADLINE_AT=Date.UTC(2
 function makrabWindowOpen(now){now=Number(now)||Date.now();return now>=MAKRAB_START_AT&&now<=MAKRAB_DEADLINE_AT;}
 function makrabStatus(item,now){now=Number(now)||Date.now();if(item&&Number(item.at)>0)return Number(item.at)<=MAKRAB_DEADLINE_AT?'Sudah Mengumpulkan':'Terlambat';return now>MAKRAB_DEADLINE_AT?'Terlambat':'Belum Mengumpulkan';}
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{},pr:{}};
-let TASK_REVIEW_SELECTIONS={},ATTENDANCE_REVIEW_SELECTIONS={},CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,PLATFORM_FORM_ACTIVITY='',ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
+let TASK_REVIEW_SELECTIONS={},ATTENDANCE_REVIEW_SELECTIONS={},PARTICIPATION_RECAP={course:'',meeting:'1',type:'attendance',mode:'tatap_muka',status:'missing',task:''},CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,PLATFORM_FORM_ACTIVITY='',ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null,PROFILE_EDITING=false,presenceTimer=null,greetingCooldownUntil=0,greetingCooldownTimer=null;
@@ -1466,6 +1466,50 @@ function buildWhatsAppTemplate(){
   }
   return lines.join('\n').trim();
 }
+
+function participationRecapRows(){
+  const f=PARTICIPATION_RECAP,course=f.course,meeting=Number(f.meeting)||1,students=Array.from({length:N},(_,i)=>i+1);
+  let title='',rows=[],source=null;
+  if(f.type==='attendance'){
+    const entry=Object.entries(S.se||{}).find(([id,se])=>se&&se.k===course&&Number(se.n)===meeting&&attendanceModeForSession(se,id)===f.mode);
+    source=entry?entry[1]:null;title='Absensi · '+cname(course)+' · Pertemuan '+meeting+' · '+attendanceModeLabel(f.mode);
+    if(!source)return {title:title,rows:[],available:false,text:'Sesi absensi belum dibuat untuk pilihan ini.'};
+    const present=source.present||{};
+    rows=students.filter(no=>{const status=present[String(no)]||'';if(f.status==='all')return true;if(f.status==='filled')return !!status;if(f.status==='missing')return !status;return status===f.status;}).map(no=>({no:no,name:nameOf(no),status:present[String(no)]||'Belum mengisi'}));
+  }else{
+    const available=Object.keys(S.tu||{}).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===course&&Number(t.meeting_number)===meeting);
+    const task=available.find(t=>t.id===f.task)||available[0]||null;if(task&&f.task!==task.id)PARTICIPATION_RECAP.task=task.id;
+    title='Tugas · '+cname(course)+' · Pertemuan '+meeting+(task?' · '+task.judul:'');
+    if(!task)return {title:title,rows:[],available:false,text:'Belum ada tugas yang terhubung ke pertemuan ini.'};
+    source=task;const subs=task.subs||{},review=subs.__review||{},groupSubmitted=new Set();
+    if(task.mode==='group')constructorGroups(task.k).forEach(g=>{const submission=task.groupSubs&&task.groupSubs[g.id];if(submission&&typeof submission.at==='number')[Number(g.principal),...(g.members||[]).map(Number)].forEach(no=>{if(Number.isInteger(no)&&no>=1&&no<=N)groupSubmitted.add(no);});});
+    rows=students.filter(no=>{const submitted=!!(subs[String(no)]&&typeof subs[String(no)].at==='number')||groupSubmitted.has(no),reviewed=review[String(no)]==='sudah';if(f.status==='submitted')return submitted;if(f.status==='not_submitted')return !submitted;if(f.status==='reviewed')return reviewed;if(f.status==='not_reviewed')return !reviewed;return true;}).map(no=>({no:no,name:nameOf(no),status:f.status==='reviewed'||f.status==='not_reviewed'?(review[String(no)]==='sudah'?'Sudah diperiksa':'Belum diperiksa'):(subs[String(no)]||groupSubmitted.has(no)?'Sudah mengumpulkan':'Belum mengumpulkan')}));
+  }
+  const label=f.type==='attendance'?({all:'Semua mahasiswa',filled:'Sudah mengisi absensi',missing:'Belum mengisi absensi',H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa',K:'Kelas Berjalan'}[f.status]||f.status):({submitted:'Sudah mengumpulkan',not_submitted:'Belum mengumpulkan',reviewed:'Sudah diperiksa',not_reviewed:'Belum diperiksa'}[f.status]||f.status);
+  const showStatus=['all','filled','missing','submitted','not_submitted'].includes(f.status);
+  const list=rows.length?rows.map((r,i)=>(i+1)+'. '+r.name+' (No. '+String(r.no).padStart(2,'0')+')'+(showStatus?' — '+r.status:'')).join('\n'):'Tidak ada mahasiswa yang sesuai filter.';
+  return {title:title,rows:rows,available:true,text:'*REKAP '+(f.type==='attendance'?'ABSENSI':'TUGAS')+' GRID KELAS*\n'+title+'\nFilter: '+label+'\nJumlah: '+rows.length+'/'+N+' mahasiswa\n\n'+list};
+}
+function participationRecapPanel(cl){
+  if(!cl.length)return '<div class="panel"><p class="empty">Belum ada mata kuliah.</p></div>';
+  if(!PARTICIPATION_RECAP.course||!cl.some(c=>c.k===PARTICIPATION_RECAP.course))PARTICIPATION_RECAP.course=cl[0].k;
+  const f=PARTICIPATION_RECAP,meeting=Math.max(1,Math.min(PERT,Number(f.meeting)||1)),data=participationRecapRows();
+  const courseOptions=cl.map(c=>'<option value="'+esc(c.k)+'"'+(c.k===f.course?' selected':'')+'>'+esc(c.nama)+'</option>').join('');
+  const taskOptions=Object.keys(S.tu||{}).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===f.course&&Number(t.meeting_number)===meeting).map(t=>'<option value="'+esc(t.id)+'"'+(t.id===f.task?' selected':'')+'>'+esc(t.judul)+'</option>').join('');
+  const attendanceOptions='<option value="all"'+(f.status==='all'?' selected':'')+'>Semua mahasiswa</option><option value="filled"'+(f.status==='filled'?' selected':'')+'>Sudah mengisi absensi</option><option value="missing"'+(f.status==='missing'?' selected':'')+'>Belum mengisi absensi</option><option value="H"'+(f.status==='H'?' selected':'')+'>Hadir</option><option value="I"'+(f.status==='I'?' selected':'')+'>Izin</option><option value="S"'+(f.status==='S'?' selected':'')+'>Sakit</option><option value="A"'+(f.status==='A'?' selected':'')+'>Alpa</option><option value="K"'+(f.status==='K'?' selected':'')+'>Kelas Berjalan</option>';
+  const taskFilterOptions='<option value="submitted"'+(f.status==='submitted'?' selected':'')+'>Sudah mengumpulkan</option><option value="not_submitted"'+(f.status==='not_submitted'?' selected':'')+'>Belum mengumpulkan</option><option value="reviewed"'+(f.status==='reviewed'?' selected':'')+'>Sudah diperiksa</option><option value="not_reviewed"'+(f.status==='not_reviewed'?' selected':'')+'>Belum diperiksa</option>';
+  return '<div class="panel"><h3 class="ph3">Class Participation Recap</h3><p class="s">Filter data satu mata kuliah dan satu pertemuan. Status pengumpulan dan pemeriksaan tugas dihitung terpisah. Hasil hanya disalin ke clipboard; pengiriman tetap dilakukan manual melalui WhatsApp.</p>'+
+    '<div class="cu-form"><div class="field"><label for="participation-course">Mata kuliah</label><select id="participation-course" data-participation-filter="course">'+courseOptions+'</select></div>'+
+    '<div class="field"><label for="participation-meeting">Pertemuan</label><select id="participation-meeting" data-participation-filter="meeting">'+Array.from({length:PERT},(_,i)=>'<option value="'+(i+1)+'"'+(meeting===i+1?' selected':'')+'>Pertemuan '+(i+1)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label for="participation-type">Jenis rekap</label><select id="participation-type" data-participation-filter="type"><option value="attendance"'+(f.type==='attendance'?' selected':'')+'>Absensi</option><option value="task"'+(f.type==='task'?' selected':'')+'>Tugas</option></select></div>'+
+    (f.type==='attendance'?'<div class="field"><label for="participation-mode">Jenis absensi</label><select id="participation-mode" data-participation-filter="mode"><option value="tatap_muka"'+(f.mode==='tatap_muka'?' selected':'')+'>Tatap muka</option><option value="online"'+(f.mode==='online'?' selected':'')+'>Online</option></select></div>':(taskOptions?'<div class="field"><label for="participation-task">Tugas</label><select id="participation-task" data-participation-filter="task">'+taskOptions+'</select></div>':'<p class="s">Tidak ada tugas pada pertemuan ini.</p>'))+
+    '<div class="field"><label for="participation-status">Filter status</label><select id="participation-status" data-participation-filter="status">'+(f.type==='attendance'?attendanceOptions:taskFilterOptions)+'</select></div></div>'+
+    '<div class="task-management-inline"><div class="row2" style="justify-content:space-between"><b>'+esc(data.title)+'</b><span class="chip">'+data.rows.length+' mahasiswa</span></div>'+
+    '<p class="s">'+(data.available?'Daftar di bawah mengikuti filter yang dipilih.':'Data belum tersedia; tidak ada mahasiswa yang akan dimasukkan ke rekap.')+'</p>'+
+    '<textarea id="participation-recap-text" rows="9" readonly>'+esc(data.text)+'</textarea>'+
+    '<div class="row2"><button type="button" class="btn pri" data-act="participation-recap-copy"'+(data.available?'':' disabled')+'>Salin rekap WhatsApp</button></div></div></div>';
+}
+
 function renderAdmin(force=false){
   if(!adm()){$('admin').innerHTML='';return;}
   const a0=document.activeElement;
@@ -1494,7 +1538,8 @@ function renderAdmin(force=false){
     '<button type="button" class="student-subtab" data-act="admin-main-tab" data-tab="students" role="tab" aria-selected="'+(ADMIN_MAIN_TAB==='students')+'">MAHASISWA</button></div><div id="admin-academic"'+(ADMIN_MAIN_TAB==='academic'?'':' hidden')+'><section class="panel notification-center" id="notification-update-center"><div class="notification-center-head"><div><span class="constructor-kicker">TEAM RADIO · ADMIN CONTROL</span><h3 class="ph3">Notification Update Center</h3><p class="s">Pusat pengelolaan pembaruan tugas, tautan absensi, dan seminar. Pengiriman WhatsApp dilakukan manual oleh pengelola.</p></div></div>'+
     '<div class="notification-tabs" role="tablist" aria-label="Jenis pembaruan">'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="tasks" aria-selected="'+(ADMIN_NOTIFY_TAB==='tasks')+'">Tugas &amp; Mata Kuliah</button>'+
-    '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="attendance" aria-selected="'+(ADMIN_NOTIFY_TAB==='attendance')+'">Absensi</button>'+
+    '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="attendance" aria-selected="'+(ADMIN_NOTIFY_TAB==='attendance')+'">Absensi</button>'+ 
+     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="recap aria-selected="'+(ADMIN_NOTIFY_TAB==='recap')+'">Rekap WhatsApp</button>'+
     '<button type="button" class="notification-tab" data-act="notify-tab" data-tab="seminar" aria-selected="'+(ADMIN_NOTIFY_TAB==='seminar')+'">Seminar</button></div>';
   const anns=Object.keys(S.an).map(id=>Object.assign({id:id},S.an[id])).sort((a,b)=>(b.at||0)-(a.at||0));
   const annEdit=ANN_EDIT&&S.an[ANN_EDIT]?Object.assign({id:ANN_EDIT},S.an[ANN_EDIT]):null;
@@ -1566,6 +1611,7 @@ function renderAdmin(force=false){
         (deletePending?'<div class="tcard"><b>Yakin ingin menghapus sesi ini?</b><p class="s">Tindakan ini tidak dapat dibatalkan. Data sesi pertemuan lain tidak akan berubah.</p><div class="row2"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Ya, hapus sesi absensi</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></div></div>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Hapus sesi absensi '+attendanceModeLabel(chosenActivity)+' P'+chosenMeeting+'</button>'):'<p class="empty">Belum ada sesi '+attendanceModeLabel(chosenActivity).toLowerCase()+' tersimpan untuk '+(chosenCourse?esc(chosenCourse.nama):'mata kuliah ini')+' · Pertemuan '+chosenMeeting+'.</p>'+(chosenCourse?'<button type="button" class="btn sm pri" data-act="attendance-session-create" data-k="'+esc(chosenCourse.k)+'" data-n="'+chosenMeeting+'" data-mode="'+chosenActivity+'">Buat sesi '+attendanceModeLabel(chosenActivity)+' P'+chosenMeeting+'</button>':'') )+'</div>';
     h+=attendancePanel;
   }
+  if(ADMIN_NOTIFY_TAB==='recap'){h+=participationRecapPanel(cl);}
   if(ADMIN_NOTIFY_TAB==='seminar'){
     const seminars=Object.keys(S.pc).map(id=>Object.assign({id:id},S.pc[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     h+='<div class="seminar-admin"><h3 class="ph3">Tambah seminar ke Paddock Club</h3><div class="field"><label for="pc-title">Judul seminar</label><input id="pc-title" data-dr="pc-title" type="text" maxlength="160" value="'+esc(dv('pc-title',''))+'" placeholder="Masukkan judul seminar"></div><div class="field"><label for="pc-registration-type">Metode pendaftaran</label><select id="pc-registration-type" data-dr="pc-registration-type"><option value="link"'+(dv('pc-registration-type','link')==='link'?' selected':'')+'>Link pendaftaran</option><option value="contact"'+(dv('pc-registration-type','link')==='contact'?' selected':'')+'>Nomor contact person</option></select></div><div class="field" id="pc-link-field"'+(dv('pc-registration-type','link')==='link'?'':' style="display:none"')+'><label for="pc-link">Link pendaftaran</label><input id="pc-link" data-dr="pc-link" type="url" inputmode="url" value="'+esc(dv('pc-link',''))+'" placeholder="https://..."></div><div class="field" id="pc-contact-field"'+(dv('pc-registration-type','link')==='contact'?'':' style="display:none"')+'><label for="pc-contact">Nomor WhatsApp contact person</label><input id="pc-contact" data-dr="pc-contact" type="tel" inputmode="tel" maxlength="20" value="'+esc(dv('pc-contact',''))+'" placeholder="Contoh: 081234567890"></div><div class="field" id="pc-contact-name-field"'+(dv('pc-registration-type','link')==='contact'?'':' style="display:none"')+'><label for="pc-contact-name">Nama pemilik nomor</label><input id="pc-contact-name" data-dr="pc-contact-name" type="text" maxlength="80" value="'+esc(dv('pc-contact-name',''))+'" placeholder="Nama contact person"></div><div class="field"><label for="pc-price">Harga seminar</label><input id="pc-price" data-dr="pc-price" type="text" maxlength="40" value="'+esc(dv('pc-price',''))+'" placeholder="Contoh: Gratis atau Rp50.000"></div><div class="row2"><label class="btn sm pickfile">'+(PEND.seminar?'Ganti poster':'Pilih poster')+'<input type="file" accept="image/jpeg,image/png,image/webp" data-file="seminar"></label><span class="s">'+(PEND.seminar?esc(PEND.seminar.name||'Poster siap diunggah'):'Poster JPG, PNG, atau WebP · maksimal 20 MB')+'</span></div><div class="row2"><button type="button" class="btn pri" data-act="seminar-save"'+(ME&&AS?'':' disabled')+'>Terbitkan seminar</button></div></div>'+
@@ -2450,7 +2496,7 @@ document.addEventListener('click',async e=>{
       ADMIN_MAIN_TAB=d.tab;renderAdmin(true);break;
     }
     case 'notify-tab':{
-      if(!adm()||!['tasks','attendance','seminar'].includes(d.tab))break;
+      if(!adm()||!['tasks','attendance','recap','seminar'].includes(d.tab))break;
       ADMIN_NOTIFY_TAB=d.tab;renderAdmin();break;
     }
     case 'platform-load':{
@@ -2554,6 +2600,14 @@ document.addEventListener('click',async e=>{
       break;
     }
     case 'wa-generate':{if(!adm())break;const msg=buildWhatsAppTemplate();$('wa-preview').value=msg;DR['wa-preview']=msg;toast('Template pesan diperbarui.');break;}
+    case 'participation-recap-copy':{
+      if(!adm())break;
+      const field=$('participation-recap-text'),msg=String(field&&field.value||'').trim();
+      if(!msg){toast('Tidak ada rekap untuk disalin.');break;}
+      try{if(!navigator.clipboard||!window.isSecureContext)throw new Error('Clipboard API tidak tersedia');await navigator.clipboard.writeText(msg);toast('Rekap berhasil disalin. Tempelkan ke grup WhatsApp kelas.');}
+      catch(e){if(field){field.focus();field.select();try{document.execCommand('copy');toast('Rekap disalin. Tempelkan ke grup WhatsApp kelas.');}catch(err){toast('Salin manual teks rekap yang tampil.');}}}
+      break;
+    }
     case 'wa-share':{
       if(!adm())break;
       const msg=String($('wa-preview').value||'').trim();
@@ -3192,6 +3246,17 @@ document.addEventListener('click',async e=>{
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.dr)DR[t.dataset.dr]=t.value;});
 document.addEventListener('change',async e=>{
   const t=e.target;
+  if(t.matches&&t.matches('select[data-participation-filter]')){
+    if(!adm()||ADMIN_NOTIFY_TAB!=='recap')return;
+    const key=t.dataset.participationFilter;
+    if(key==='course'){PARTICIPATION_RECAP.course=t.value;PARTICIPATION_RECAP.task='';}
+    else if(key==='meeting'){PARTICIPATION_RECAP.meeting=t.value;PARTICIPATION_RECAP.task='';}
+    else if(key==='type'){PARTICIPATION_RECAP.type=t.value;PARTICIPATION_RECAP.status=t.value==='attendance'?'missing':'submitted';PARTICIPATION_RECAP.task='';}
+    else if(key==='mode')PARTICIPATION_RECAP.mode=t.value;
+    else if(key==='status')PARTICIPATION_RECAP.status=t.value;
+    else if(key==='task')PARTICIPATION_RECAP.task=t.value;
+    renderAdmin(true);return;
+  }
   if(t.matches&&t.matches('input[data-attendance-select]')){
     const id=t.dataset.id,no=String(Number(t.dataset.no));
     if(!ATTENDANCE_REVIEW_SELECTIONS[id])ATTENDANCE_REVIEW_SELECTIONS[id]={};
