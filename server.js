@@ -919,7 +919,7 @@ async function decide(method, p, body, sess, existing) {
         const entries = Object.entries(body.review);
         if (!entries.length || entries.length > N || entries.some(([rawNo, status]) => {
           const no = Number(rawNo);
-          return !/^(?:[1-9]|[12]\\d|3[0-2])$/.test(rawNo) || !Number.isInteger(no) || no < 1 || no > N || !['sudah','belum'].includes(status);
+          return !/^(?:[1-9]|[12]\d|3[0-2])$/.test(rawNo) || !Number.isInteger(no) || no < 1 || no > N || !['sudah','belum'].includes(status);
         })) return ERR_BAD('Status pemeriksaan tugas tidak valid.');
         const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
         out.subs.__review = Object.assign({}, isObj(out.subs.__review) ? out.subs.__review : {});
