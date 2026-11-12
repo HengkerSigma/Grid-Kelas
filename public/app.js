@@ -1491,6 +1491,58 @@ function participationRecapRows(){
   const list=rows.length?rows.map((r,i)=>(i+1)+'. '+r.name+' (No. '+String(r.no).padStart(2,'0')+')'+(showStatus?' — '+r.status:'')).join('\n'):'Tidak ada mahasiswa yang sesuai filter.';
   return {title:title,rows:rows,available:true,text:'*REKAP '+(f.type==='attendance'?'ABSENSI':'TUGAS')+' GRID KELAS*\n'+title+'\nFilter: '+label+'\nJumlah: '+rows.length+'/'+N+' mahasiswa\n\n'+list};
 }
+function participationStudentRows(){
+  const students=Array.from({length:N},(_,i)=>i+1),tasks=Object.keys(S.tu||{}).map(id=>Object.assign({id:id},S.tu[id]));
+  const sessions=Object.entries(S.se||{}).filter(([id,se])=>{
+    if(!se||!se.k||!Number.isInteger(Number(se.n))||se.closed)return false;
+    const date=se.tanggal||meetingDate(Number(se.n));
+    return !date||date<=today();
+  });
+  return students.map(no=>{
+    const taskItems=[],attendanceItems=[];
+    tasks.forEach(task=>{
+      const subs=task.subs||{},review=subs.__review||{};
+      let groupSubmitted=false;
+      if(task.mode==='group'){
+        constructorGroups(task.k).forEach(g=>{
+          const members=[Number(g.principal),...(g.members||[]).map(Number)];
+          if(members.includes(no)){
+            const submission=task.groupSubs&&task.groupSubs[g.id];
+            if(submission&&typeof submission.at==='number')groupSubmitted=true;
+          }
+        });
+      }
+      const submission=subs[String(no)],submitted=!!(submission&&typeof submission.at==='number')||groupSubmitted;
+      const reviewed=review[String(no)]==='sudah';
+      const mode=taskActivityModeOf(task)==='online'?'Online':'Tatap Muka';
+      if(!submitted)taskItems.push({course:cname(task.k),meeting:Number(task.meeting_number)||0,title:task.judul||'Tugas',mode:mode,status:isLocked(task)?'Belum mengumpulkan · tenggat lewat':'Belum mengumpulkan',done:false});
+      else if(!reviewed)taskItems.push({course:cname(task.k),meeting:Number(task.meeting_number)||0,title:task.judul||'Tugas',mode:mode,status:'Sudah dikumpulkan · belum diperiksa',done:false});
+    });
+    sessions.forEach(([id,se])=>{
+      const status=(se.present||{})[String(no)]||'';
+      if(status)return;
+      attendanceItems.push({course:cname(se.k),meeting:Number(se.n)||0,mode:attendanceModeForSession(se,id)==='online'?'Online':'Tatap Muka',status:'Belum mengisi absensi'});
+    });
+    const name=nameOf(no);
+    const lines=['*'+name+' (No. '+String(no).padStart(2,'0')+')*'];
+    if(taskItems.length){
+      lines.push('Tugas yang perlu ditindaklanjuti:');
+      taskItems.forEach(x=>lines.push('• '+x.course+' · Pertemuan '+(x.meeting||'—')+' · '+x.title+' ('+x.mode+') — '+x.status));
+    }else lines.push('Tugas: tidak ada yang menunggu pengumpulan atau pemeriksaan.');
+    if(attendanceItems.length){
+      lines.push('Absensi yang belum diisi:');
+      attendanceItems.forEach(x=>lines.push('• '+x.course+' · Pertemuan '+x.meeting+' ('+x.mode+') — '+x.status));
+    }else lines.push('Absensi: tidak ada sesi yang tertinggal.');
+    return {no:no,name:name,tasks:taskItems,attendance:attendanceItems,text:lines.join('\n')};
+  });
+}
+function participationStudentRecapText(rows){
+  const pending=rows.filter(r=>r.tasks.length||r.attendance.length);
+  return '*REKAP PARTISIPASI PER MAHASISWA · GRID KELAS*\n'+
+    'Daftar tugas yang belum dikumpulkan/belum diperiksa dan absensi yang belum diisi.\n'+
+    'Mahasiswa dengan tindak lanjut: '+pending.length+'/'+N+'\n\n'+
+    (pending.length?pending.map(r=>r.text).join('\n\n'):'Semua mahasiswa tidak memiliki tugas atau absensi tertinggal.');
+}
 function participationRecapPanel(cl){
   if(!cl.length)return '<div class="panel"><p class="empty">Belum ada mata kuliah.</p></div>';
   if(!PARTICIPATION_RECAP.course||!cl.some(c=>c.k===PARTICIPATION_RECAP.course))PARTICIPATION_RECAP.course=cl[0].k;
@@ -1499,18 +1551,36 @@ function participationRecapPanel(cl){
   const taskOptions=Object.keys(S.tu||{}).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===f.course&&Number(t.meeting_number)===meeting).map(t=>'<option value="'+esc(t.id)+'"'+(t.id===f.task?' selected':'')+'>'+esc(t.judul)+'</option>').join('');
   const attendanceOptions='<option value="all"'+(f.status==='all'?' selected':'')+'>Semua mahasiswa</option><option value="filled"'+(f.status==='filled'?' selected':'')+'>Sudah mengisi absensi</option><option value="missing"'+(f.status==='missing'?' selected':'')+'>Belum mengisi absensi</option><option value="H"'+(f.status==='H'?' selected':'')+'>Hadir</option><option value="I"'+(f.status==='I'?' selected':'')+'>Izin</option><option value="S"'+(f.status==='S'?' selected':'')+'>Sakit</option><option value="A"'+(f.status==='A'?' selected':'')+'>Alpa</option><option value="K"'+(f.status==='K'?' selected':'')+'>Kelas Berjalan</option>';
   const taskFilterOptions='<option value="submitted"'+(f.status==='submitted'?' selected':'')+'>Sudah mengumpulkan</option><option value="not_submitted"'+(f.status==='not_submitted'?' selected':'')+'>Belum mengumpulkan</option><option value="reviewed"'+(f.status==='reviewed'?' selected':'')+'>Sudah diperiksa</option><option value="not_reviewed"'+(f.status==='not_reviewed'?' selected':'')+'>Belum diperiksa</option>';
-  return '<div class="panel"><h3 class="ph3">Class Participation Recap</h3><p class="s">Filter data satu mata kuliah dan satu pertemuan. Status pengumpulan dan pemeriksaan tugas dihitung terpisah. Hasil hanya disalin ke clipboard; pengiriman tetap dilakukan manual melalui WhatsApp.</p>'+
-    '<div class="cu-form"><div class="field"><label for="participation-course">Mata kuliah</label><select id="participation-course" data-participation-filter="course">'+courseOptions+'</select></div>'+
-    '<div class="field"><label for="participation-meeting">Pertemuan</label><select id="participation-meeting" data-participation-filter="meeting">'+Array.from({length:PERT},(_,i)=>'<option value="'+(i+1)+'"'+(meeting===i+1?' selected':'')+'>Pertemuan '+(i+1)+'</option>').join('')+'</select></div>'+
-    '<div class="field"><label for="participation-type">Jenis rekap</label><select id="participation-type" data-participation-filter="type"><option value="attendance"'+(f.type==='attendance'?' selected':'')+'>Absensi</option><option value="task"'+(f.type==='task'?' selected':'')+'>Tugas</option></select></div>'+
-    (f.type==='attendance'?'<div class="field"><label for="participation-mode">Jenis absensi</label><select id="participation-mode" data-participation-filter="mode"><option value="tatap_muka"'+(f.mode==='tatap_muka'?' selected':'')+'>Tatap muka</option><option value="online"'+(f.mode==='online'?' selected':'')+'>Online</option></select></div>':(taskOptions?'<div class="field"><label for="participation-task">Tugas</label><select id="participation-task" data-participation-filter="task">'+taskOptions+'</select></div>':'<p class="s">Tidak ada tugas pada pertemuan ini.</p>'))+
-    '<div class="field"><label for="participation-status">Filter status</label><select id="participation-status" data-participation-filter="status">'+(f.type==='attendance'?attendanceOptions:taskFilterOptions)+'</select></div></div>'+
-    '<div class="task-management-inline"><div class="row2" style="justify-content:space-between"><b>'+esc(data.title)+'</b><span class="chip">'+data.rows.length+' mahasiswa</span></div>'+
-    '<p class="s">'+(data.available?'Daftar di bawah mengikuti filter yang dipilih.':'Data belum tersedia; tidak ada mahasiswa yang akan dimasukkan ke rekap.')+'</p>'+
-    '<textarea id="participation-recap-text" rows="9" readonly>'+esc(data.text)+'</textarea>'+
-    '<div class="row2"><button type="button" class="btn pri" data-act="participation-recap-copy"'+(data.available?'':' disabled')+'>Salin rekap WhatsApp</button></div></div></div>';
+  const studentRows=participationStudentRows(),pendingRows=studentRows.filter(r=>r.tasks.length||r.attendance.length);
+  const studentText=participationStudentRecapText(studentRows);
+  const studentCards=studentRows.map(r=>{
+    const items=r.tasks.length+r.attendance.length;
+    return '<details class="task-management-inline" style="margin-top:10px"><summary><b>'+esc(r.name)+'</b> <span class="s">· No. '+String(r.no).padStart(2,'0')+' · '+items+' tindak lanjut</span></summary>'+
+      '<div class="stack" style="margin-top:10px">'+
+      (r.tasks.length?'<div><b>Tugas ('+r.tasks.length+')</b><ul>'+r.tasks.map(x=>'<li>'+esc(x.course)+' · Pertemuan '+(x.meeting||'—')+' · '+esc(x.title)+' ('+x.mode+') — '+esc(x.status)+'</li>').join('')+'</ul></div>':'<p class="s">Tidak ada tugas yang menunggu pengumpulan atau pemeriksaan.</p>')+
+      (r.attendance.length?'<div><b>Absensi belum diisi ('+r.attendance.length+')</b><ul>'+r.attendance.map(x=>'<li>'+esc(x.course)+' · Pertemuan '+x.meeting+' ('+x.mode+')</li>').join('')+'</ul></div>':'<p class="s">Tidak ada absensi tertinggal.</p>')+
+      '<button type="button" class="btn sm" data-act="participation-student-copy" data-no="'+r.no+'">Salin rekap mahasiswa</button></div></details>';
+  }).join('');
+  return '<div class="panel"><h3 class="ph3">Class Participation Recap</h3><p class="s">Pilih sudut pandang rekap. Status tugas dan absensi dihitung terpisah; pengiriman WhatsApp tetap dilakukan manual.</p>'+
+    '<div class="row2" style="margin-bottom:14px"><button type="button" class="btn sm '+(f.view!=='student'?'pri':'')+'" data-act="participation-view-course">Per Mata Kuliah</button><button type="button" class="btn sm '+(f.view==='student'?'pri':'')+'" data-act="participation-view-student">Per Mahasiswa</button></div>'+
+    (f.view==='student'?
+      '<div class="task-management-inline"><div class="row2" style="justify-content:space-between"><b>Rekap seluruh mahasiswa</b><span class="chip">'+pendingRows.length+' / '+N+' mahasiswa perlu tindak lanjut</span></div>'+
+      '<p class="s">Tugas yang belum dikumpulkan, sudah dikumpulkan tetapi belum diperiksa, dan absensi yang belum diisi ditampilkan per mahasiswa.</p>'+
+      studentCards+
+      '<div class="field" style="margin-top:14px"><label for="participation-student-recap-text">Rekap WhatsApp seluruh mahasiswa</label><textarea id="participation-student-recap-text" rows="12" readonly>'+esc(studentText)+'</textarea></div>'+
+      '<button type="button" class="btn pri" data-act="participation-student-copy-all">Salin rekap seluruh mahasiswa</button></div>'
+    :
+      '<div class="cu-form"><div class="field"><label for="participation-course">Mata kuliah</label><select id="participation-course" data-participation-filter="course">'+courseOptions+'</select></div>'+
+      '<div class="field"><label for="participation-meeting">Pertemuan</label><select id="participation-meeting" data-participation-filter="meeting">'+Array.from({length:PERT},(_,i)=>'<option value="'+(i+1)+'"'+(meeting===i+1?' selected':'')+'>Pertemuan '+(i+1)+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label for="participation-type">Jenis rekap</label><select id="participation-type" data-participation-filter="type"><option value="attendance"'+(f.type==='attendance'?' selected':'')+'>Absensi</option><option value="task"'+(f.type==='task'?' selected':'')+'>Tugas</option></select></div>'+
+      (f.type==='attendance'?'<div class="field"><label for="participation-mode">Jenis absensi</label><select id="participation-mode" data-participation-filter="mode"><option value="tatap_muka"'+(f.mode==='tatap_muka'?' selected':'')+'>Tatap muka</option><option value="online"'+(f.mode==='online'?' selected':'')+'>Online</option></select></div>':(taskOptions?'<div class="field"><label for="participation-task">Tugas</label><select id="participation-task" data-participation-filter="task">'+taskOptions+'</select></div>':'<p class="s">Tidak ada tugas pada pertemuan ini.</p>'))+
+      '<div class="field"><label for="participation-status">Filter status</label><select id="participation-status" data-participation-filter="status">'+(f.type==='attendance'?attendanceOptions:taskFilterOptions)+'</select></div></div>'+
+      '<div class="task-management-inline"><div class="row2" style="justify-content:space-between"><b>'+esc(data.title)+'</b><span class="chip">'+data.rows.length+' mahasiswa</span></div>'+
+      '<p class="s">'+(data.available?'Daftar di bawah mengikuti filter yang dipilih.':'Data belum tersedia; tidak ada mahasiswa yang akan dimasukkan ke rekap.')+'</p>'+
+      '<textarea id="participation-recap-text" rows="9" readonly>'+esc(data.text)+'</textarea>'+
+      '<div class="row2"><button type="button" class="btn pri" data-act="participation-recap-copy"'+(data.available?'':' disabled')+'>Salin rekap WhatsApp</button></div></div>')+
+    '</div>';
 }
-
 function renderAdmin(force=false){
   if(!adm()){$('admin').innerHTML='';return;}
   const a0=document.activeElement;
@@ -2602,6 +2672,23 @@ document.addEventListener('click',async e=>{
       break;
     }
     case 'wa-generate':{if(!adm())break;const msg=buildWhatsAppTemplate();$('wa-preview').value=msg;DR['wa-preview']=msg;toast('Template pesan diperbarui.');break;}
+    case 'participation-view-course':{if(!adm())break;PARTICIPATION_RECAP.view='course';renderAdmin(true);break;}
+    case 'participation-view-student':{if(!adm())break;PARTICIPATION_RECAP.view='student';renderAdmin(true);break;}
+    case 'participation-student-copy-all':{
+      if(!adm())break;
+      const msg=participationStudentRecapText(participationStudentRows());
+      try{await navigator.clipboard.writeText(msg);toast('Rekap seluruh mahasiswa berhasil disalin.');}
+      catch(e){const field=$('participation-student-recap-text');if(field){field.focus();field.select();try{document.execCommand('copy');toast('Rekap disalin.');}catch(err){toast('Salin manual teks rekap yang tampil.');}}}
+      break;
+    }
+    case 'participation-student-copy':{
+      if(!adm())break;
+      const row=participationStudentRows().find(x=>x.no===Number(d.no));
+      if(!row)break;
+      try{await navigator.clipboard.writeText(row.text);toast('Rekap '+row.name+' berhasil disalin.');}
+      catch(e){toast('Clipboard tidak tersedia. Salin dari daftar mahasiswa.');}
+      break;
+    }
     case 'participation-recap-copy':{
       if(!adm())break;
       const field=$('participation-recap-text'),msg=String(field&&field.value||'').trim();
