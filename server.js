@@ -201,7 +201,7 @@ function taskFromCourseUpdate(row) {
     judul: row.task_title, tenggat: row.deadline || '',
     deskripsi: row.task_description || '', link: row.task_url || '',
     lampiran: Array.isArray(row.task_attachments) ? row.task_attachments : [],
-    mode: row.task_mode === 'group' ? 'group' : 'individual', closed: !!(subs.__meta && subs.__meta.closed),
+    mode: row.task_mode === 'group' ? 'group' : 'individual', activityMode: ['online','tatap_muka'].includes(subs.__meta && subs.__meta.activity_mode) ? subs.__meta.activity_mode : '', closed: !!(subs.__meta && subs.__meta.closed),
     subs: subs,
     groupSubs: isObj(row.task_group_submissions) ? row.task_group_submissions : {},
     dibuat: Number(row.task_created_at) || Date.parse(row.created_at || '') || Date.now() };
@@ -737,6 +737,7 @@ async function decide(method, p, body, sess, existing) {
     if (taskTitle.length > 120 || (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline))) return ERR_BAD('Judul tugas atau tenggat tidak valid.');
     if (!(await getDoc('courses/' + k))) return ERR_BAD('Mata kuliah tidak ditemukan.');
     const now = Date.now(), mode = body.task_mode === 'group' ? 'group' : 'individual';
+    const activityMode = body.task_activity_mode === 'online' ? 'online' : body.task_activity_mode === 'tatap_muka' ? 'tatap_muka' : '';
     const description = String(body.task_description || '').slice(0, 1000);
     if (body.task_attachments !== undefined && !Array.isArray(body.task_attachments)) return ERR_BAD('Daftar foto tugas tidak valid.');
     const rawAttachments = body.task_attachments === undefined
@@ -752,13 +753,19 @@ async function decide(method, p, body, sess, existing) {
     const hasTask = !!(taskTitle || taskUrl || description || attachments.length);
     if (hasTask && !taskUrl && !description && !attachments.length) return ERR_BAD('Tambahkan tautan, petunjuk, atau foto tugas.');
     const finalTaskTitle = hasTask ? (taskTitle || ('Tugas pertemuan ' + meeting)) : null;
+    const taskSubmissions = hasTask && existing && isObj(existing.task_submissions) ? Object.assign({}, existing.task_submissions) : {};
+    if (hasTask && activityMode) {
+      const meta = Object.assign({}, isObj(taskSubmissions.__meta) ? taskSubmissions.__meta : {});
+      meta.activity_mode = activityMode;
+      taskSubmissions.__meta = meta;
+    }
     return { data: { course_code:k, meeting_number:meeting, attendance_url:attendance,
       task_title:finalTaskTitle, task_url:hasTask ? taskUrl : null,
       submission_url:submission, deadline:hasTask ? (deadline || null) : null,
       task_id:hasTask ? (existing && existing.task_id || id) : null,
       task_mode:hasTask ? mode : 'individual', task_description:hasTask ? description : '',
       task_attachments:hasTask ? attachments : [],
-      task_submissions:hasTask && existing && isObj(existing.task_submissions) ? existing.task_submissions : {},
+      task_submissions:taskSubmissions,
       task_group_submissions:hasTask && existing && isObj(existing.task_group_submissions) ? existing.task_group_submissions : {},
       task_created_at:hasTask ? (existing && existing.task_created_at || now) : null,
       created_at:existing && existing.created_at || new Date(now).toISOString(), updated_at:new Date(now).toISOString() } };
