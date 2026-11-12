@@ -2404,7 +2404,7 @@ document.addEventListener('click',async e=>{
       if(!adm())break;
       PLATFORM_FORM_COURSE=$('notify-platform-course').value;
       PLATFORM_FORM_MEETING=Number($('notify-platform-meeting').value)||defaultPert(PLATFORM_FORM_COURSE);
-      PLATFORM_FORM_ACTIVITY=legacyAttendanceMode(PLATFORM_FORM_COURSE);
+      if(!['online','tatap_muka'].includes(PLATFORM_FORM_ACTIVITY))PLATFORM_FORM_ACTIVITY=legacyAttendanceMode(PLATFORM_FORM_COURSE);
       renderAdmin();break;
     }
     case 'attendance-session-date-save':{
@@ -2412,9 +2412,9 @@ document.addEventListener('click',async e=>{
        const k=d.k,n=Number(d.n),mode=activityModel.normalizeActivityMode(d.mode,legacyAttendanceMode(d.k)),id=attendanceSessionId(k,n,mode);
        const date=String($('attendance-session-date')&&$('attendance-session-date').value||'').trim();
        if(!S.co[k]||!Number.isInteger(n)||n<1||n>PERT||!S.se[id]){toast('Sesi absensi tidak ditemukan.');break;}
-       if(date&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){toast('Tanggal mulai tidak valid.');break;}
+       if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Tanggal mulai tidak valid.');break;}
        const endDate=String($('attendance-session-end-date')&&$('attendance-session-end-date').value||'').trim();
-       if(endDate&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate)){toast('Tanggal berakhir tidak valid.');break;}
+       if(endDate&&!/^\d{4}-\d{2}-\d{2}$/.test(endDate)){toast('Tanggal berakhir tidak valid.');break;}
        if(endDate&&(!date||endDate<date)){toast('Tanggal berakhir harus sama atau setelah tanggal mulai.');break;}
        const ok=await run(()=>writeSession(k,n,{tanggal:date,tanggalAkhir:endDate},mode),'Periode absensi disimpan');
        if(ok){S.se[id]=Object.assign({},S.se[id],{tanggal:date,tanggalAkhir:endDate});renderAdmin(true);refreshAll();}
