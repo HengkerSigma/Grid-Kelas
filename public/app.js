@@ -1207,16 +1207,26 @@ function renderHome(force){
   const tasks=taskList();
   const anns=Object.keys(S.an).map(id=>Object.assign({id:id},S.an[id])).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8);
   const cl=courseList(),scheduleByCourse=new Map(cl.filter(c=>onDay(c,dayN)).map(c=>[c.k,c]));
-  // Tambahkan mata kuliah Ruangan yang memiliki sesi Tatap Muka aktif hari ini,
-  // meskipun hari kegiatan tersebut berbeda dari jadwal mingguan regulernya.
+  const datedActivities=new Map();
+  // Sesi bertanggal menjadi aktivitas harian mandiri. Mode yang sama dengan
+  // jadwal reguler digabung ke kartu kuliah; mode tambahan mendapat kartu sendiri.
   Object.entries(S.se||{}).forEach(([id,se])=>{
     if(!se||!se.k||!S.co[se.k])return;
-    if(attendanceModeForSession(se,id)!=='tatap_muka')return;
-    const n=Number(se.n),start=String(se.tanggal||''),end=String(se.tanggalAkhir||start);
+    const mode=attendanceModeForSession(se,id),n=Number(se.n);
+    const start=String(se.tanggal||''),end=String(se.tanggalAkhir||start);
     if(!Number.isInteger(n)||n<1||n>PERT||!start||td<start||td>end)return;
-    if(!scheduleByCourse.has(se.k))scheduleByCourse.set(se.k,Object.assign({},S.co[se.k],{_attendanceOnly:true}));
+    const legacyMode=legacyAttendanceMode(se.k);
+    if(mode===legacyMode&&scheduleByCourse.has(se.k))return;
+    const key=se.k+'|'+mode;
+    if(!datedActivities.has(key)){
+      datedActivities.set(key,Object.assign({},S.co[se.k],{
+        _attendanceOnly:true,
+        _activityMode:mode
+      }));
+    }
   });
-  const sched=Array.from(scheduleByCourse.values());
+  const sched=Array.from(scheduleByCourse.values()).concat(Array.from(datedActivities.values()));
+  const tasksDueToday=tasks.filter(t=>t.tenggat===td&&S.co[t.k]&&!t.closed);
   let h='';
   if(ME){
     const st=stats(ME),a=st.tot,p=pct(a.h,a.t),ts=tugasStat(ME),belum=ts.b-ts.a;
@@ -1229,7 +1239,7 @@ function renderHome(force){
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
     h+=homeTiles(ME);
     const left=[],right=[];
-    left.push(schedPanel(sched,dayN));
+    left.push(schedPanel(sched,dayN,tasksDueToday));
     right.push(greetingSectionHtml());
     right.push(teamRadioPanel(anns));
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
@@ -1240,7 +1250,7 @@ function renderHome(force){
     const act=tasks.filter(t=>!t.tenggat||t.tenggat>=td);
     let li='';
     act.slice(0,6).forEach(t=>{li+='<li class="it"><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+' · '+(t.tenggat?'Tenggat '+fmtDate(t.tenggat):'Tanpa tenggat')+'</span></div></li>';});
-    h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3><p class="s">Daftar tugas yang masih berjalan dan perlu dipantau.</p>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN)+'</div><div class="col">'+teamRadioPanel(anns)+'</div></div>';
+    h+='<div class="cols"><div class="col"><div class="panel"><h3 class="ph3">Tugas aktif kelas</h3><p class="s">Daftar tugas yang masih berjalan dan perlu dipantau.</p>'+(li?'<ul>'+li+'</ul>':'<p class="empty">Belum ada tugas aktif.</p>')+'</div>'+schedPanel(sched,dayN,tasksDueToday)+'</div><div class="col">'+teamRadioPanel(anns)+'</div></div>';
 
   }else{
     $('homeLede').textContent='Lihat info kelas dan update terbaru. Yuk, cek dulu sebelum mulai!';
@@ -1339,15 +1349,34 @@ function renderExhibition(){
   h+='</section>';host.innerHTML=h;
 }
 
-function schedPanel(sched,dayN){
+function schedPanel(sched,dayN,tasksDueToday){
   const ordered=sched.slice().sort((a,b)=>{
     const ar=jamRange(a),br=jamRange(b),as=ar?ar.s:Infinity,bs=br?br.s:Infinity;
     return as-bs;
   });
   let li='';
-  ordered.forEach(c=>{const scheduleMeta=c._attendanceOnly?'Tatap muka · '+fmtDate(today()):(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang);li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+scheduleMeta+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';});
-  const needsAttendance=!!ME&&sched.some(c=>scheduleAttendanceMeetings(c).some(n=>{const se=scheduleAttendanceSession(c,n);return !!se&&(!!se.tanggal||inSession(c))&&!(se.present&&se.present[ME]);}));
-  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah hari ini, selamat bersantai.':'Tidak ada kuliah hari ini.')+'</p>')+'</div>';
+  ordered.forEach(c=>{
+    const mode=c._activityMode||legacyAttendanceMode(c.k);
+    const scheduleMeta=c._attendanceOnly
+      ?attendanceModeLabel(mode)+' · '+fmtDate(today())
+      :(hariRange(c).b?esc(hariLabel(c))+' · ':'')+esc(c.jam)+' · '+esc(c.ruang);
+    li+='<li class="it"><div><b>'+esc(c.nama)+'</b><span class="s">'+scheduleMeta+'</span></div><div class="schedule-actions">'+absenBtn(c)+(ME?'<button type="button" class="btn sm" data-act="attendance-history" data-k="'+esc(c.k)+'" data-mode="'+mode+'">Lihat Riwayat Absensi</button>':'')+'</div></li>';
+  });
+  const needsAttendance=!!ME&&sched.some(c=>scheduleAttendanceMeetings(c).some(n=>{
+    const se=scheduleAttendanceSession(c,n);
+    return !!se&&(!!se.tanggal||inSession(c))&&!(se.present&&se.present[ME]);
+  }));
+  const dueTasks=Array.isArray(tasksDueToday)?tasksDueToday:[];
+  const taskItems=dueTasks.map(t=>{
+    const update=S.cu[t.id]||null;
+    const meeting=Number(t.meeting_number||update&&update.meeting_number||0);
+    return '<li class="it"><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+(meeting?' · Pertemuan '+meeting:'')+' · Tenggat '+fmtDate(t.tenggat)+'</span></div><button type="button" class="btn sm pri" data-act="open-course-tasks" data-k="'+esc(t.k)+'">Buka Tugas</button></li>';
+  }).join('');
+  const taskPanel=taskItems
+    ?'<div class="task-management-inline"><h4 class="ph3">Tugas Online hari ini</h4><ul>'+taskItems+'</ul></div>'
+    :'';
+  const empty=!li&&!taskItems;
+  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'')+taskPanel+(empty?'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah atau tugas terjadwal hari ini, selamat bersantai.':'Tidak ada kuliah atau tugas terjadwal hari ini.')+'</p>':'')+'</div>';
 }
 function annPanel(anns){
   let a='';
@@ -1609,9 +1638,9 @@ function defaultPert(k){
   }
   return m||1;
 }
-function openD(kind,key,tab,pert){
+function openD(kind,key,tab,pert,activityMode){
   if(kind==='student')PROFILE_EDITING=false;
-  D={kind:kind,key:key,tab:tab||(kind==='course'||kind==='attendance'?'absen':kind==='student'?'kehadiran':'main'),pert:(kind==='course'||kind==='attendance')?(pert||defaultPert(key)):null,confirmDel:null,newOpen:false,pending:{},smode:{}};
+  D={kind:kind,key:key,tab:tab||(kind==='course'||kind==='attendance'?'absen':kind==='student'?'kehadiran':'main'),pert:(kind==='course'||kind==='attendance')?(pert||defaultPert(key)):null,activityMode:activityMode||null,confirmDel:null,newOpen:false,pending:{},smode:{}};
   renderDialog(true);
   if(!dlg.open)dlg.showModal();
 }
@@ -1817,9 +1846,13 @@ async function exportCourseRecap(segment,format){
 function courseDlg(){
   const c=S.co[D.key];
   if(!c)return '<div class="db"><button type="button" class="btn" data-act="close">Tutup</button><p class="empty">Mata kuliah tidak ditemukan.</p></div>';
+  const activitySession=D.activityMode?S.se[attendanceSessionId(c.k,D.pert,D.activityMode)]:null;
+  const scheduleLabel=D.activityMode
+    ?attendanceModeLabel(D.activityMode)+' · '+fmtDate(activitySession&&activitySession.tanggal||today())
+    :esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang);
   const head='<div class="dh" style="--tc:'+colr(c.warna)+'"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button>'+
     '<div class="dk">'+esc(c.k)+' · '+esc(c.sks)+' SKS</div><h2 id="dtitle">'+esc(c.nama)+'</h2>'+
-    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+driveBtn(c.k)+'</div>';
+    '<ul class="dosen">'+dosenHtml(c)+'</ul><p class="jadwal">'+scheduleLabel+'</p>'+driveBtn(c.k)+'</div>';
   const tabs=[['absen','Absen'],['tugas','Tugas']];
   if(adm())tabs.push(['set','Pengaturan']);
   if(D.tab==='set'&&!adm())D.tab='absen';
@@ -1831,10 +1864,10 @@ function courseDlg(){
   return head+tabsHtml(tabs)+'<div class="db">'+body+'</div>';
 }
 function pertPicker(c,mode){
-  const n=D.pert;
+  const n=D.pert,activity=D.activityMode||legacyAttendanceMode(c.k);
   let h='<div><div class="lbl" style="margin-bottom:8px">Pertemuan</div><div class="pts" role="group" aria-label="Pilih pertemuan">';
   for(let i=1;i<=PERT;i++){
-    const s2=S.se[c.k+'_'+PAD(i)],p=(s2&&s2.present)||{};
+    const s2=S.se[attendanceSessionId(c.k,i,activity)],p=(s2&&s2.present)||{};
     let has=false,sv='';
     if(mode==='adm')has=!!(s2&&Object.values(p).some(Boolean));
     else if(ME&&p[ME]){has=true;sv=p[ME];}
@@ -1845,7 +1878,7 @@ function pertPicker(c,mode){
 }
 
 function absenStudent(c,scheduleMode){
-  const n=D.pert,se=S.se[c.k+'_'+PAD(n)]||{},p=se.present||{},mine=ME?(p[ME]||''):'';
+  const n=D.pert,activity=D.activityMode||legacyAttendanceMode(c.k),se=S.se[attendanceSessionId(c.k,n,activity)]||{},p=se.present||{},mine=ME?(p[ME]||''):'';
   let h=scheduleMode?'':pertPicker(c,'mhs');
   if(se.tanggal||se.topik||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se.tanggal||meetingDate(n))+(se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
@@ -1858,12 +1891,12 @@ function absenStudent(c,scheduleMode){
   return h;
 }
 function absenAdmin(c){
-  const n=D.pert,se=S.se[c.k+'_'+PAD(n)]||null,p=(se&&se.present)||{},bk=(se&&se.bukti)||{};
+  const n=D.pert,activity=D.activityMode||legacyAttendanceMode(c.k),se=S.se[attendanceSessionId(c.k,n,activity)]||null,p=(se&&se.present)||{},bk=(se&&se.bukti)||{};
   const cnt={H:0,I:0,S:0,A:0,K:0};
   for(let i=1;i<=N;i++){if(cnt[p[i]]!==undefined)cnt[p[i]]++;}
   const rec=cnt.H+cnt.I+cnt.S+cnt.A+cnt.K;
   let h=pertPicker(c,'adm');
-   h+='<div class="row2 manager-task-actions"><span class="s">'+(se&&se.closed?'Absensi ditutup pengelola':'Absensi terbuka')+'</span><button type="button" class="btn sm" data-act="attendance-close-toggle" data-k="'+esc(c.k)+'" data-n="'+n+'" data-closed="'+(se&&se.closed?'true':'false')+'">'+(se&&se.closed?'Buka kembali absensi':'Tutup Absensi')+'</button></div>';
+   h+='<div class="row2 manager-task-actions"><span class="s">'+(se&&se.closed?'Absensi ditutup pengelola':'Absensi terbuka')+'</span><button type="button" class="btn sm" data-act="attendance-close-toggle" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+activity+'" data-closed="'+(se&&se.closed?'true':'false')+'">'+(se&&se.closed?'Buka kembali absensi':'Tutup Absensi')+'</button></div>';
   if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!se)h+='<p class="empty"><b>'+esc(attendanceMissingStatus(n,se,false,c.k))+'.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
@@ -1882,8 +1915,8 @@ function absenAdmin(c){
 
 /* Tombol absensi pada jadwal menjadi satu-satunya pintu pengisian absensi. */
 function scheduleAttendanceSession(c,meeting){
-  const n=Number(meeting)||defaultPert(c.k);
-  return S.se[attendanceSessionId(c.k,n,legacyAttendanceMode(c.k))]||null;
+  const n=Number(meeting)||defaultPert(c.k),mode=c._activityMode||legacyAttendanceMode(c.k);
+  return S.se[attendanceSessionId(c.k,n,mode)]||null;
 }
 function scheduleAttendanceState(c,meeting,now){
   if(meeting instanceof Date){now=meeting;meeting=defaultPert(c.k);}
@@ -1902,14 +1935,14 @@ function scheduleAttendanceState(c,meeting,now){
   return t<r.s?'future':t>=r.e?'passed':'open';
 }
 function scheduleAttendanceMeetings(c){
-  const date=today(),expectedMode=legacyAttendanceMode(c.k),matches=Object.entries(S.se||{}).filter(([id,se])=>{
+  const date=today(),expectedMode=c._activityMode||legacyAttendanceMode(c.k),matches=Object.entries(S.se||{}).filter(([id,se])=>{
     const n=Number(se&&se.n),start=se&&(se.tanggal||meetingDate(n)),end=se&&(se.tanggalAkhir||start);
     return se&&se.k===c.k&&Number.isInteger(n)&&n>=1&&n<=PERT&&
       attendanceModeForSession(se,id)===expectedMode&&start&&date>=start&&date<=end;
   }).map(([,se])=>Number(se.n));
   if(matches.length)return Array.from(new Set(matches)).sort((a,b)=>a-b);
   // Pertahankan perilaku lama untuk sesi yang belum memiliki tanggal eksplisit.
-  return [defaultPert(c.k)];
+  return expectedMode===legacyAttendanceMode(c.k)?[defaultPert(c.k)]:[];
 }
 let EXTERNAL_REDIRECT=null;
 function openExternalRedirect(url,activity,courseCode,meeting,detail){
@@ -1932,7 +1965,8 @@ function openExternalRedirect(url,activity,courseCode,meeting,detail){
 }
 function absenBtn(c){
   if(!ME)return '';
-  const range=hariRange(c),weekdayPlatform=!!platConfigOf(c.k)&&range.a==='Senin'&&range.b==='Jumat';
+  const mode=c._activityMode||legacyAttendanceMode(c.k);
+  const range=hariRange(c),weekdayPlatform=mode==='online'&&!!platConfigOf(c.k)&&range.a==='Senin'&&range.b==='Jumat';
   return scheduleAttendanceMeetings(c).map(n=>{
     const state=scheduleAttendanceState(c,n),session=scheduleAttendanceSession(c,n),status=session&&session.present&&session.present[ME];
     if(status)return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
@@ -1944,7 +1978,7 @@ function absenBtn(c){
       if(!platOf(c.k,n))return '<button type="button" class="btn sm" disabled>P'+n+' · Link absensi belum tersedia</button>';
       return '<button type="button" class="btn sm pri" data-act="platform-attendance-open" data-k="'+esc(c.k)+'" data-n="'+n+'">Isi absen P'+n+' <span aria-hidden="true">&#8599;</span></button>';
     }
-    return '<button type="button" class="btn sm pri" data-act="schedule-attendance" data-k="'+esc(c.k)+'" data-n="'+n+'">Isi absen P'+n+'</button>';
+    return '<button type="button" class="btn sm pri" data-act="schedule-attendance" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+mode+'">Isi absen P'+n+'</button>';
   }).join('');
 }
 async function saveScheduleAttendance(k,meeting){
@@ -2678,8 +2712,15 @@ document.addEventListener('click',async e=>{
       renderCourses();break;
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
-    case 'attendance-history':{if(!S.co[d.k]){toast('Mata kuliah tidak ditemukan.');break;}openD('course',d.k,'absen',defaultPert(d.k));break;}
-    case 'schedule-attendance':{const c=S.co[d.k],n=Number(d.n)||defaultPert(d.k);if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dengan akses absensi.');break;}if(!c||n<1||n>PERT||scheduleAttendanceState(c,n)!=='open'||!S.se[c.k+'_'+PAD(n)]){toast('Sesi absensi pertemuan ini belum tersedia atau sudah ditutup.');break;}openD('course',d.k,'absen',n);break;}
+    case 'attendance-history':{if(!S.co[d.k]){toast('Mata kuliah tidak ditemukan.');break;}openD('course',d.k,'absen',defaultPert(d.k),d.mode);break;}
+    case 'schedule-attendance':{
+      const c=S.co[d.k],n=Number(d.n)||defaultPert(d.k),mode=activityModel.normalizeActivityMode(d.mode,legacyAttendanceMode(d.k));
+      const activityCourse=c?Object.assign({},c,{_activityMode:mode}):null;
+      if(!ME||!canWrite){toast('Masuk sebagai mahasiswa dengan akses absensi.');break;}
+      if(!c||n<1||n>PERT||scheduleAttendanceState(activityCourse,n)!=='open'||!scheduleAttendanceSession(activityCourse,n)){toast('Sesi absensi pertemuan ini belum tersedia atau sudah ditutup.');break;}
+      openD('course',d.k,'absen',n,mode);break;
+    }
+    case 'open-course-tasks':{if(!S.co[d.k]){toast('Mata kuliah tidak ditemukan.');break;}openD('course',d.k,'tugas');break;}
     case 'open-student':openD('student',+d.no);loadHasil(true);break;
     case 'open-pit':openD('pit');loadHasil(true);break;
     case 'hub-task-tab':D.taskTab=d.tab==='group'?'group':'individual';renderDialog(true);break;
@@ -2703,29 +2744,32 @@ document.addEventListener('click',async e=>{
     case 'tab':D.tab=d.tab;D.confirmDel=null;renderDialog(true);break;
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
-      if(D.kind==='attendance'&&(!ME||scheduleAttendanceState(S.co[D.key],D.pert)!=='open')){toast('Waktu pengisian absensi sudah ditutup.');break;}
-      const no=+d.no,c=D.key,session=S.se[c+'_'+PAD(D.pert)]||{},cur=(session.present||{})[no]||'';
+      const no=+d.no,c=D.key,activity=D.activityMode||legacyAttendanceMode(c),id=attendanceSessionId(c,D.pert,activity),session=S.se[id]||{},cur=(session.present||{})[no]||'';
+      if(D.kind==='attendance'&&(!ME||scheduleAttendanceState(Object.assign({},S.co[c],{_activityMode:activity}),D.pert)!=='open')){toast('Waktu pengisian absensi sudah ditutup.');break;}
       if(!adm()&&no!==ME)break;
       if(d.st==='K'&&!(session.bukti&&session.bukti[no]&&session.bukti[no].id)){alert('Berkas bukti belum dikirim. Silakan unggah foto atau PDF bukti absensi terlebih dahulu sebelum memilih status Kelas Berjalan.');break;}
-      await run(()=>writeSession(c,D.pert,{present:{[no]:cur===d.st?'':d.st}}));
+      await run(()=>writeSession(c,D.pert,{present:{[no]:cur===d.st?'':d.st}},activity));
       break;
     }
-    case 'bukti-del':
-      await run(()=>writeSession(D.key,D.pert,{bukti:{[ME]:null}}),'Bukti dihapus');
+    case 'bukti-del':{
+      const activity=D.activityMode||legacyAttendanceMode(D.key);
+      await run(()=>writeSession(D.key,D.pert,{bukti:{[ME]:null}},activity),'Bukti dihapus');
       break;
+    }
     case 'allpresent':{
       if(!adm())break;
       const p={};for(let i=1;i<=N;i++)p[i]='H';
-      await run(()=>writeSession(D.key,D.pert,{present:p}),'Semua ditandai hadir');
+      const activity=D.activityMode||legacyAttendanceMode(D.key);
+      await run(()=>writeSession(D.key,D.pert,{present:p},activity),'Semua ditandai hadir');
       break;
     }
     case 'attendance-close-toggle':{
        if(!adm())break;
-       const k=d.k||D.key,n=Number(d.n)||D.pert,se=S.se[k+'_'+PAD(n)]||{};
+       const k=d.k||D.key,n=Number(d.n)||D.pert,activity=activityModel.normalizeActivityMode(d.mode||D.activityMode,legacyAttendanceMode(k)),id=attendanceSessionId(k,n,activity),se=S.se[id]||{};
        const close=d.closed!=='true';
        if(close&&!confirm('Tutup absensi pertemuan '+n+' untuk mata kuliah '+k+'? Mahasiswa tidak dapat mengisi setelah ditutup.'))break;
-       const ok=await run(()=>writeSession(k,n,{closed:close}),close?'Absensi ditutup':'Absensi dibuka kembali');
-       if(ok){S.se[k+'_'+PAD(n)]=Object.assign({k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}},se,{closed:close});renderDialog(true);refreshAll();}break;
+       const ok=await run(()=>writeSession(k,n,{closed:close},activity),close?'Absensi ditutup':'Absensi dibuka kembali');
+       if(ok){S.se[id]=Object.assign({k:k,n:n,activity_mode:activity,tanggal:'',topik:'',present:{},bukti:{}},se,{closed:close});renderDialog(true);refreshAll();}break;
      }
      case 'task-review-set':{
        if(!adm())break;
