@@ -1880,7 +1880,7 @@ function pertPicker(c,mode){
 function absenStudent(c,scheduleMode){
   const n=D.pert,activity=D.activityMode||legacyAttendanceMode(c.k),se=S.se[attendanceSessionId(c.k,n,activity)]||{},p=se.present||{},mine=ME?(p[ME]||''):'';
   let h=scheduleMode?'':pertPicker(c,'mhs');
-  if(se.tanggal||se.topik||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se.tanggal||meetingDate(n))+(se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
+  if(se.tanggal||se.topik||(!se.tanggal&&attendanceIsPast(n,se,c.k)))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se.tanggal||meetingDate(n))+(se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!ME)return h+'<p class="empty">Masuk untuk melihat riwayat absensi pribadi.</p>';
   const bk=se.bukti&&se.bukti[ME],label=mine?(LBL[mine]||mine):attendanceMissingStatus(n,se,true,c.k);
   h+='<div class="tcard"><div><b>Riwayat absensi saya · Pertemuan '+n+'</b><br><span class="s">No. '+ME+' · '+esc(nameOf(ME))+'</span></div><p class="sum"><span>Status: <b>'+esc(label)+'</b></span></p>'+
@@ -1897,7 +1897,7 @@ function absenAdmin(c){
   const rec=cnt.H+cnt.I+cnt.S+cnt.A+cnt.K;
   let h=pertPicker(c,'adm');
    h+='<div class="row2 manager-task-actions"><span class="s">'+(se&&se.closed?'Absensi ditutup pengelola':'Absensi terbuka')+'</span><button type="button" class="btn sm" data-act="attendance-close-toggle" data-k="'+esc(c.k)+'" data-n="'+n+'" data-mode="'+activity+'" data-closed="'+(se&&se.closed?'true':'false')+'">'+(se&&se.closed?'Buka kembali absensi':'Tutup Absensi')+'</button></div>';
-  if((se&&(se.tanggal||se.topik))||attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
+  if((se&&(se.tanggal||se.topik))||(!se||!se.tanggal)&&attendanceIsPast(n,se,c.k))h+='<p class="empty"><b>Pertemuan '+n+'</b> · '+fmtDate(se&&se.tanggal||meetingDate(n))+(se&&se.topik?' · '+esc(se.topik):'')+(attendanceIsPast(n,se,c.k)?' · <b>Pertemuan ini sudah terlewat</b>':'')+'</p>';
   if(!se)h+='<p class="empty"><b>'+esc(attendanceMissingStatus(n,se,false,c.k))+'.</b> Data kehadiran untuk pertemuan ini belum dibuat.</p>';
   else h+='<p class="sum"><span>H · Hadir '+cnt.H+'</span><span>KB · Kelas Berjalan '+cnt.K+'</span><span>I · Izin '+cnt.I+'</span><span>S · Sakit '+cnt.S+'</span><span>A · Alpa '+cnt.A+'</span><span>Belum diisi '+(N-rec)+'</span></p>';
   if(ME&&se&&!se.closed&&activity==='online'&&isPlatformCourse(c)&&scheduleAttendanceState(Object.assign({},c,{_activityMode:activity}),n)==='open'&&platOf(c.k,n)){
@@ -2617,15 +2617,15 @@ document.addEventListener('click',async e=>{
     }
     case 'manager-forum-student':{
       if(!adm())break;
-      const k=d.k,n=Number(d.n),student=Number(d.student),id=k+'_'+PAD(n),course=S.co[k],session=S.se[id]||{};
-      if(!course||!isPlatformCourse(course)||n<1||n>PERT||scheduleAttendanceState(course,n)!=='open'||!platOf(k,n)||!Number.isInteger(student)||student<1||student>N||!['done','not-done'].includes(d.status)){
+      const k=d.k,n=Number(d.n),student=Number(d.student),activity=D&&D.activityMode||legacyAttendanceMode(k),id=attendanceSessionId(k,n,activity),course=S.co[k],session=S.se[id]||{};
+      if(!course||!isPlatformCourse(course)||n<1||n>PERT||activity!=='online'||scheduleAttendanceState(Object.assign({},course,{_activityMode:activity}),n)!=='open'||!platOf(k,n)||!Number.isInteger(student)||student<1||student>N||!['done','not-done'].includes(d.status)){
         toast('Konfirmasi forum tidak tersedia atau sesi sudah berubah.');break;
       }
       const present=Object.assign({},session.present||{});
       if(d.status==='done')present[student]='H';else delete present[student];
-      const ok=await run(()=>writeSession(k,n,{present}),d.status==='done'?'Absensi '+nameOf(student)+' ditandai Sudah':'Absensi '+nameOf(student)+' ditandai Belum');
+      const ok=await run(()=>writeSession(k,n,{present},activity),d.status==='done'?'Absensi '+nameOf(student)+' ditandai Sudah':'Absensi '+nameOf(student)+' ditandai Belum');
       if(ok){
-        S.se[id]=Object.assign({k:k,n:n,tanggal:'',topik:'',present:{},bukti:{}},session,{present});
+        S.se[id]=Object.assign({k:k,n:n,activity_mode:activity,tanggal:'',topik:'',present:{},bukti:{}},session,{present});
         renderDialog(true);refreshAll();
       }
       break;
@@ -2634,15 +2634,16 @@ document.addEventListener('click',async e=>{
       if(!ME)break;
       if(!canWrite){toast('Absensi belum dapat disimpan. Periksa koneksi atau izin akun.');break;}
       const k=d.k,n=Number(d.n)||(D&&D.pert)||defaultPert(k);
-      if(!S.co[k]||scheduleAttendanceState(S.co[k],n)!=='open'){toast('Periode absensi pertemuan ini sudah berakhir atau ditutup.');break;}
-      await run(()=>saveScheduleAttendance(k,n),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
+      const activity=D&&D.activityMode||legacyAttendanceMode(k),activityCourse=Object.assign({},S.co[k]||{},{_activityMode:activity});
+      if(!S.co[k]||scheduleAttendanceState(activityCourse,n)!=='open'){toast('Periode absensi pertemuan ini sudah berakhir atau ditutup.');break;}
+      await run(()=>saveScheduleAttendance(k,n,activity),'Konfirmasi forum tersimpan. Absensi berhasil terisi.');break;
     }
     case 'forum-not-done':{const n=Number(d.n)||(D&&D.pert)||defaultPert(d.k),u=platOf(d.k,n);if(u)openExternalRedirect(u,'mengerjakan forum diskusi',d.k,n);else toast('Link forum belum diatur.');break;}
     case 'platform-attendance-open':{
       if(!ME||!canWrite)break;
       const k=d.k,n=Number(d.n)||defaultPert(k),u=platOf(k,n);
-      if(!S.co[k]||n<1||n>PERT||!S.se[k+'_'+PAD(n)]||scheduleAttendanceState(S.co[k],n)!=='open'){toast('Sesi absensi pertemuan ini tidak tersedia atau periodenya berakhir.');break;}
-      if(u)openD('course',k,'absen',n);else toast('Link absensi Mentari belum diatur.');
+      if(!S.co[k]||n<1||n>PERT||!S.se[attendanceSessionId(k,n,'online')]||scheduleAttendanceState(Object.assign({},S.co[k],{_activityMode:'online'}),n)!=='open'){toast('Sesi absensi pertemuan ini tidak tersedia atau periodenya berakhir.');break;}
+      if(u)openD('course',k,'absen',n,'online');else toast('Link absensi Mentari belum diatur.');
       break;
     }
     case 'external-redirect-cancel':{
@@ -2746,7 +2747,7 @@ document.addEventListener('click',async e=>{
     case 'pert':D.pert=+d.n;renderDialog(true);break;
     case 'st':{
       const no=+d.no,c=D.key,activity=D.activityMode||legacyAttendanceMode(c),id=attendanceSessionId(c,D.pert,activity),session=S.se[id]||{},cur=(session.present||{})[no]||'';
-      if(D.kind==='attendance'&&(!ME||scheduleAttendanceState(Object.assign({},S.co[c],{_activityMode:activity}),D.pert)!=='open')){toast('Waktu pengisian absensi sudah ditutup.');break;}
+      if(!adm()&&(!ME||scheduleAttendanceState(Object.assign({},S.co[c],{_activityMode:activity}),D.pert)!=='open')){toast('Waktu pengisian absensi sudah ditutup.');break;}
       if(!adm()&&no!==ME)break;
       if(d.st==='K'&&!(session.bukti&&session.bukti[no]&&session.bukti[no].id)){alert('Berkas bukti belum dikirim. Silakan unggah foto atau PDF bukti absensi terlebih dahulu sebelum memilih status Kelas Berjalan.');break;}
       await run(()=>writeSession(c,D.pert,{present:{[no]:cur===d.st?'':d.st}},activity));
@@ -3220,7 +3221,7 @@ document.addEventListener('change',async e=>{
     toast('Mengirim berkas…');
     if(kind==='bukti'){
       const k=D.key,n=D.pert;
-      await run(async()=>{const fo=await sendFile(f,'attendance');await writeSession(k,n,{bukti:{[ME]:fo}});},'Bukti terkirim');
+      await run(async()=>{const fo=await sendFile(f,'attendance');await writeSession(k,n,{bukti:{[ME]:fo}},D.activityMode||legacyAttendanceMode(k));},'Bukti terkirim');
     }else if(kind==='makrab'){
       if(!makrabWindowOpen()){toast('Periode pengumpulan Bukti Absen Makrab adalah 1–30 November 2026.');return;}
       if(!/^(image\/(jpeg|png|webp|gif)|application\/pdf)$/.test(f.type||'')){toast('Pilih foto JPG, PNG, WebP, GIF, atau PDF.');return;}
@@ -3235,7 +3236,7 @@ document.addEventListener('change',async e=>{
   }
   if(D&&D.kind==='course'&&adm()&&(t.id==='ab-tgl'||t.id==='ab-top')){
     const patch=t.id==='ab-tgl'?{tanggal:t.value}:{topik:t.value.trim().slice(0,120)};
-    await run(()=>writeSession(D.key,D.pert,patch),'Tersimpan');
+    await run(()=>writeSession(D.key,D.pert,patch,D.activityMode||legacyAttendanceMode(D.key)),'Tersimpan');
   }
 });
 dlg.addEventListener('keydown',e=>{if(e.key==='Enter'&&D&&D.kind==='login'&&D.step==='form'&&(e.target.id==='lg-nim'||e.target.id==='lg-pw')){e.preventDefault();loginGo();}});
