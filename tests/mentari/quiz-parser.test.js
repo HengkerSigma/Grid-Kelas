@@ -22,7 +22,7 @@ test('maps Mentari course suffixes to Grid Kelas course codes', () => {
   assert.equal(parser.courseCodeFromMentari('20261-01ELSE003-26FTK0021'), 'FIS');
   assert.equal(parser.courseCodeFromMentari('20261-01ELSE003-26TEL0004'), 'KIM');
   assert.equal(parser.courseCodeFromMentari('20261-01ELSE003-26PAM0010'), 'ENG');
-  assert.equal(parser.courseCodeFromMentari('20261-01ELSE003-26TEL0001'), 'PRO');
+  assert.equal(parser.courseCodeFromMentari('20261-01ELSE003-26TEL0001'), 'PRG');
   assert.equal(parser.courseCodeFromMentari('unknown'), null);
 });
 

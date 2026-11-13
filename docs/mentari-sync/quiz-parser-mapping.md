@@ -18,7 +18,7 @@ The Mentari course code is the final segment of `kode_course`; the current class
 | `26FTK0011` | `KAL` |
 | `26TEL0003` | `ELE` |
 | `26TEL0002` | `ALJ` |
-| `26TEL0001` | `PRO` |
+| `26TEL0001` | `PRG` |
 
 The course code must match the final segment exactly. Unknown suffixes are rejected rather than guessed.
 

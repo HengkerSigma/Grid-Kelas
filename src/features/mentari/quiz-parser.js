@@ -15,7 +15,7 @@ const COURSE_CODE_MAP = Object.freeze({
   '26FTK0011': 'KAL',
   '26TEL0003': 'ELE',
   '26TEL0002': 'ALJ',
-  '26TEL0001': 'PRO'
+  '26TEL0001': 'PRG'
 });
 const QUIZ_TYPES = Object.freeze({ PRE_TEST: 'PRE_TEST', POST_TEST: 'POST_TEST' });
 const STATUS = Object.freeze({
