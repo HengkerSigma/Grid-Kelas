@@ -1227,7 +1227,6 @@ function renderHome(force){
     }
   });
   const sched=Array.from(scheduleByCourse.values()).concat(Array.from(datedActivities.values()));
-  const tasksDueToday=tasks.filter(t=>t.tenggat===td&&S.co[t.k]&&!t.closed);
   let h='';
   if(ME){
     const st=stats(ME),a=st.tot,p=pct(a.h,a.t),ts=tugasStat(ME),belum=ts.b-ts.a;
@@ -1240,7 +1239,7 @@ function renderHome(force){
     h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
     h+=homeTiles(ME);
     const left=[],right=[];
-    left.push(schedPanel(sched,dayN,tasksDueToday));
+    left.push(schedPanel(sched,dayN));
     right.push(greetingSectionHtml());
     right.push(teamRadioPanel(anns));
     h+='<div class="cols"><div class="col">'+left.join('')+'</div><div class="col">'+right.join('')+'</div></div>';
@@ -1350,7 +1349,7 @@ function renderExhibition(){
   h+='</section>';host.innerHTML=h;
 }
 
-function schedPanel(sched,dayN,tasksDueToday){
+function schedPanel(sched,dayN){
   const ordered=sched.slice().sort((a,b)=>{
     const ar=jamRange(a),br=jamRange(b),as=ar?ar.s:Infinity,bs=br?br.s:Infinity;
     return as-bs;
@@ -1367,17 +1366,8 @@ function schedPanel(sched,dayN,tasksDueToday){
     const se=scheduleAttendanceSession(c,n);
     return !!se&&(!!se.tanggal||inSession(c))&&!(se.present&&se.present[ME]);
   }));
-  const dueTasks=Array.isArray(tasksDueToday)?tasksDueToday:[];
-  const taskItems=dueTasks.map(t=>{
-    const update=S.cu[t.id]||null;
-    const meeting=Number(t.meeting_number||update&&update.meeting_number||0);
-    return '<li class="it"><div><b>'+esc(t.judul)+'</b><span class="s">'+esc(cname(t.k))+(meeting?' · Pertemuan '+meeting:'')+' · Tenggat '+fmtDate(t.tenggat)+'</span></div><button type="button" class="btn sm pri" data-act="open-course-tasks" data-k="'+esc(t.k)+'">Buka Tugas</button></li>';
-  }).join('');
-  const taskPanel=taskItems
-    ?'<div class="task-management-inline"><h4 class="ph3">Tugas Online hari ini</h4><ul>'+taskItems+'</ul></div>'
-    :'';
-  const empty=!li&&!taskItems;
-  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'')+taskPanel+(empty?'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah atau tugas terjadwal hari ini, selamat bersantai.':'Tidak ada kuliah atau tugas terjadwal hari ini.')+'</p>':'')+'</div>';
+  const empty=!li;
+  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah hari ini, selamat bersantai.':'Tidak ada kuliah hari ini.')+'</p>')+'</div>';
 }
 function annPanel(anns){
   let a='';
