@@ -54,3 +54,13 @@ test('parses legacy and namespaced attendance session keys', () => {
   assert.equal(model.parseAttendanceSessionKey('FIS_online_17'), null);
   assert.equal(model.parseAttendanceSessionKey('FIS_bad_01'), null);
 });
+
+
+test('does not carry attendance status into expired or future schedule sessions', () => {
+  assert.equal(model.attendanceDisplayState('expired', 'H'), 'not_open');
+  assert.equal(model.attendanceDisplayState('future', 'H'), 'not_open');
+  assert.equal(model.attendanceDisplayState('open', 'H'), 'done');
+  assert.equal(model.attendanceDisplayState('open', null), 'available');
+  assert.equal(model.attendanceDisplayState('closed', 'H'), 'closed');
+  assert.equal(model.attendanceDisplayState('passed', 'H'), 'ended');
+});
