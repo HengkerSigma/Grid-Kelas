@@ -1381,9 +1381,21 @@ const server = http.createServer(async (req, res) => {
       const f = STATIC[pathname];
       const buf = fs.readFileSync(path.join(process.cwd(), f[0]));
       const h = { 'Content-Type': f[1], 'Cache-Control': 'no-cache' };
-      if (f[0] === 'public/index.html') h['Content-Security-Policy'] = CSP;
+      let body = buf;
+      if (f[0] === 'public/index.html') {
+        // Allow only this page's early theme bootstrap script through a per-response CSP nonce.
+        const nonce = crypto.randomBytes(18).toString('base64');
+        body = Buffer.from(buf.toString('utf8').replace(
+          '<script nonce="__CSP_NONCE__">',
+          '<script nonce="' + nonce + '">'
+        ), 'utf8');
+        h['Content-Security-Policy'] = CSP.replace(
+          "script-src 'self'",
+          "script-src 'self' 'nonce-" + nonce + "'"
+        );
+      }
       res.writeHead(200, h);
-      return res.end(method === 'HEAD' ? undefined : buf);
+      return res.end(method === 'HEAD' ? undefined : body);
     }
 
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
