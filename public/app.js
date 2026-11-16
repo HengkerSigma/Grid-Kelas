@@ -821,7 +821,47 @@ function loadGridDriver(){
   }
   return Promise.resolve(true);
 }
+function applyGridTheme(theme,animate){
+  const root=document.documentElement;
+  if(animate)root.classList.add('gk-theme-transition');
+  root.setAttribute('data-theme',theme);
+  try{localStorage.setItem('gk-theme',theme);}catch(e){}
+  if(animate)setTimeout(()=>root.classList.remove('gk-theme-transition'),520);
+  const toggle=document.getElementById('gkThemeToggle');
+  if(toggle)syncGridThemeToggle(toggle,theme);
+}
+function syncGridThemeToggle(button,theme){
+  const dark=theme==='dark';
+  button.dataset.theme=theme;
+  button.setAttribute('aria-label',dark?'Aktifkan mode terang':'Aktifkan mode gelap');
+  button.title=dark?'Mode gelap aktif · Ganti ke terang':'Mode terang aktif · Ganti ke gelap';
+  button.innerHTML=dark?'<svg class="gk-theme-icon moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.4 8.4 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z"/></svg>':'<svg class="gk-theme-icon sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>';
+}
+function renderThemeToggle(){
+  let b=document.getElementById('gkThemeToggle');
+  if(!b){
+    b=document.createElement('button');b.id='gkThemeToggle';b.type='button';b.className='gk-theme-toggle';
+    b.addEventListener('click',()=>{
+      const root=document.documentElement;
+      const current=root.getAttribute('data-theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+      applyGridTheme(current==='dark'?'light':'dark',true);
+      b.classList.remove('is-pressed');void b.offsetWidth;b.classList.add('is-pressed');
+      setTimeout(()=>b.classList.remove('is-pressed'),420);
+    });
+    const help=document.getElementById('gkTourHelp');
+    if(help&&help.parentElement)help.parentElement.insertBefore(b,help);else document.documentElement.appendChild(b);
+  }else if(b.parentElement!==document.documentElement){
+    const help=document.getElementById('gkTourHelp');
+    if(help&&help.parentElement)help.parentElement.insertBefore(b,help);else document.documentElement.appendChild(b);
+  }
+  let theme=document.documentElement.getAttribute('data-theme');
+  if(!theme){try{theme=localStorage.getItem('gk-theme');}catch(e){}}
+  if(theme!=='dark'&&theme!=='light')theme=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+  if(document.documentElement.getAttribute('data-theme')!==theme){let saved='';try{saved=localStorage.getItem('gk-theme')||'';}catch(e){}if(saved)document.documentElement.setAttribute('data-theme',theme);}
+  syncGridThemeToggle(b,theme);
+}
 function renderTourHelp(){
+  renderThemeToggle();
   let b=document.getElementById('gkTourHelp');
   if(!b){
     b=document.createElement('button');b.id='gkTourHelp';b.type='button';b.className='gk-tour-help';
