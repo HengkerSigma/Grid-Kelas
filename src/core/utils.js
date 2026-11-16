@@ -122,9 +122,23 @@ function meetingPhase(meetingNumber) {
   return number <= 7 ? 'Pra-UTS' : number === 8 ? 'UTS' : '';
 }
 
+/**
+ * A task remains active through its due date. Missing or malformed dates remain
+ * visible so incomplete legacy records are not hidden from administrators.
+ */
+function isTaskActive(task, currentDate) {
+  if (!task || task.closed === true) return false;
+  const due = String(task.tenggat || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) return true;
+  const parts = due.split('-').map(Number);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== due) return true;
+  return due >= String(currentDate || '');
+}
+
 const coreUtils = Object.freeze({
   pad2, escapeHtml, hariRange, hariLabel, onDay, jamRange,
-  meetingDate, semesterMeetingNow, meetingPhase
+  meetingDate, semesterMeetingNow, meetingPhase, isTaskActive
 });
 
 if (typeof module === 'object' && module.exports) {

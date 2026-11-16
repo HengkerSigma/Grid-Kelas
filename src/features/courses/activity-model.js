@@ -53,9 +53,20 @@ function resolveSessionActivityMode(session, courseKind) {
   const fallback = legacyActivityMode(courseKind);
   return normalizeActivityMode(session && session.activity_mode, fallback);
 }
+/**
+ * A previous attendance status is only valid while the matching session is open.
+ * Expired/future/missing sessions reset to the unopened state.
+ */
+function attendanceDisplayState(sessionState, attendanceStatus) {
+  if (sessionState === 'open') return attendanceStatus ? 'done' : 'available';
+  if (sessionState === 'closed') return 'closed';
+  if (sessionState === 'passed') return 'ended';
+  return 'not_open';
+}
 const activityModel = Object.freeze({
   ACTIVITY_MODES, MAX_MEETINGS, normalizeActivityMode, legacyActivityMode,
-  attendanceSessionKey, parseAttendanceSessionKey, resolveSessionActivityMode
+  attendanceSessionKey, parseAttendanceSessionKey, resolveSessionActivityMode,
+  attendanceDisplayState
 });
 if (typeof module === 'object' && module.exports) module.exports = activityModel;
 if (typeof window !== 'undefined') window.GridKelasActivityModel = activityModel;

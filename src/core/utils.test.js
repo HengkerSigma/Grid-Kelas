@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { hariRange, hariLabel, onDay, jamRange, meetingDate, semesterMeetingNow, meetingPhase } = require('./utils');
+const { hariRange, hariLabel, onDay, jamRange, meetingDate, semesterMeetingNow, meetingPhase, isTaskActive } = require('./utils');
 
 test('parses a single weekday', () => {
   assert.deepEqual(hariRange({ hari: 'Senin' }), { a: 'Senin', b: '', i: 1, j: -1 });
@@ -58,4 +58,14 @@ test('labels semester phases consistently', () => {
   assert.equal(meetingPhase(7), 'Pra-UTS');
   assert.equal(meetingPhase(8), 'UTS');
   assert.equal(meetingPhase(9), '');
+});
+
+
+test('hides tasks after their due date without deleting historical records', () => {
+  assert.equal(isTaskActive({ tenggat: '2026-11-15' }, '2026-11-16'), false);
+  assert.equal(isTaskActive({ tenggat: '2026-11-16' }, '2026-11-16'), true);
+  assert.equal(isTaskActive({ tenggat: '2026-11-17' }, '2026-11-16'), true);
+  assert.equal(isTaskActive({ tenggat: '' }, '2026-11-16'), true);
+  assert.equal(isTaskActive({ tenggat: 'invalid' }, '2026-11-16'), true);
+  assert.equal(isTaskActive({ tenggat: '2026-11-17', closed: true }, '2026-11-16'), false);
 });
