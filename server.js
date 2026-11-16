@@ -1391,7 +1391,7 @@ const server = http.createServer(async (req, res) => {
         ), 'utf8');
         h['Content-Security-Policy'] = CSP.replace(
           "script-src 'self'",
-          "script-src 'self' 'nonce-' + nonce + '"
+          "script-src 'self' 'nonce-" + nonce + "'"
         );
       }
       res.writeHead(200, h);
