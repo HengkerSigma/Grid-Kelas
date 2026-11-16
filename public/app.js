@@ -627,7 +627,7 @@ function homeTiles(no){
       '<span style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;font-size:.92rem"><span>👤 Tugas Individu</span><b class="hub-pending-count'+(individualPending?' is-blinking':'')+'">'+(individualPending||'—')+'</b></span>'+
       '<span style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;font-size:.92rem"><span>👥 Tugas Constructor</span><b class="hub-pending-count'+(constructorPending?' is-blinking':'')+'">'+(constructorPending||'—')+'</b></span>'+
       '<span class="more" style="align-self:flex-start">Buka Hub Tugas &rsaquo;</span></button>'+
-    '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div><div class="l">Sektor Absensi</div>'+
+    '<button type="button" class="tile tilebtn'+(miss.length?' warn2':'')+'" data-act="open-sektor" aria-haspopup="dialog"><div class="l">Sektor Absensi</div><div class="v">'+(sx.t?Math.round(r.p*100)+'%':'—')+'</div>'+
       '<div class="d">'+(sx.t?'Peringkat '+r.rank+' dari '+N:'Belum ada absensi tercatat')+(miss.length?' · '+miss.length+' absen belum diisi':'')+'</div>'+(sx.t?sxStrip(r,sx.cl):'')+'<span class="more">Lihat sektor &rsaquo;</span></button></div>';
 }
 
@@ -1276,7 +1276,7 @@ function renderHome(force){
     const s0=stu(ME),ak=S.ak[PAD(ME)];
     $('homeLede').textContent='Cek jadwal, tugas, dan kabar terbaru kelasmu di sini.';
     const greeting=greetingText(nicknameOf(s0),ak&&ak.tanggalLahir);
-    h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="kk">NO. '+ME+(s0&&s0.kode?' · '+esc(s0.kode):'')+'</div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
+    h+='<div class="greet"><span class="gav">'+photo('s'+PAD(ME))+'</span><div><div class="gname"><span class="greeting-title">'+greeting.title+(isAd(ME)?' '+FLAG:'')+'</span><span class="greeting-subtitle">'+greeting.subtitle+'</span></div></div></div>';
     h+=homeTiles(ME);
     const left=[],right=[];
     left.push(schedPanel(sched,dayN));
