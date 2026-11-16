@@ -1321,3 +1321,15 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .history-content>p{margin:4px 0 0}
 .history-content .history-bottom{margin-top:5px;padding-top:7px;border-top:1px solid var(--line)}
 @media(max-width:600px){.history-item.tcard{grid-template-columns:38px minmax(0,1fr);gap:10px;padding:12px 0}.history-initial{width:38px;height:38px;font-size:.66rem}.history-top h3{font-size:.92rem}.history-status{width:23px;height:23px;flex-basis:23px}}
+
+
+/* Animated light/dark mode control, stacked directly above Pit Assistance */
+.gk-theme-toggle{position:fixed;right:20px;bottom:76px;z-index:2147483647;display:grid;place-items:center;width:46px;height:46px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--fg);box-shadow:0 5px 20px rgba(0,0,0,.22),0 0 0 4px color-mix(in srgb,var(--accent) 12%,transparent);cursor:pointer;touch-action:manipulation;isolation:isolate;transition:transform .22s cubic-bezier(.2,.8,.2,1),background-color .3s,border-color .3s,color .3s,box-shadow .3s}
+.gk-theme-toggle:hover{transform:translateY(-3px) rotate(-7deg);border-color:var(--accent);box-shadow:0 9px 25px rgba(0,0,0,.28),0 0 0 6px color-mix(in srgb,var(--accent) 18%,transparent)}
+.gk-theme-toggle:active,.gk-theme-toggle.is-pressed{transform:scale(.86) rotate(18deg)}
+.gk-theme-icon{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;animation:gk-theme-icon-in .38s cubic-bezier(.2,.8,.2,1) both}
+.gk-theme-icon.sun{color:#e5a400}.gk-theme-icon.moon{color:#8daeff}
+@keyframes gk-theme-icon-in{from{opacity:0;transform:rotate(-65deg) scale(.55)}to{opacity:1;transform:rotate(0) scale(1)}}
+.gk-theme-transition,.gk-theme-transition body,.gk-theme-transition body *{transition-property:background-color,color,border-color,box-shadow!important;transition-duration:.42s!important;transition-timing-function:cubic-bezier(.2,.75,.25,1)!important}
+@media(max-width:600px){.gk-theme-toggle{right:14px;bottom:69px;width:43px;height:43px}.gk-theme-icon{width:20px;height:20px}}
+@media(prefers-reduced-motion:reduce){.gk-theme-toggle,.gk-theme-icon,.gk-theme-transition,.gk-theme-transition body,.gk-theme-transition body *{animation:none!important;transition:none!important}}
