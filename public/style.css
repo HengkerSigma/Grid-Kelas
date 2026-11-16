@@ -1420,3 +1420,150 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 :root[data-theme="light"] .course-subtab-sep{
   color:#666779;
 }
+
+
+/* Global visual refinement: calmer surfaces, consistent spacing and restrained racing-red accents. */
+:root{
+  --ui-space-1:8px;
+  --ui-space-2:12px;
+  --ui-space-3:18px;
+  --ui-space-4:24px;
+  --ui-radius:12px;
+  --ui-radius-lg:16px;
+  --ui-border:color-mix(in srgb,var(--line) 78%,transparent);
+}
+
+/* A clearer page rhythm and a calmer type hierarchy. */
+body{line-height:1.5}
+.view{padding-block:clamp(32px,4vw,56px) 24px}
+.title{font-weight:700;letter-spacing:-.025em;line-height:1.12}
+.lede{margin:14px 0 34px;line-height:1.6}
+.note{line-height:1.6}
+h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
+.greet{gap:18px;margin-bottom:26px}
+.cols,.col,.stack,.tiles,.sgrid,.constructor-grid,.seminar-list,.admin-cards{gap:var(--ui-space-3)}
+.courses{gap:clamp(20px,2.5vw,28px)}
+
+/* Keep primary surfaces distinct; remove the visual weight of nested boxes. */
+.panel,.constructor-card{
+  padding:clamp(16px,2vw,24px);
+  border-radius:var(--ui-radius-lg);
+  border-color:var(--ui-border);
+  box-shadow:0 8px 24px rgba(0,0,0,.045);
+}
+.panel .panel{
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+.tile{
+  padding:16px 18px;
+  border-radius:var(--ui-radius);
+  border-color:var(--ui-border);
+}
+.panel .tile{
+  padding:12px 0;
+  border:0;
+  border-bottom:1px solid var(--ui-border);
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+.panel .tile:last-child{border-bottom:0}
+.tcard{
+  padding:18px;
+  gap:12px;
+  border-color:var(--ui-border);
+  border-radius:var(--ui-radius);
+  background:var(--surface-2);
+}
+.tcard .tcard{
+  padding:12px 0;
+  border:0;
+  border-top:1px solid var(--ui-border);
+  border-radius:0;
+  background:transparent;
+}
+.meeting-history{
+  margin-top:22px;
+  padding-top:12px;
+  border:0;
+  border-top:1px solid var(--ui-border);
+  border-radius:0;
+  background:transparent;
+}
+.meeting-history-list{gap:0;padding:0 4px 8px}
+.meeting-history-item{
+  padding:14px 4px;
+  border:0;
+  border-bottom:1px solid var(--ui-border);
+  border-radius:0;
+  background:transparent;
+}
+.constructor-member{
+  padding:11px 12px;
+  border-color:transparent;
+  border-radius:10px;
+  background:var(--surface-2);
+}
+.student-history li,.achievement-list li{
+  padding:12px 14px;
+  border:0;
+  border-radius:10px;
+  background:var(--surface-2);
+}
+.seminar-card{
+  gap:16px;
+  border-color:var(--ui-border);
+  border-radius:var(--ui-radius);
+  background:var(--surface);
+}
+.admin-card{
+  padding:18px;
+  border-color:var(--ui-border);
+  border-radius:var(--ui-radius);
+}
+.notification-center{gap:18px;margin-block:22px 26px}
+.notification-tabs{gap:9px;padding-bottom:12px}
+.notification-tab{border-radius:9px;padding:9px 14px}
+
+/* One consistent typographic and interaction language across navigation. */
+.nl,.btn,button{transition:color .18s ease,background-color .18s ease,border-color .18s ease,transform .18s ease}
+.nl{font-weight:600;letter-spacing:.005em}
+.nl[aria-current="true"]{color:var(--accent);font-weight:700}
+.btn{border-radius:9px}
+.btn:not(.pri):hover{border-color:var(--accent);color:var(--accent)}
+.btn.pri{font-weight:700}
+.tab,.student-subtab,.course-subtab{font-weight:700;letter-spacing:-.015em}
+.student-subtab[aria-selected="true"],.course-subtab[aria-selected="true"]{border-bottom-width:3px}
+.chip{border-radius:7px;font-weight:650}
+.field input,.field select,.field textarea{border-radius:9px}
+:focus-visible{outline-offset:3px}
+
+/* Light mode uses crisp neutral surfaces; red stays reserved for active states. */
+:root[data-theme="light"] .panel,
+:root[data-theme="light"] .constructor-card,
+:root[data-theme="light"] .admin-card{
+  box-shadow:0 8px 24px rgba(25,25,45,.045);
+}
+:root[data-theme="light"] .nl[aria-current="true"]{color:#a3130e}
+:root[data-theme="light"] .btn:not(.pri):hover{color:#a3130e}
+
+/* Preserve breathing room on narrow screens without making cards oversized. */
+@media(max-width:600px){
+  .view{padding-block:30px 18px}
+  .title{font-size:clamp(1.55rem,7vw,2.35rem)}
+  .lede{margin:12px 0 26px}
+  .cols,.col,.stack,.tiles,.sgrid,.constructor-grid,.seminar-list,.admin-cards{gap:14px}
+  .panel,.constructor-card{padding:16px}
+  .tcard{padding:15px}
+  .ctop{padding:20px 18px 10px}
+  .dosen{padding-inline:18px}
+  .jadwal{padding-inline:18px}
+  .notification-center{gap:14px}
+}
+@media(prefers-reduced-motion:reduce){
+  .nl,.btn,button{transition:none}
+}
