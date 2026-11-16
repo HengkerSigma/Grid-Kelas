@@ -1404,7 +1404,7 @@ function buildWhatsAppTemplate(){
   const includeAttendance=category==='attendance'||(combine&&category==='tasks');
   let taskCount=0,attendanceCount=0,seminarCount=0;
   if(includeTasks){
-    const rows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>x.task_title&&(!selected||selected.includes(x.course_code))).sort((a,b)=>String(a.deadline||'9999').localeCompare(String(b.deadline||'9999'))||a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
+    const rows=Object.keys(S.cu).map(id=>Object.assign({id:id},S.cu[id])).filter(x=>{const linked=S.tu[x.id];const active=linked?coreUtils.isTaskActive(linked,date):coreUtils.isTaskActive({tenggat:x.deadline,closed:x.closed},date);return x.task_title&&active&&(!selected||selected.includes(x.course_code));}).sort((a,b)=>String(a.deadline||'9999').localeCompare(String(b.deadline||'9999'))||a.course_code.localeCompare(b.course_code)||a.meeting_number-b.meeting_number);
     taskCount=rows.length;
     lines.push('\u{1F3C1} *PEMBARUAN TUGAS*');
     if(rows.length){
@@ -2081,7 +2081,7 @@ function absenBtn(c){
     const state=scheduleAttendanceState(c,n),session=scheduleAttendanceSession(c,n),status=session&&session.present&&session.present[ME];
     const displayState=activityModel.attendanceDisplayState(state,status);
     if(displayState==='done')return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen</b><span class="s">'+esc(c.nama)+' · Pertemuan ke-'+n+'</span></div>';
-    if(!session||displayState==='not_open')return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi belum dibuka</button>';
+    if(!session||displayState==='not_open')return '<button type="button" class="btn sm" disabled>Absensi Belum Dibuka</button>';
     if(displayState==='closed')return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi ditutup pengelola</button>';
     if(displayState==='ended')return '<button type="button" class="btn sm" disabled>P'+n+' · Periode absensi berakhir</button>';
     if(weekdayPlatform){
@@ -2147,7 +2147,7 @@ function tugasStudent(c){
   const all=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===c.k),active=taskList().filter(t=>t.k===c.k),history=all.filter(t=>isLocked(t)).sort((x,y)=>(y.tenggat||'').localeCompare(x.tenggat||''));
   if(!active.length&&!history.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   let h='';if(!ME)h+='<div class="mine"><div><b>Masuk untuk mengerjakan dan mengumpulkan tugas</b><span class="s">Pilih nomor absen Anda terlebih dahulu.</span></div><button type="button" class="btn pri" data-act="open-login">Masuk / Daftar</button></div>';
-  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME);return groupTaskCard(t,g,sub,principal);}return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(t.closed?'Ditutup pengelola · ':'')+(late&&!t.closed?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+taskImagesHtml(t.lampiran,t.id)+(late?'':taskActions(t,mine))+'</article>';};
+  const renderTask=t=>{const mine=ME&&t.subs?t.subs[ME]:null,late=isLocked(t);if(t.mode==='group'){const g=myConstructor(ME,t.k),sub=g&&t.groupSubs?t.groupSubs[g.id]:null,principal=g&&Number(g.principal)===Number(ME),card=groupTaskCard(t,g,sub,principal);return sub&&sub.at?'<details class="submitted-task"><summary><b>'+esc(t.judul)+'</b> <span class="chip done">Sudah dikumpulkan</span><span class="s">'+esc(cname(t.k))+' · Lihat detail pengumpulan</span></summary>'+card+'</details>':card;}const card='<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3><span>'+(t.tenggat?'<span class="chip'+(late?' late':'')+'">'+(t.closed?'Ditutup pengelola · ':'')+(late&&!t.closed?'Lewat tenggat ':'Tenggat ')+fmtDate(t.tenggat)+'</span>':'<span class="chip">Tanpa tenggat</span>')+(mine?' <span class="chip done">Sudah dikumpulkan</span>':'')+'</span></div>'+(t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+taskImagesHtml(t.lampiran,t.id)+(late?'':taskActions(t,mine))+'</article>';return mine?'<details class="submitted-task"><summary><b>'+esc(t.judul)+'</b> <span class="chip done">Sudah dikumpulkan</span><span class="s">'+esc(cname(t.k))+' · Lihat detail pengumpulan</span></summary>'+card+'</details>':card;};
   if(active.length)h+='<h3 class="ph3">Tugas aktif</h3>'+active.map(renderTask).join('');else h+='<p class="empty">Tidak ada tugas aktif.</p>';
   if(!ME)return h;
   if(history.length)h+='<details class="task-history"><summary>Riwayat tugas ('+history.length+')</summary>'+history.map(renderTask).join('')+'</details>';return h;
