@@ -1407,7 +1407,7 @@ function schedPanel(sched,dayN){
     return !!se&&(!!se.tanggal||inSession(c))&&!(se.present&&se.present[ME]);
   }));
   const empty=!li;
-  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal hari ini · '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah hari ini, selamat bersantai.':'Tidak ada kuliah hari ini.')+'</p>')+'</div>';
+  return '<div class="panel schedule-panel'+(needsAttendance?' attendance-alert':'')+'"><h3 class="ph3">Jadwal '+dayN+'</h3>'+(li?'<ul>'+li+'</ul>':'<p class="empty">'+(dayN==='Minggu'?'Tidak ada kuliah hari ini, selamat bersantai.':'Tidak ada kuliah hari ini.')+'</p>')+'</div>';
 }
 function annPanel(anns){
   let a='';
