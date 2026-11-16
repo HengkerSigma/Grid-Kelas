@@ -1306,3 +1306,18 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
   .history-bottom{align-items:center}
   .history-bottom>.s{width:100%;margin-left:0;text-align:left}
 }
+
+
+/* History task rows: course initials, title/deadline stack and completion mark */
+.history-item.tcard{grid-template-columns:42px minmax(0,1fr);align-items:start;gap:12px}
+.history-initial{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font-size:.72rem;font-weight:800;letter-spacing:.02em}
+.history-content{display:grid;gap:5px;min-width:0}
+.history-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.history-top h3{min-width:0;margin:0;font-family:var(--f-body);font-size:.96rem;font-weight:550;line-height:1.35;overflow-wrap:anywhere}
+.history-status{display:grid;place-items:center;flex:0 0 25px;width:25px;height:25px;border-radius:50%;font-size:1rem;font-weight:800;line-height:1}
+.history-status.done{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+.history-status.late{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad)}
+.history-deadline{color:var(--muted);font-size:.76rem;line-height:1.4}
+.history-content>p{margin:4px 0 0}
+.history-content .history-bottom{margin-top:5px;padding-top:7px;border-top:1px solid var(--line)}
+@media(max-width:600px){.history-item.tcard{grid-template-columns:38px minmax(0,1fr);gap:10px;padding:12px 0}.history-initial{width:38px;height:38px;font-size:.66rem}.history-top h3{font-size:.92rem}.history-status{width:23px;height:23px;flex-basis:23px}}
