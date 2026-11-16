@@ -1395,3 +1395,20 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
   border-color:#b71913;
   box-shadow:0 0 0 2px rgba(183,25,19,.2),0 5px 18px rgba(35,25,35,.12);
 }
+
+
+/* Light theme: Grand Prix and History course headings need the same contrast as other page tabs. */
+:root[data-theme="light"] .course-subtab{
+  color:#20202b;
+  text-shadow:none;
+}
+:root[data-theme="light"] .course-subtab:hover{
+  color:#a3130e;
+}
+:root[data-theme="light"] .course-subtab[aria-selected="true"]{
+  color:#99120d;
+  border-bottom-color:#c51b16;
+}
+:root[data-theme="light"] .course-subtab-sep{
+  color:#666779;
+}
