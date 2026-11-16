@@ -1333,3 +1333,65 @@ dialog.gk-password-alert::backdrop{background:rgba(5,5,10,.72);backdrop-filter:b
 .gk-theme-transition,.gk-theme-transition body,.gk-theme-transition body *{transition-property:background-color,color,border-color,box-shadow!important;transition-duration:.42s!important;transition-timing-function:cubic-bezier(.2,.75,.25,1)!important}
 @media(max-width:600px){.gk-theme-toggle{right:14px;bottom:69px;width:43px;height:43px}.gk-theme-icon{width:20px;height:20px}}
 @media(prefers-reduced-motion:reduce){.gk-theme-toggle,.gk-theme-icon,.gk-theme-transition,.gk-theme-transition body,.gk-theme-transition body *{animation:none!important;transition:none!important}}
+
+
+/* Light theme: strengthen page headings, student slider, and highlighted student labels. */
+:root[data-theme="light"] .title,
+:root[data-theme="light"] .overview-subtabs .student-subtab,
+:root[data-theme="light"] .student-subtab{
+  color:#20202b;
+}
+:root[data-theme="light"] .student-subtab:hover{
+  color:#a3130e;
+}
+:root[data-theme="light"] .student-subtab[aria-selected="true"]{
+  color:#a3130e;
+  border-bottom-color:#c51b16;
+  text-shadow:none;
+}
+
+/* Give the student roster strip a clearer edge against the page background. */
+:root[data-theme="light"] .strip{
+  background:#e1e2eb;
+  border-top:1px solid #c4c6d2;
+  border-bottom:1px solid #b9bbc9;
+}
+:root[data-theme="light"] .rail{
+  scrollbar-color:#9b9daf transparent;
+}
+:root[data-theme="light"] .rs{
+  color:#20202b;
+}
+:root[data-theme="light"] .sav{
+  background:#d5d7e1;
+  border-color:#aeb1c0;
+}
+:root[data-theme="light"] .rs:hover .sav,
+:root[data-theme="light"] .rs[aria-current="true"] .sav{
+  border-color:#b71913;
+}
+:root[data-theme="light"] .rl{
+  color:#292936;
+}
+:root[data-theme="light"] .rl small{
+  color:#55566a;
+}
+
+/* Keep the selected student's name and attendance/task metadata readable. */
+:root[data-theme="light"] .scard.me-highlight .snm,
+:root[data-theme="light"] .scard.me-highlight .snm b,
+:root[data-theme="light"] .scard.me-highlight .smeta,
+:root[data-theme="light"] .rs.me-highlight .rl{
+  color:#99120d;
+  text-shadow:none;
+}
+:root[data-theme="light"] .scard.me-highlight .snm .f,
+:root[data-theme="light"] .scard.me-highlight .smeta *,
+:root[data-theme="light"] .rs.me-highlight .rl small{
+  color:#454557;
+  text-shadow:none;
+}
+:root[data-theme="light"] .scard.me-highlight{
+  border-color:#b71913;
+  box-shadow:0 0 0 2px rgba(183,25,19,.2),0 5px 18px rgba(35,25,35,.12);
+}
