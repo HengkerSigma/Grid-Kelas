@@ -1567,3 +1567,27 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
 @media(prefers-reduced-motion:reduce){
   .nl,.btn,button{transition:none}
 }
+
+
+/* Home / Overview: clearer hierarchy and compact schedule alignment. */
+.greet .kk{display:none}
+.tr-kicker{font-size:clamp(1rem,2.2vw,1.12rem);letter-spacing:.14em}
+.tile-hub>span:first-child b{font-size:1.22rem!important}
+#home [data-act="open-sektor"] .l{display:block;font-size:1rem;font-weight:800;letter-spacing:.07em;order:0}
+#home [data-act="open-sektor"] .v{font-size:clamp(1.65rem,4vw,2.25rem);line-height:1.12;order:1;margin-top:5px}
+#home [data-act="open-sektor"]{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.schedule-panel>.ph3{font-size:1.08rem;letter-spacing:.06em}
+.schedule-panel .it{align-items:center;gap:10px}
+.schedule-panel .it>div:first-child{flex:1 1 auto;min-width:0}
+.schedule-panel .it>div:first-child>b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.76rem,2.6vw,1rem);letter-spacing:-.025em}
+.schedule-panel .schedule-actions{flex:0 0 auto;margin-left:auto;justify-content:flex-end;align-items:center;gap:6px}
+.schedule-panel .schedule-actions .btn{white-space:nowrap}
+@media(max-width:600px){
+  .tr-kicker{font-size:1rem}
+  .tile-hub>span:first-child b{font-size:1.16rem!important}
+  .schedule-panel .it{align-items:flex-start}
+  .schedule-panel .it>div:first-child{flex:1 1 38%;min-width:0}
+  .schedule-panel .it>div:first-child>b{font-size:clamp(.7rem,3.15vw,.88rem);letter-spacing:-.04em}
+  .schedule-panel .schedule-actions{flex:0 1 auto;max-width:62%;justify-content:flex-end;margin:0 0 0 auto;flex-wrap:wrap}
+  .schedule-panel .schedule-actions .btn{font-size:.72rem;padding:6px 8px}
+}
