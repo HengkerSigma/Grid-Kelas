@@ -1286,10 +1286,14 @@ const server = http.createServer(async (req, res) => {
       const out = {};
       (await listCol('sessions')).forEach((row) => {
         const d = row.data;
-        if (!isObj(d) || !isObj(d.present) || !Object.values(d.present).some(Boolean)) return;
+        const identity = activityModel.parseAttendanceSessionKey(String(row.key || '').replace(/^sessions\\//, ''));
+        // Semua sesi absensi yang memiliki identitas valid masuk ke total,
+        // termasuk sesi yang belum diisi siapa pun (present masih kosong).
+        if (!isObj(d) || !identity || d.k !== identity.courseCode || Number(d.n) !== identity.meetingNumber) return;
+        const present = isObj(d.present) ? d.present : {};
         const c = out[d.k] || (out[d.k] = { t: 0, h: {} });
         c.t++;
-        Object.keys(d.present).forEach((no) => { if (d.present[no] === 'H' || d.present[no] === 'K') c.h[no] = (c.h[no] || 0) + 1; });
+        Object.keys(present).forEach((no) => { if (present[no] === 'H' || present[no] === 'K') c.h[no] = (c.h[no] || 0) + 1; });
       });
       return json(res, 200, { courses: out });
     }
