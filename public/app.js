@@ -428,12 +428,12 @@ function renderConstructor(){
  if(!courses.length){h+='<div class="constructor-empty">Data mata kuliah belum tersedia.</div>';host.innerHTML=h;return;}
  courses.forEach(c=>{
   const groups=constructorGroups(c.k);
-  h+='<section class="panel constructor-course" data-course="'+esc(c.k)+'"><div class="row2" style="justify-content:space-between;align-items:center"><div><span class="constructor-kicker">MATA KULIAH</span><h3 class="ph3">'+esc(c.nama)+'</h3><p class="s">'+groups.length+' Constructor terdaftar</p></div>';
+  h+='<section class="panel constructor-course" data-course="'+esc(c.k)+'" style="--course-color:'+colr(c.warna)+'"><div class="row2" style="justify-content:space-between;align-items:center"><div><h3 class="ph3">'+esc(c.nama)+'</h3></div>';
   if(isAdmin)h+='<button type="button" class="btn pri" data-act="constructor-create" data-course="'+esc(c.k)+'">+ Tambah Constructor</button>';
   h+='</div>';
   if(isAdmin&&CONSTRUCTOR_CREATE_COURSE===c.k)h+='<div class="row2 constructor-create"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama Constructor"><button type="button" class="btn pri" data-act="constructor-create-save" data-course="'+esc(c.k)+'">Simpan</button><button type="button" class="btn" data-act="constructor-create-cancel">Batal</button></div>';
   const courseOpen=!!CONSTRUCTOR_COURSE_OPEN[c.k];
-  h+='<div class="constructor-list-toolbar"><span class="s">'+(groups.length?'Daftar '+groups.length+' Constructor':'Belum ada Constructor')+'</span><button type="button" class="btn sm" data-act="constructor-course-toggle" data-course="'+esc(c.k)+'" aria-expanded="'+courseOpen+'">'+(courseOpen?'Tutup daftar':'Lihat selengkapnya')+'</button></div>';
+  h+='<div class="constructor-list-toolbar"><button type="button" class="btn sm" data-act="constructor-course-toggle" data-course="'+esc(c.k)+'" aria-expanded="'+courseOpen+'">'+(courseOpen?'Tutup daftar Constructor':'Lihat daftar '+groups.length+' Constructor')+'</button></div>';
   if(courseOpen){
   if(!groups.length)h+='<p class="constructor-empty">Belum ada Constructor untuk mata kuliah ini.</p>';
   groups.forEach((g,index)=>{

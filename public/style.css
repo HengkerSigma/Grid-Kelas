@@ -1833,3 +1833,42 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
   min-width:0;
   margin:0;
 }
+
+
+/* Constructor Line-Up: scope white text to dark team cards, not course panels. */
+.constructor-grid .constructor-card .constructor-kicker{color:#fff;opacity:.78}
+.constructor-grid .constructor-card .constructor-principal,
+.constructor-grid .constructor-card .constructor-count{color:rgba(255,255,255,.82)}
+.constructor-grid .constructor-card .constructor-member small,
+.constructor-grid .constructor-card .s{color:rgba(255,255,255,.72)}
+.constructor-grid .constructor-intro,
+.constructor-grid>.constructor-course .s{color:var(--muted)}
+.constructor-course{
+  border:1px solid color-mix(in srgb,var(--course-color) 48%,var(--line));
+  border-left:4px solid var(--course-color);
+  background:linear-gradient(115deg,color-mix(in srgb,var(--course-color) 11%,var(--surface)),var(--surface) 72%);
+  box-shadow:0 8px 22px color-mix(in srgb,var(--course-color) 9%,transparent);
+}
+.constructor-course>.row2 .ph3{color:var(--fg);letter-spacing:-.025em}
+.constructor-course .constructor-list-toolbar{
+  display:flex;justify-content:flex-end;align-items:center;margin-top:14px;
+  padding-top:12px;border-top:1px solid color-mix(in srgb,var(--course-color) 24%,var(--line));
+}
+.constructor-course .constructor-list-toolbar .btn{
+  border-color:color-mix(in srgb,var(--course-color) 52%,var(--line));
+  color:color-mix(in srgb,var(--course-color) 76%,var(--fg));font-weight:750;
+}
+.constructor-course .constructor-list-toolbar .btn:hover{
+  background:color-mix(in srgb,var(--course-color) 12%,var(--surface));border-color:var(--course-color);
+}
+:root[data-theme="light"] .constructor-grid .constructor-intro,
+:root[data-theme="light"] .constructor-grid>.constructor-course .s{color:#55566a}
+:root[data-theme="light"] .constructor-subtabs .student-subtab{color:#292936}
+:root[data-theme="light"] .constructor-subtabs .student-subtab:hover{color:#a3130e}
+:root[data-theme="light"] .constructor-subtabs .student-subtab[aria-selected="true"]{color:#99120d;border-bottom-color:#c51b16}
+:root[data-theme="light"] .constructor-subtabs .course-subtab-sep{color:#666779}
+@media(max-width:600px){
+  .constructor-course>.row2{align-items:flex-start!important;gap:10px}
+  .constructor-course>.row2>.btn{flex:none}
+  .constructor-course .constructor-list-toolbar{margin-top:12px}
+}
