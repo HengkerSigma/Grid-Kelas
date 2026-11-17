@@ -1286,7 +1286,7 @@ const server = http.createServer(async (req, res) => {
       const out = {};
       (await listCol('sessions')).forEach((row) => {
         const d = row.data;
-        const identity = activityModel.parseAttendanceSessionKey(String(row.key || '').replace(/^sessions\\//, ''));
+        const identity = activityModel.parseAttendanceSessionKey(String(row.key || '').replace(/^sessions\//, ''));
         // Semua sesi absensi yang memiliki identitas valid masuk ke total,
         // termasuk sesi yang belum diisi siapa pun (present masih kosong).
         if (!isObj(d) || !identity || d.k !== identity.courseCode || Number(d.n) !== identity.meetingNumber) return;
