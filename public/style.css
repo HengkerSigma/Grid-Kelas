@@ -1791,3 +1791,10 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
   .seminar-actions{margin-top:auto}
   .elsegram-actions{gap:10px}
 }
+
+
+/* Elsegram profile photos: use the existing student avatar image instead of initials. */
+.elsegram-avatar{overflow:hidden;padding:0;border:1px solid var(--line)}
+.elsegram-avatar img,.elsegram-avatar .sil{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.elsegram-avatar .sil{padding:7px;fill:var(--muted)}
+.elsegram-actions .elsegram-action[aria-label="Bagikan postingan"] svg{width:21px;height:21px;stroke-width:1.9}

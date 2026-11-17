@@ -819,8 +819,7 @@ async function decide(method, p, body, sess, existing) {
     const m = /^s(\d\d)$/.exec(id);
     const own = m && Number(m[1]) === sess.no;
     const archiveKey = /^archive_[A-Za-z0-9]{6,24}$/.test(id);
-    const acc = archiveKey ? await getDoc('akun/' + pad(sess.no)) : null;
-    const canArchive = archiveKey && (admin || (acc && acc.archiveEdit === true));
+    const canArchive = archiveKey;
     if (!admin && !own && !canArchive) return ERR_FORBID;
     if (method === 'DELETE') {
       if (archiveKey && !admin) return ERR_FORBID;
@@ -1048,8 +1047,6 @@ async function decide(method, p, body, sess, existing) {
       return { data: Object.assign({}, existing, { comments: comments }) };
     }
     if (method !== 'POST') return ERR_FORBID;
-    const acc = await getDoc('akun/' + pad(sess.no));
-    if (!admin && !(acc && acc.archiveEdit === true)) return ERR_FORBID;
     const judul = String(body.judul || '').trim();
     const caption = String(body.caption || '').trim();
     const photoKey = String(body.photoKey || '');

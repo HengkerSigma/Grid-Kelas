@@ -991,7 +991,7 @@ async function launchGridClassTour(force){
       {element:'#home .team-radio',popover:{title:'21 · TEAM RADIO',description:'Pengumuman dan kabar penting kelas disiarkan di sini. Geser atau gunakan kontrol navigasi untuk melihat transmisi lainnya.',side:'top',align:'center'},onNextClick:()=>{setView('beranda',true);setTimeout(()=>d.moveNext(),140);}},
       {element:'#overviewSubtabs [data-tab="exhibition"]',popover:{title:'22 · EXHIBITION',description:'Exhibition berada tepat di samping heading Overview. Buka tab ini untuk melihat sertifikat, dokumentasi kelas, dan agenda seminar akademik tanpa meninggalkan halaman Overview.',side:'bottom',align:'start'},onNextClick:()=>{setOverviewSubtab('exhibition');setTimeout(()=>d.moveNext(),140);}},
       {element:'#exhibitionPanel #superLicenseLanding',popover:{title:'23 · SUPER LICENCE',description:'Buka ruang Super Licence untuk menyimpan sertifikat, dokumentasi, dan bukti kegiatan akademik.',side:'top',align:'center'}},
-      {element:'#exhibitionPanel #classArchivePanel',popover:{title:'24 · ELSEGRAM',description:'Elsegram menjadi feed dokumentasi kegiatan kelas. Lihat momen yang sudah dibagikan dan tambahkan dokumentasi jika akunmu memiliki izin.',side:'top',align:'center'}},
+      {element:'#exhibitionPanel #classArchivePanel',popover:{title:'24 · ELSEGRAM',description:'Elsegram menjadi feed dokumentasi kegiatan kelas. Semua mahasiswa dapat membagikan momen dan dokumentasi kelas.',side:'top',align:'center'}},
       {element:()=>document.querySelector('#classArchivePanel .archive-social')||document.querySelector('#classArchivePanel .gal .gi')||document.querySelector('#classArchivePanel'),popover:{title:'24A · REACTION & COMMENT',description:'Pilih foto yang sudah ada, lalu gunakan ikon hati untuk menyukai, ikon komentar untuk membuka dialog komentar, atau ikon panah untuk membagikan postingan.',side:'top',align:'center'}},
       {element:'#exhibitionPanel #paddockClubPanel',popover:{title:'25 · PADDOCK CLUB',description:'Pusat daftar seminar untuk mencari kegiatan yang menyediakan poin KAK. Periksa poster dan tekan Daftar untuk membuka tautan pendaftaran seminar.',side:'top',align:'center'}},
       {element:'#gkTourHelp',popover:{title:'26 · PIT ASSISTANCE',description:'Tombol ? ini adalah bantuan kapan saja. Tekan untuk membuka tutorial Grid Kelas kembali jika kamu membutuhkan panduan.',side:'top',align:'center'}}
@@ -1366,7 +1366,7 @@ function archiveCommentsDialog(id){
     (ME?'<div class="archive-comment-form elsegram-comment-form"><input type="text" maxlength="280" id="archive-comment-'+esc(id)+'" placeholder="Tambahkan komentar..." aria-label="Tulis komentar"><button type="button" data-act="archive-comment" data-id="'+esc(id)+'" aria-label="Kirim komentar" title="Kirim komentar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/></svg></button></div>':'<p class="s">Masuk untuk ikut berkomentar.</p>')+'</div>';
 }
 function classArchivePanel(){
-  const canEdit=adm()||(ME!=null&&S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true);
+  const canEdit=!!ME&&!!AS;
   const rows=Object.keys(S.ca).map(id=>Object.assign({id:id},S.ca[id])).sort((a,b)=>(b.at||0)-(a.at||0));
   let h='<section class="panel elsegram-panel" id="classArchivePanel"><header class="elsegram-heading"><div><h3 class="ph3">Elsegram</h3><p class="s">Momen, cerita, dan dokumentasi dari perjalanan kelas kita.</p></div></header>';
   if(canEdit&&ME&&AS){
@@ -1378,9 +1378,9 @@ function classArchivePanel(){
     const m=x.photoKey&&S.md[x.photoKey],url=m&&(m.url||m.data)&&((m.url&&/^https:\/\//.test(m.url))||okImg(m.data))?(m.url||m.data):'';
     const likeCount=Object.values(x.reactions||{}).filter(v=>v==='❤️').length,liked=!!(ME&&x.reactions&&x.reactions[String(ME)]==='❤️');
     const comments=Array.isArray(x.comments)?x.comments:[];
-    h+='<article class="elsegram-post" id="elsegram-'+esc(x.id)+'"><header class="elsegram-post-head"><span class="elsegram-avatar" aria-hidden="true">'+esc((nameOf(x.no)||'E').trim().charAt(0).toUpperCase())+'</span><div class="elsegram-author"><b>'+esc(nameOf(x.no))+'</b><time>'+fmtTime(x.at)+'</time></div>'+(adm()?'<button type="button" class="btn sm" data-act="archive-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</header>'+
+    h+='<article class="elsegram-post" id="elsegram-'+esc(x.id)+'"><header class="elsegram-post-head"><span class="elsegram-avatar" aria-label="Foto profil '+esc(nameOf(x.no))+'">'+photo('s'+PAD(x.no))+'</span><div class="elsegram-author"><b>'+esc(nameOf(x.no))+'</b><time>'+fmtTime(x.at)+'</time></div>'+(adm()?'<button type="button" class="btn sm" data-act="archive-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</header>'+
       (url?'<a class="elsegram-media" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(url)+'" alt="'+esc(x.judul||'Foto postingan Elsegram')+'" loading="lazy"></a>':'<div class="elsegram-media elsegram-media-missing">Foto tidak tersedia</div>')+
-      '<div class="elsegram-post-body"><div class="elsegram-actions"><button type="button" class="elsegram-action elsegram-like'+(liked?' active':'')+'" data-act="archive-react" data-id="'+esc(x.id)+'" data-emoji="❤️" aria-label="'+(liked?'Batal suka':'Suka')+'" aria-pressed="'+liked+'"'+(!ME?' disabled title="Masuk untuk menyukai"':'')+'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg><span>'+likeCount+'</span></button><button type="button" class="elsegram-action" data-act="archive-comment-focus" data-id="'+esc(x.id)+'" aria-label="Buka komentar" title="Komentar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5a9 9 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 3H13a8.5 8.5 0 0 1 8 8v.5Z"/></svg></button><button type="button" class="elsegram-action" data-act="archive-share" data-id="'+esc(x.id)+'" aria-label="Bagikan postingan" title="Bagikan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 14v5h14v-5"/></svg></button></div>'+
+      '<div class="elsegram-post-body"><div class="elsegram-actions"><button type="button" class="elsegram-action elsegram-like'+(liked?' active':'')+'" data-act="archive-react" data-id="'+esc(x.id)+'" data-emoji="❤️" aria-label="'+(liked?'Batal suka':'Suka')+'" aria-pressed="'+liked+'"'+(!ME?' disabled title="Masuk untuk menyukai"':'')+'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg><span>'+likeCount+'</span></button><button type="button" class="elsegram-action" data-act="archive-comment-focus" data-id="'+esc(x.id)+'" aria-label="Buka komentar" title="Komentar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5a9 9 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 3H13a8.5 8.5 0 0 1 8 8v.5Z"/></svg></button><button type="button" class="elsegram-action" data-act="archive-share" data-id="'+esc(x.id)+'" aria-label="Bagikan postingan" title="Bagikan"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.5-4.5m-7.5 7.4 7.5 4.5"/></svg></button></div>'+
       '<div class="elsegram-caption"><b>'+esc(x.judul||'Dokumentasi kelas')+'</b>'+(x.caption?'<span>'+esc(x.caption)+'</span>':'')+'</div>'+
       '<button type="button" class="elsegram-comments-link" data-act="archive-comment-focus" data-id="'+esc(x.id)+'">'+(comments.length?'Lihat '+comments.length+' komentar':'Tambahkan komentar')+'</button>'+'</div></article>';
   });
@@ -1749,11 +1749,11 @@ function renderAdmin(force=false){
     const k=S.ak[PAD(n)]||{};
     ar+='<tr><td class="num">'+n+'</td><td>'+esc(nameOf(n))+(isAd(n)?' '+FLAG:'')+'</td>'+
       '<td><input class="nim" type="text" inputmode="numeric" maxlength="20" data-nim="'+n+'" value="'+esc(k.nim||'')+'" aria-label="NIM nomor absen '+n+'"></td>'+
-      '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button><button type="button" class="btn sm" data-act="archive-perm" data-no="'+n+'" aria-pressed="'+(k.archiveEdit===true)+'">'+(k.archiveEdit===true?'Izin arsip · Cabut':'Izin arsip')+'</button></td>'+
+      '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button></td>'+
       ''+
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
-  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Atur NIM, akses admin, izin Class Archive, dan reset password langsung dari daftar ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin / Class Archive</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
+  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Atur NIM, akses admin, dan reset password langsung dari daftar ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
   h+='</div><div id="admin-academic-recap"'+(ADMIN_MAIN_TAB==='academic'?'':' hidden')+'><div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><p class="s">Lihat ringkasan absensi dan tugas dari tiap mata kuliah.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   h+='</div><div id="admin-student-recap"'+(ADMIN_MAIN_TAB==='students'?'':' hidden')+'>';
@@ -3220,12 +3220,6 @@ document.addEventListener('click',async e=>{
       refreshAll();if(D)renderDialog(true);
       toast(ownerMode?'Mode pengelola aktif':'Kembali sebagai tamu');
       break;
-    case 'archive-perm':{
-      if(!adm())break;
-      const no=+d.no,k=S.ak[PAD(no)]||{};
-      await run(()=>upsertAkun(no,{archiveEdit:k.archiveEdit!==true}),k.archiveEdit===true?'Izin Class Archive dicabut':'Izin Class Archive diberikan');
-      break;
-    }
     case 'adm-toggle':{
       if(!adm())break;
       const no=+d.no;
@@ -3262,7 +3256,6 @@ document.addEventListener('click',async e=>{
     }
     case 'archive-save':{
       if(!ME||!PEND.archive){toast('Masuk dan pilih foto terlebih dahulu.');break;}
-      if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');break;}
       const judul=($('archive-judul').value||'').trim(),caption=($('archive-caption').value||'').trim();
       if(!judul){toast('Isi judul dokumentasi terlebih dahulu.');break;}
       const key='archive_'+Array.from({length:12},()=>Math.floor(Math.random()*36).toString(36)).join('');
@@ -3509,7 +3502,6 @@ document.addEventListener('change',async e=>{
       return;
     }
     if(kind==='archive'){
-      if(!(adm()||(S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true))){toast('Anda belum diberi izin mengunggah ke Class Archive.');return;}
       if(!/^image\/(jpeg|png|webp)$/.test(f.type||'')){toast('Pilih foto JPG, PNG, atau WebP.');return;}
       await run(async()=>{PEND.archive=await sendFile(f,'media');renderExhibition();},'Foto siap ditambahkan ke Class Archive.');
       return;
