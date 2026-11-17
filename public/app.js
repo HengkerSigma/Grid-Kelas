@@ -1684,7 +1684,11 @@ function renderAdmin(force=false){
     '<div class="row2"><button type="button" class="btn pri" data-act="cu-save"'+(cl.length?'':' disabled')+'>'+(edit?'Simpan perubahan':'Simpan pembaruan')+'</button>'+(edit?'<button type="button" class="btn" data-act="cu-cancel">Batal edit</button>':'')+'</div></div>'+
     '<div class="tblw"><table><thead><tr><th>Mata kuliah</th><th>Pertemuan</th><th>Tugas</th><th>Link materi/soal</th><th>Pengumpulan</th><th>Aksi</th></tr></thead><tbody>'+(updRows||'<tr><td colspan="6" class="empty">Belum ada pembaruan.</td></tr>')+'</tbody></table></div>'+taskPanel+'</div>';
   }
-  const attendanceRows=Object.keys(S.se).map(id=>Object.assign({id:id},S.se[id])).filter(x=>x.k&&Number(x.n)>0).sort((a,b)=>String(b.tanggal||'').localeCompare(String(a.tanggal||''))||String(a.k).localeCompare(String(b.k))||Number(b.n)-Number(a.n));
+  const attendanceRows=Object.keys(S.se).map(id=>Object.assign({id:id},S.se[id])).filter(x=>{
+    if(!x.k||!Number(x.n)||x.closed)return false;
+    const start=x.tanggal||meetingDate(Number(x.n)),end=x.tanggalAkhir||start,current=today();
+    return !!start&&current>=start&&current<=end;
+  }).sort((a,b)=>String(b.tanggal||'').localeCompare(String(a.tanggal||''))||String(a.k).localeCompare(String(b.k))||Number(b.n)-Number(a.n));
   const attendanceList=attendanceRows.map(x=>{
     const n=Number(x.n),k=x.k,id=x.id,course=cl.find(c=>c.k===k),present=x.present||{},proof=x.bukti||{};
     const mode=attendanceModeForSession(x,id);
@@ -1693,7 +1697,7 @@ function renderAdmin(force=false){
     return '<li class="it"><div><b>'+esc(course?course.nama:cname(k))+' · Pertemuan '+n+' · '+attendanceModeLabel(mode)+'</b><span class="s">'+(x.tanggal?fmtDate(x.tanggal):'Tanggal belum diatur')+' · '+count+' status kehadiran · '+proofCount+' bukti</span></div>'+
       (pending?'<span class="row2" style="flex-wrap:nowrap"><button type="button" class="btn sm pri" data-act="attendance-session-delete-confirm" data-k="'+esc(k)+'" data-n="'+n+'" data-mode="'+mode+'">Hapus</button><button type="button" class="btn sm" data-act="attendance-session-delete-cancel">Batal</button></span>':'<button type="button" class="btn sm" data-act="attendance-session-delete" data-k="'+esc(k)+'" data-n="'+n+'" data-mode="'+mode+'">Hapus</button>')+'</li>';
   }).join('');
-  const attendancePanel='<div class="task-management-inline"><h4 class="ph3">Daftar absensi aktif</h4><p class="s">Kelola sesi absensi yang tersimpan. Menghapus sesi juga menghapus status, bukti, dan tautan absensi untuk pertemuan tersebut.</p>'+
+  const attendancePanel='<div class="task-management-inline"><h4 class="ph3">Daftar absensi aktif</h4><p class="s">Hanya sesi yang sedang berlangsung dan belum ditutup yang ditampilkan. Sesi yang sudah lewat tetap tersimpan sebagai riwayat beserta status dan bukti kehadirannya.</p>'+
     (attendanceList?'<ul>'+attendanceList+'</ul>':'<p class="empty">Belum ada sesi absensi aktif.</p>')+'</div>';
   if(ADMIN_NOTIFY_TAB==='attendance'){
     const chosenCourse=cl.find(c=>c.k===PLATFORM_FORM_COURSE)||cl[0]||null;
