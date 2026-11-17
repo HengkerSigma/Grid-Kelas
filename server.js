@@ -524,7 +524,7 @@ async function view(p, data, sess) {
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
   if (root === 'students' || root === 'courses' || root === 'constructors' || root === 'media' || root === 'pengumuman' || root === 'classArchive') return data;
-  if (root === 'presence') return sess ? { no: Number(data.no), lastSeen: Number(data.lastSeen) || 0 } : null;
+  if (root === 'presence') return sess ? { no: Number(data.no), lastSeen: Number(data.lastSeen) || 0, lastOnline: Number(data.lastOnline) || 0 } : null;
   if (root === 'greetings') {
     if (!sess || Number(data.senderNo) === Number(sess.no) || Date.now() - Number(data.createdAt || 0) > 120000) return null;
     return pick(data, ['senderNo', 'senderName', 'createdAt']);
@@ -684,8 +684,9 @@ async function decide(method, p, body, sess, existing) {
     const match = /^(0[1-9]|[12]\d|3[0-2])-([a-f0-9]{32})$/.exec(id || '');
     if (parts.length !== 2 || !match || Number(match[1]) !== Number(sess.no)) return ERR_FORBID;
     if (method !== 'PUT' || !onlyKeys(body, ['no', 'lastSeen', 'sessionId']) || Number(body.no) !== Number(sess.no) || body.sessionId !== match[2] || !Number.isFinite(Number(body.lastSeen)) || Number(body.lastSeen) < 0) return ERR_BAD('Status aktif tidak valid.');
-    const lastSeen = Number(body.lastSeen) === 0 ? 0 : Date.now();
-    return { data: { no: Number(sess.no), lastSeen: lastSeen, sessionId: match[2] } };
+    const now = Date.now();
+    const lastSeen = Number(body.lastSeen) === 0 ? 0 : now;
+    return { data: { no: Number(sess.no), lastSeen: lastSeen, lastOnline: now, sessionId: match[2] } };
   }
 
   if (!sess) return ERR_NEED;
