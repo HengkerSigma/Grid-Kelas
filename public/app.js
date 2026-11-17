@@ -490,7 +490,8 @@ function renderHeader(){
   }
   const navToggle=document.querySelector('[data-mobile-nav-toggle]');
   if(navToggle)navToggle.setAttribute('aria-expanded',String($('top').classList.contains('mobile-nav-open')));
-  lb.textContent=ME?('No. '+ME):'Masuk / Daftar';
+  lb.textContent=ME?'':'Masuk / Daftar';
+  lb.hidden=!!ME;
   chip.innerHTML=ME?photo('s'+PAD(ME)):SIL;
   chip.classList.toggle('adm',adm());
   chip.setAttribute('aria-label',ME?('Akun '+nameOf(ME)):'Masuk atau daftar');
@@ -1035,6 +1036,7 @@ function pitDlg(){
       if(done.length)h+='<h3 class="ph3 hub-history-heading" style="margin-top:16px"><button type="button" class="hub-history-link" data-act="task-history-open">Lihat History <span aria-hidden="true">→</span></button></h3>';
       if(late.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+renderGroup(late,'dnf')+'</ul>';
     }else h+='<p class="empty">Tidak ada tugas Constructor yang sedang menunggu pengumpulan.</p>';
+    h+='<h3 class="ph3 hub-history-heading" style="margin-top:16px"><button type="button" class="hub-history-link" data-act="constructor-standings-open">Lihat Klasemen <span aria-hidden="true">→</span></button></h3>';
   }
   return h+'</div>';
 }
@@ -2897,6 +2899,16 @@ document.addEventListener('click',async e=>{
       COURSE_SUBTAB='history';
       document.querySelectorAll('.course-subtab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===COURSE_SUBTAB)));
       renderCourses();break;
+    }
+    case 'constructor-standings-open':{
+      if(dlg.open)dlg.close();
+      setView('mahasiswa',true);
+      const tab=document.querySelector('#v-mahasiswa [data-act="student-subtab"][data-tab="constructor"]');
+      if(tab)tab.click();
+      CONSTRUCTOR_SUBTAB='standings';
+      renderConstructor();
+      loadHasil(true);
+      break;
     }
     case 'open-course':openD('course',d.k,d.tab,d.pert?+d.pert:null);break;
     case 'attendance-history':{if(!S.co[d.k]){toast('Mata kuliah tidak ditemukan.');break;}openD('course',d.k,'absen',Number(d.n)||defaultPert(d.k),d.mode);break;}

@@ -1591,3 +1591,39 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
   .schedule-panel .schedule-actions{flex:0 1 auto;max-width:62%;justify-content:flex-end;margin:0 0 0 auto;flex-wrap:wrap}
   .schedule-panel .schedule-actions .btn{font-size:.72rem;padding:6px 8px}
 }
+
+
+/* Follow-up corrections for the Beranda overview and Hub Tugas shortcuts. */
+#home [data-act="open-sektor"]{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  justify-items:start;
+  align-content:start;
+  gap:5px;
+}
+#home [data-act="open-sektor"] .l,
+#home [data-act="open-sektor"] .v{display:block;grid-column:1;justify-self:start}
+#home [data-act="open-sektor"] .v{margin-top:0}
+.schedule-panel .it>div:first-child>b{
+  overflow:visible;
+  text-overflow:clip;
+  font-size:clamp(.7rem,2.1vw,.94rem);
+}
+@media(max-width:600px){
+  .schedule-panel .it{flex-wrap:wrap;align-items:flex-start}
+  .schedule-panel .it>div:first-child{flex:1 1 100%;width:100%;min-width:0}
+  .schedule-panel .it>div:first-child>b{
+    white-space:nowrap;
+    overflow:visible;
+    text-overflow:clip;
+    font-size:clamp(.62rem,3.15vw,.88rem);
+    letter-spacing:-.045em;
+  }
+  .schedule-panel .schedule-actions{
+    flex:1 1 100%;
+    width:100%;
+    max-width:100%;
+    justify-content:flex-end;
+    margin:0;
+  }
+}
