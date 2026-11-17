@@ -1627,3 +1627,59 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
     margin:0;
   }
 }
+
+
+/* Correct Overview sector stack and schedule text hierarchy/alignment. */
+#home button.tile[data-act="open-sektor"]{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-auto-flow:row!important;
+  justify-items:start!important;
+  align-content:start!important;
+  text-align:left!important;
+  row-gap:5px!important;
+}
+#home button.tile[data-act="open-sektor"]>.l,
+#home button.tile[data-act="open-sektor"]>.v,
+#home button.tile[data-act="open-sektor"]>.d,
+#home button.tile[data-act="open-sektor"]>.more{
+  grid-column:1!important;
+  justify-self:start!important;
+  width:auto!important;
+  margin-top:0!important;
+}
+#home button.tile[data-act="open-sektor"]>.l{grid-row:1!important}
+#home button.tile[data-act="open-sektor"]>.v{grid-row:2!important}
+#home button.tile[data-act="open-sektor"]>.d{grid-row:3!important}
+#home button.tile[data-act="open-sektor"]>.more{grid-row:5!important}
+#home button.tile[data-act="open-sektor"]>.v{
+  font-size:1.9rem!important;
+  line-height:1.1!important;
+}
+.schedule-panel .it>div:first-child>b{
+  font-size:.82rem!important;
+  letter-spacing:0!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.schedule-panel .it>div:first-child>.s{
+  display:block;
+  font-size:.94rem!important;
+  line-height:1.35;
+}
+.schedule-panel .schedule-actions{
+  justify-content:flex-start!important;
+  margin-left:0!important;
+  margin-right:auto!important;
+}
+@media(max-width:600px){
+  .schedule-panel .it>div:first-child>b{font-size:.72rem!important}
+  .schedule-panel .it>div:first-child>.s{font-size:.84rem!important}
+  .schedule-panel .schedule-actions{
+    justify-content:flex-start!important;
+    margin:0 auto 0 0!important;
+    max-width:100%!important;
+    width:100%;
+  }
+}
