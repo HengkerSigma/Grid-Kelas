@@ -577,8 +577,8 @@ async function view(p, data, sess) {
     // NIM, tanggal lahir, dan WhatsApp dapat dilihat mahasiswa yang sudah login.
     if (sess) { out.nim = data.nim; out.tanggalLahir = data.tanggalLahir || ''; out.whatsapp = data.whatsapp || ''; }
     out.teamPrincipal = data.teamPrincipal || null;
-    if (admin) { out.resetReq = data.resetReq || null; out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
-    else if (sess && sess.no === data.no) { out.hash = !!data.hash; out.archiveEdit = data.archiveEdit === true; }
+    if (admin) { out.resetReq = data.resetReq || null; out.hash = !!data.hash; }
+    else if (sess && sess.no === data.no) { out.hash = !!data.hash; }
     return out;
   }
   if (root === 'sessions') {
@@ -660,7 +660,6 @@ async function decide(method, p, body, sess, existing) {
       const v = body[k];
       if (k === 'nim' && isStr(v, 20)) base.nim = v;
       else if (k === 'admin' && typeof v === 'boolean') base.admin = v;
-      else if (k === 'archiveEdit' && typeof v === 'boolean') base.archiveEdit = v;
       else if (k === 'teamPrincipal' && (v === null || (typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v)))) {
         if (v !== null && !(await getDoc('constructors/' + v))) return ERR_BAD('Kelompok untuk Team Principal tidak ditemukan.');
         if (v !== null) {
