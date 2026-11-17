@@ -1303,10 +1303,10 @@ function renderHome(force){
   if(OVERVIEW_SUBTAB==='exhibition')$('homeLede').textContent='Ruang sertifikat, dokumentasi kelas, dan agenda seminar akademik.';
 }
 function superLicensePanel(){
-  return '<section class="panel super-license-landing" id="superLicenseLanding"><div class="super-license-copy"><span class="constructor-kicker">PERSONAL DOCUMENT VAULT</span><h3 class="ph3">Super Licence</h3><p class="s">Satu tempat untuk menyimpan sertifikat, dokumentasi pribadi, dan bukti kegiatan akademikmu. Buka ruang penyimpanan untuk mengelola berkas kapan saja.</p></div><button type="button" class="super-license-open" data-act="open-super-license" aria-label="Buka Super Licence" title="Buka Super Licence"><span aria-hidden="true">↗</span></button></section>';
+  return '<section class="panel super-license-landing" id="superLicenseLanding"><div class="super-license-copy"><h3 class="ph3">Super Licence</h3><p class="s">Satu tempat untuk menyimpan sertifikat, dokumentasi pribadi, dan bukti kegiatan akademikmu. Buka ruang penyimpanan untuk mengelola berkas kapan saja.</p></div><button type="button" class="super-license-open" data-act="open-super-license" aria-label="Buka Super Licence" title="Buka Super Licence"><span aria-hidden="true">↗</span></button></section>';
 }
 function superLicenseDialog(){
-  return '<div class="dh super-license-dialog-head"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">PERSONAL DOCUMENT VAULT</div><h2 id="dtitle">Super Licence</h2><p class="jadwal">Kelola sertifikat dan dokumentasi pribadimu.</p></div><div class="db super-license-dialog-body">'+superLicenseContent()+'</div>';
+  return '<div class="dh super-license-dialog-head"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><h2 id="dtitle">Super Licence</h2><p class="jadwal">Kelola sertifikat dan dokumentasi pribadimu.</p></div><div class="db super-license-dialog-body">'+superLicenseContent()+'</div>';
 }
 function superLicenseContent(){
   const selected=dv('ser-jenis','ser')==='makrab'?'makrab':(dv('ser-jenis','ser')==='dok'?'dok':'ser');
@@ -1358,10 +1358,17 @@ function superLicenseContent(){
   }
   return h+'</div>';
 }
+function archiveCommentsDialog(id){
+  const item=S.ca[id];if(!item)return '<div class="dh"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><h2 id="dtitle">Komentar</h2></div><div class="db"><p class="empty">Postingan tidak ditemukan.</p></div>';
+  const comments=Array.isArray(item.comments)?item.comments:[];
+  return '<div class="dh archive-comments-head"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><h2 id="dtitle">Komentar</h2><p class="jadwal">'+esc(item.judul||'Postingan Elsegram')+'</p></div><div class="db archive-comments-dialog-body">'+
+    (comments.length?'<div class="archive-comment-list elsegram-comment-list">'+comments.map(comment=>'<p><b>'+esc(nameOf(comment.no))+'</b> '+esc(comment.text)+' <small>'+fmtTime(comment.at)+'</small></p>').join('')+'</div>':'<p class="empty">Belum ada komentar. Jadilah yang pertama berkomentar.</p>')+
+    (ME?'<div class="archive-comment-form elsegram-comment-form"><input type="text" maxlength="280" id="archive-comment-'+esc(id)+'" placeholder="Tambahkan komentar..." aria-label="Tulis komentar"><button type="button" data-act="archive-comment" data-id="'+esc(id)+'" aria-label="Kirim komentar" title="Kirim komentar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/></svg></button></div>':'<p class="s">Masuk untuk ikut berkomentar.</p>')+'</div>';
+}
 function classArchivePanel(){
   const canEdit=adm()||(ME!=null&&S.ak[PAD(ME)]&&S.ak[PAD(ME)].archiveEdit===true);
   const rows=Object.keys(S.ca).map(id=>Object.assign({id:id},S.ca[id])).sort((a,b)=>(b.at||0)-(a.at||0));
-  let h='<section class="panel elsegram-panel" id="classArchivePanel"><header class="elsegram-heading"><div><span class="constructor-kicker">ELSE3 COMMUNITY</span><h3 class="ph3">Elsegram</h3><p class="s">Momen, cerita, dan dokumentasi dari perjalanan kelas kita.</p></div><span class="chip">'+rows.length+' postingan</span></header>';
+  let h='<section class="panel elsegram-panel" id="classArchivePanel"><header class="elsegram-heading"><div><h3 class="ph3">Elsegram</h3><p class="s">Momen, cerita, dan dokumentasi dari perjalanan kelas kita.</p></div></header>';
   if(canEdit&&ME&&AS){
     h+='<details class="elsegram-composer"><summary>＋ Buat postingan</summary><div class="stack"><div class="field"><label for="archive-judul">Judul postingan</label><input id="archive-judul" data-dr="archive-judul" type="text" maxlength="100" value="'+esc(dv('archive-judul',''))+'" placeholder="Contoh: Praktikum instalasi listrik"></div><div class="field"><label for="archive-caption">Deskripsi</label><textarea id="archive-caption" data-dr="archive-caption" maxlength="300" placeholder="Ceritakan momen ini...">'+esc(dv('archive-caption',''))+'</textarea></div><div class="row2"><label class="btn sm pickfile">'+(PEND.archive?'Ganti foto':'Pilih foto')+'<input type="file" accept="image/jpeg,image/png,image/webp" data-file="archive"></label><span class="s">'+(PEND.archive?'Foto siap diunggah':'Foto JPG, PNG, atau WebP')+'</span></div><button type="button" class="btn pri" data-act="archive-save">Bagikan postingan</button></div></details>';
   }
@@ -1369,14 +1376,13 @@ function classArchivePanel(){
   h+='<div class="elsegram-feed">';
   rows.forEach(x=>{
     const m=x.photoKey&&S.md[x.photoKey],url=m&&(m.url||m.data)&&((m.url&&/^https:\/\//.test(m.url))||okImg(m.data))?(m.url||m.data):'';
-    const reactions=['👍','❤️','😂','🔥'].map(emoji=>{const count=Object.values(x.reactions||{}).filter(v=>v===emoji).length,active=ME&&x.reactions&&x.reactions[String(ME)]===emoji;return '<button type="button" class="archive-reaction'+(active?' active':'')+'" data-act="archive-react" data-id="'+esc(x.id)+'" data-emoji="'+emoji+'"'+(!ME?' disabled title="Masuk untuk memberi reaction"':'')+' aria-pressed="'+!!active+'">'+emoji+' <span>'+count+'</span></button>';}).join('');
+    const likeCount=Object.values(x.reactions||{}).filter(v=>v==='❤️').length,liked=!!(ME&&x.reactions&&x.reactions[String(ME)]==='❤️');
     const comments=Array.isArray(x.comments)?x.comments:[];
     h+='<article class="elsegram-post" id="elsegram-'+esc(x.id)+'"><header class="elsegram-post-head"><span class="elsegram-avatar" aria-hidden="true">'+esc((nameOf(x.no)||'E').trim().charAt(0).toUpperCase())+'</span><div class="elsegram-author"><b>'+esc(nameOf(x.no))+'</b><time>'+fmtTime(x.at)+'</time></div>'+(adm()?'<button type="button" class="btn sm" data-act="archive-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</header>'+
       (url?'<a class="elsegram-media" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(url)+'" alt="'+esc(x.judul||'Foto postingan Elsegram')+'" loading="lazy"></a>':'<div class="elsegram-media elsegram-media-missing">Foto tidak tersedia</div>')+
-      '<div class="elsegram-post-body"><div class="elsegram-actions"><div class="archive-reactions">'+reactions+'</div><button type="button" class="elsegram-action" data-act="archive-comment-focus" data-id="'+esc(x.id)+'" aria-label="Lihat komentar" title="Komentar">▢</button><button type="button" class="elsegram-action" data-act="archive-share" data-id="'+esc(x.id)+'" aria-label="Bagikan postingan" title="Bagikan">↗</button></div>'+
+      '<div class="elsegram-post-body"><div class="elsegram-actions"><button type="button" class="elsegram-action elsegram-like'+(liked?' active':'')+'" data-act="archive-react" data-id="'+esc(x.id)+'" data-emoji="❤️" aria-label="'+(liked?'Batal suka':'Suka')+'" aria-pressed="'+liked+'"'+(!ME?' disabled title="Masuk untuk menyukai"':'')+'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg><span>'+likeCount+'</span></button><button type="button" class="elsegram-action" data-act="archive-comment-focus" data-id="'+esc(x.id)+'" aria-label="Buka komentar" title="Komentar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5a9 9 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 3H13a8.5 8.5 0 0 1 8 8v.5Z"/></svg></button><button type="button" class="elsegram-action" data-act="archive-share" data-id="'+esc(x.id)+'" aria-label="Bagikan postingan" title="Bagikan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></button></div>'+
       '<div class="elsegram-caption"><b>'+esc(x.judul||'Dokumentasi kelas')+'</b>'+(x.caption?'<span>'+esc(x.caption)+'</span>':'')+'</div>'+
-      (comments.length?'<div class="archive-comment-list elsegram-comment-list">'+comments.slice(-5).map(comment=>'<p><b>'+esc(nameOf(comment.no))+'</b> '+esc(comment.text)+' <small>'+fmtTime(comment.at)+'</small></p>').join('')+'</div>':'<span class="s elsegram-no-comments">Belum ada komentar.</span>')+
-      (ME?'<div class="archive-comment-form elsegram-comment-form"><input type="text" maxlength="280" id="archive-comment-'+esc(x.id)+'" placeholder="Tambahkan komentar..." aria-label="Komentar Elsegram"><button type="button" data-act="archive-comment" data-id="'+esc(x.id)+'" aria-label="Kirim komentar" title="Kirim komentar">Kirim</button></div>':'<span class="s">Masuk untuk ikut berkomentar.</span>')+'</div></article>';
+      '<button type="button" class="elsegram-comments-link" data-act="archive-comment-focus" data-id="'+esc(x.id)+'">'+(comments.length?'Lihat '+comments.length+' komentar':'Tambahkan komentar')+'</button>'+'</div></article>';
   });
   return h+'</div></section>';
 }
@@ -1384,9 +1390,9 @@ function renderExhibition(){
   const host=$('exhibition');if(!host)return;
   const seminars=Object.keys(S.pc).map(id=>Object.assign({id:id},S.pc[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   let h='<div class="exhibition-sections"><section class="exhibition-section">'+superLicensePanel()+'</section><section class="exhibition-section">'+classArchivePanel()+'</section></div>';
-  h+='<section class="panel paddock-club" id="paddockClubPanel"><div class="paddock-club-head"><div><h2 class="ph3">Paddock Club</h2><p class="s">Pusat informasi seminar dan kegiatan akademik untuk membantu mengumpulkan poin KAK sebagai salah satu persiapan syarat sidang proposal skripsi.</p></div><span class="chip">'+seminars.length+' seminar</span></div>';
+  h+='<section class="panel paddock-club" id="paddockClubPanel"><div class="paddock-club-head"><div><h2 class="ph3">Seminar</h2><p class="s">Pusat informasi seminar dan kegiatan akademik untuk membantu mengumpulkan poin KAK sebagai salah satu persiapan syarat sidang proposal skripsi.</p></div></div>';
   if(!seminars.length)h+='<div class="seminar-empty"><b>Belum ada seminar yang ditambahkan.</b><span class="s">Informasi seminar akan ditampilkan di sini setelah dipublikasikan pengelola.</span></div>';
-  else{h+='<div class="seminar-list">';seminars.forEach(x=>{const poster=x.poster||{},src=poster.url||(poster.id?('/_blob/'+poster.id):'');h+='<article class="seminar-card"><div class="seminar-poster">'+(src?'<img src="'+esc(src)+'" alt="Poster '+esc(x.title||'seminar')+'" loading="lazy">':'<div class="seminar-poster-empty">POSTER<br>SEMINAR</div>')+'</div><div class="seminar-info"><span class="constructor-kicker">PADDOCK CLUB · SEMINAR</span><h3>'+esc(x.title||'Seminar tanpa judul')+'</h3><p class="seminar-price"><b>Harga:</b> '+esc(x.price||'Belum dicantumkan')+'</p><div class="seminar-actions">'+(x.registrationType==='contact'&&/^\d{9,15}$/.test(String(x.contactPerson||''))?'<a class="btn pri" href="https://wa.me/'+esc(x.contactPerson)+'" target="_blank" rel="noopener noreferrer">Hubungi '+esc(x.contactPersonName||'Contact Person')+' <span aria-hidden="true">&#8599;</span></a>':okHttps(x.registrationUrl)?'<a class="btn pri" href="'+esc(x.registrationUrl)+'" target="_blank" rel="noopener noreferrer">Daftar <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Informasi pendaftaran belum tersedia.</span>')+(adm()?'<button type="button" class="btn sm" data-act="seminar-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</div></div>';});h+='</div>';}
+  else{h+='<div class="seminar-list">';seminars.forEach(x=>{const poster=x.poster||{},src=poster.url||(poster.id?('/_blob/'+poster.id):'');h+='<article class="seminar-card"><div class="seminar-poster">'+(src?'<img src="'+esc(src)+'" alt="Poster '+esc(x.title||'seminar')+'" loading="lazy">':'<div class="seminar-poster-empty">POSTER<br>SEMINAR</div>')+'</div><div class="seminar-info"><h3>'+esc(x.title||'Seminar tanpa judul')+'</h3><p class="seminar-price"><b>Harga:</b> '+esc(x.price||'Belum dicantumkan')+'</p><div class="seminar-actions">'+(x.registrationType==='contact'&&/^\d{9,15}$/.test(String(x.contactPerson||''))?'<a class="btn pri" href="https://wa.me/'+esc(x.contactPerson)+'" target="_blank" rel="noopener noreferrer">Hubungi '+esc(x.contactPersonName||'Contact Person')+' <span aria-hidden="true">&#8599;</span></a>':okHttps(x.registrationUrl)?'<a class="btn pri" href="'+esc(x.registrationUrl)+'" target="_blank" rel="noopener noreferrer">Daftar <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Informasi pendaftaran belum tersedia.</span>')+(adm()?'<button type="button" class="btn sm" data-act="seminar-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</div></div>';});h+='</div>';}
   h+='</section>';host.innerHTML=h;
   if(D&&D.kind==='super-license'&&dlg.open)renderDialog(true);
 }
@@ -1809,6 +1815,7 @@ function renderDialog(force){
   else if(D.kind==='makrab-files')box.innerHTML=makrabFilesDlg();
    else if(D.kind==='birthday-compose')box.innerHTML=birthdayComposeDlg();
   else if(D.kind==='super-license')box.innerHTML=superLicenseDialog();
+  else if(D.kind==='archive-comments')box.innerHTML=archiveCommentsDialog(D.key);
   else box.innerHTML=loginDlg();
   box.scrollTop=sc;
 }
@@ -2589,7 +2596,7 @@ document.addEventListener('click',async e=>{
   switch(a){
     case 'send-greeting':{await sendGreeting();break;}
     case 'open-super-license':{D={kind:'super-license',key:null,tab:'main',pert:null,confirmDel:null,newOpen:false,pending:{},smode:{}};renderDialog(true);if(!dlg.open)dlg.showModal();break;}
-    case 'archive-comment-focus':{const field=$('archive-comment-'+d.id);if(field){field.focus();field.scrollIntoView({behavior:'smooth',block:'center'});}break;}
+    case 'archive-comment-focus':{openD('archive-comments',d.id);break;}
     case 'archive-share':{const item=S.ca[d.id],media=item&&item.photoKey&&S.md[item.photoKey],url=media&&(media.url||media.data);if(!item)break;const shareUrl=okHttps(url)?url:window.location.href.split('#')[0]+'#elsegram-'+encodeURIComponent(d.id);const shareData={title:item.judul||'Postingan Elsegram',text:item.caption||'Lihat postingan di Elsegram',url:shareUrl};try{if(navigator.share)await navigator.share(shareData);else if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(shareUrl);toast('Tautan postingan disalin.');}else{window.prompt('Salin tautan postingan ini:',shareUrl);}}catch(err){if(err&&err.name!=='AbortError')toast('Postingan belum dapat dibagikan.');}break;}
     case 'send-birthday-greeting':{D={kind:'birthday-compose',key:Number(d.no),mode:null};renderDialog(true);if(!dlg.open)dlg.showModal();break;}
     case 'birthday-compose-default':{const no=Number(D&&D.key);await sendBirthdayGreeting(no,randomBirthdayMessage(),b);break;}
@@ -3269,7 +3276,7 @@ document.addEventListener('click',async e=>{
     }
     case 'archive-react':{
       if(!ME){toast('Masuk terlebih dahulu untuk memberi reaction.');break;}
-      const item=S.ca[d.id],emoji=d.emoji,allowed=['👍','❤️','😂','🔥'];
+      const item=S.ca[d.id],emoji=d.emoji,allowed=['❤️'];
       if(!item||!allowed.includes(emoji))break;
       const current=item.reactions&&item.reactions[String(ME)]===emoji;
       await run(()=>db.doc('classArchive/'+d.id).update({reaction:current?null:emoji}),'Reaction diperbarui');
@@ -3283,7 +3290,7 @@ document.addEventListener('click',async e=>{
       const entry={no:ME,text:comment,at:Date.now()},item=S.ca[d.id];
       const nextComments=(Array.isArray(item&&item.comments)?item.comments:[]).concat(entry).slice(-100);
       const ok=await run(()=>db.doc('classArchive/'+d.id).update({comment:comment,comments:nextComments}),'Komentar dikirim');
-      if(ok){if(item)item.comments=nextComments;if(field)field.value='';renderExhibition();}
+      if(ok){if(item)item.comments=nextComments;if(field)field.value='';if(D&&D.kind==='archive-comments'&&D.key===d.id)renderDialog(true);renderExhibition();}
       break;
     }
     case 'profile-save':{
