@@ -1,5 +1,5 @@
 'use strict';
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uboroxjkcvjbywcshdbq.supabase.co';
 /* Server memakai kunci service_role untuk SEMUA akses database & Storage. Kunci ini melewati RLS,
