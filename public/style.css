@@ -161,7 +161,7 @@ td .lnk:hover{text-decoration-color:var(--accent)}
 .smeta{display:flex;flex-wrap:wrap;gap:4px 12px;padding:0 14px 14px;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-4px}
 .student-last-online{display:block;padding:0 14px 12px;font-size:.76rem;line-height:1.35;color:var(--muted);font-variant-numeric:tabular-nums}
 .student-last-online.is-online{color:var(--ok);font-weight:700}
-.shead+.student-last-online{padding:5px 0 0;font-size:.82rem}
+.shead .student-last-online{padding:5px 0 0;font-size:.82rem}
 .scard.skel{min-height:200px;background:var(--surface);color:var(--muted)}
 
 /* course grid */
