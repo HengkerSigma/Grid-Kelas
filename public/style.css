@@ -1683,3 +1683,78 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
     width:100%;
   }
 }
+
+
+/* Super Licence: a focused landing section with its tools inside a dialog. */
+.super-license-landing{display:flex;align-items:center;justify-content:space-between;gap:22px;min-height:156px;padding:clamp(20px,3vw,30px);background:linear-gradient(125deg,var(--surface),color-mix(in srgb,var(--accent) 7%,var(--surface)));border-color:color-mix(in srgb,var(--accent) 24%,var(--line))}
+.super-license-copy{min-width:0;max-width:680px}
+.super-license-copy .constructor-kicker{display:block;margin-bottom:8px;color:var(--accent)}
+.super-license-copy .ph3{margin:0 0 8px;font-size:clamp(1.25rem,3vw,1.7rem);letter-spacing:-.025em}
+.super-license-copy .s{display:block;max-width:620px;line-height:1.65}
+.super-license-open{display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;border:0;border-radius:50%;background:var(--accent);color:#fff;font-size:1.8rem;font-weight:500;cursor:pointer;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 25%,transparent);transition:transform .2s,box-shadow .2s}
+.super-license-open:hover{transform:translate(2px,-2px);box-shadow:0 12px 28px color-mix(in srgb,var(--accent) 34%,transparent)}
+.super-license-dialog-head{position:relative;padding-right:58px}
+.super-license-dialog-head .x{position:absolute;right:16px;top:16px}
+.super-license-dialog-body{padding-top:18px}
+.super-license-dialog-body #superLicensePanel{margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.super-license-dialog-body #superLicensePanel>.ph3{display:none}
+.super-license-dialog-body #superLicensePanel>p.s{margin-top:0}
+@media(max-width:600px){.super-license-landing{min-height:0;gap:14px;padding:18px}.super-license-open{flex-basis:46px;width:46px;height:46px;font-size:1.5rem}.super-license-copy .s{font-size:.82rem}.super-license-dialog-body{padding:14px}}
+
+/* Elsegram: Instagram-inspired, image-first social feed. */
+.elsegram-panel{padding:clamp(15px,2.5vw,24px)}
+.elsegram-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
+.elsegram-heading .constructor-kicker{display:block;margin-bottom:5px;color:var(--accent)}
+.elsegram-heading .ph3{margin:0 0 5px;font-size:1.45rem;letter-spacing:-.035em}
+.elsegram-heading .s{display:block;line-height:1.5}
+.elsegram-composer{margin:0 0 20px;border-bottom:1px solid var(--line);padding-bottom:16px}
+.elsegram-composer>summary{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;color:var(--accent);list-style:none}
+.elsegram-composer>summary::-webkit-details-marker{display:none}
+.elsegram-composer[open]>summary{margin-bottom:14px}
+.elsegram-composer .stack{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.elsegram-feed{display:grid;justify-items:center;gap:24px}
+.elsegram-post{width:min(100%,720px);overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 8px 24px rgba(0,0,0,.055)}
+.elsegram-post-head{display:flex;align-items:center;gap:11px;padding:13px 15px}
+.elsegram-avatar{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:50%;background:color-mix(in srgb,var(--accent) 13%,var(--surface-2));color:var(--accent);font-weight:800}
+.elsegram-author{display:grid;gap:2px;min-width:0}
+.elsegram-author b{font-size:.88rem}
+.elsegram-author time{color:var(--muted);font-size:.72rem}
+.elsegram-post-head>.btn{margin-left:auto}
+.elsegram-media{display:block;width:100%;background:var(--surface-2);line-height:0}
+.elsegram-media img{display:block;width:100%;height:auto;max-height:820px;object-fit:contain;background:#111}
+.elsegram-media-missing{display:grid;place-items:center;min-height:260px;color:var(--muted);font-size:.9rem}
+.elsegram-post-body{display:grid;gap:12px;padding:13px 15px 15px}
+.elsegram-actions{display:flex;align-items:center;gap:12px;min-width:0}
+.elsegram-actions .archive-reactions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1;min-width:0}
+.elsegram-actions .archive-reaction{display:inline-flex;align-items:center;gap:4px;min-height:34px;padding:5px 8px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);font-size:.84rem;cursor:pointer}
+.elsegram-actions .archive-reaction span{font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.elsegram-actions .archive-reaction.active{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--surface));}
+.elsegram-action{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border:0;border-radius:9px;background:transparent;color:var(--fg);font-size:1.45rem;cursor:pointer}
+.elsegram-action:hover{background:var(--surface-2);color:var(--accent)}
+.elsegram-caption{display:grid;gap:5px;font-size:.9rem;line-height:1.55}
+.elsegram-caption b{font-weight:750}
+.elsegram-caption span{white-space:pre-wrap;overflow-wrap:anywhere}
+.elsegram-comment-list{display:grid;gap:7px}
+.elsegram-comment-list p{margin:0;font-size:.82rem;line-height:1.5;overflow-wrap:anywhere}
+.elsegram-comment-list small{display:block;margin-top:2px;color:var(--muted);font-size:.68rem}
+.elsegram-no-comments{font-size:.76rem}
+.elsegram-comment-form{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
+.elsegram-comment-form input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);color:var(--fg);font:inherit;font-size:.84rem}
+.elsegram-comment-form button{flex:none;padding:8px 13px;border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:.8rem;font-weight:750;cursor:pointer}
+.elsegram-empty{display:grid;justify-items:center;gap:9px;padding:48px 18px;text-align:center}
+.elsegram-empty-icon{display:grid;place-items:center;width:54px;height:54px;border:1px solid var(--line);border-radius:50%;font-size:1.6rem;color:var(--accent)}
+.elsegram-empty .s{max-width:360px;line-height:1.5}
+@media(max-width:600px){
+  .elsegram-panel{padding:13px}
+  .elsegram-heading{align-items:flex-start}
+  .elsegram-heading .ph3{font-size:1.3rem}
+  .elsegram-feed{gap:17px}
+  .elsegram-post{border-radius:11px}
+  .elsegram-post-head{padding:11px 12px}
+  .elsegram-post-body{gap:10px;padding:11px 12px 13px}
+  .elsegram-actions{gap:5px}
+  .elsegram-actions .archive-reactions{gap:5px}
+  .elsegram-actions .archive-reaction{padding:4px 6px;font-size:.78rem}
+  .elsegram-action{flex-basis:32px;width:32px;height:32px}
+  .elsegram-media img{max-height:none}
+}
