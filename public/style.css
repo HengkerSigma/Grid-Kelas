@@ -1758,3 +1758,36 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
   .elsegram-action{flex-basis:32px;width:32px;height:32px}
   .elsegram-media img{max-height:none}
 }
+
+
+/* Elsegram interaction row: single like, comment dialog, and share actions. */
+.elsegram-actions{display:flex;align-items:center;justify-content:flex-start;gap:13px;padding:2px 0}
+.elsegram-actions .elsegram-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;width:auto;min-width:34px;height:36px;padding:4px;border:0;border-radius:8px;background:transparent;color:var(--fg);cursor:pointer}
+.elsegram-actions .elsegram-action svg{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.elsegram-actions .elsegram-like svg{fill:none}
+.elsegram-actions .elsegram-like.active{color:var(--accent)}
+.elsegram-actions .elsegram-like.active svg{fill:currentColor;stroke:currentColor}
+.elsegram-actions .elsegram-like span{font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums}
+.elsegram-actions .elsegram-action:hover{background:var(--surface-2);color:var(--accent)}
+.elsegram-comments-link{justify-self:start;width:max-content;padding:0;border:0;background:transparent;color:var(--muted);font-size:.78rem;text-align:left;cursor:pointer}
+.elsegram-comments-link:hover{color:var(--accent)}
+.archive-comments-dialog-body{display:grid;gap:16px;max-height:min(65vh,620px);overflow:auto}
+.archive-comments-dialog-body .archive-comment-list{display:grid;gap:12px}
+.archive-comments-dialog-body .archive-comment-list p{padding-bottom:10px;border-bottom:1px solid var(--line)}
+.archive-comments-dialog-body .elsegram-comment-form{position:sticky;bottom:0;padding:12px 0 2px;background:var(--surface)}
+.elsegram-comment-form button{display:grid;place-items:center;width:38px;height:38px;padding:0}
+.elsegram-comment-form button svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* Seminar details share the poster's full height, with the action anchored at the bottom. */
+.seminar-card{align-items:stretch}
+.seminar-poster{align-self:stretch;height:100%;min-height:100%;aspect-ratio:3/4}
+.seminar-poster img{display:block;width:100%;height:100%;object-fit:cover}
+.seminar-info{align-self:stretch;min-height:100%;height:100%;justify-content:space-between;gap:10px;padding-block:14px}
+.seminar-info h3{width:100%;margin-block:0 auto}
+.seminar-price{margin:0;line-height:1.45}
+.seminar-actions{width:100%;margin-top:auto;align-items:flex-end}
+@media(max-width:420px){
+  .seminar-info{padding-block:10px}
+  .seminar-actions{margin-top:auto}
+  .elsegram-actions{gap:10px}
+}
