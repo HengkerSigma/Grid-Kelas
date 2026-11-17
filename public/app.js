@@ -1388,6 +1388,7 @@ function renderExhibition(){
   if(!seminars.length)h+='<div class="seminar-empty"><b>Belum ada seminar yang ditambahkan.</b><span class="s">Informasi seminar akan ditampilkan di sini setelah dipublikasikan pengelola.</span></div>';
   else{h+='<div class="seminar-list">';seminars.forEach(x=>{const poster=x.poster||{},src=poster.url||(poster.id?('/_blob/'+poster.id):'');h+='<article class="seminar-card"><div class="seminar-poster">'+(src?'<img src="'+esc(src)+'" alt="Poster '+esc(x.title||'seminar')+'" loading="lazy">':'<div class="seminar-poster-empty">POSTER<br>SEMINAR</div>')+'</div><div class="seminar-info"><span class="constructor-kicker">PADDOCK CLUB · SEMINAR</span><h3>'+esc(x.title||'Seminar tanpa judul')+'</h3><p class="seminar-price"><b>Harga:</b> '+esc(x.price||'Belum dicantumkan')+'</p><div class="seminar-actions">'+(x.registrationType==='contact'&&/^\d{9,15}$/.test(String(x.contactPerson||''))?'<a class="btn pri" href="https://wa.me/'+esc(x.contactPerson)+'" target="_blank" rel="noopener noreferrer">Hubungi '+esc(x.contactPersonName||'Contact Person')+' <span aria-hidden="true">&#8599;</span></a>':okHttps(x.registrationUrl)?'<a class="btn pri" href="'+esc(x.registrationUrl)+'" target="_blank" rel="noopener noreferrer">Daftar <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Informasi pendaftaran belum tersedia.</span>')+(adm()?'<button type="button" class="btn sm" data-act="seminar-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</div></div>';});h+='</div>';}
   h+='</section>';host.innerHTML=h;
+  if(D&&D.kind==='super-license'&&dlg.open)renderDialog(true);
 }
 
 function schedPanel(sched,dayN){
@@ -3279,8 +3280,10 @@ document.addEventListener('click',async e=>{
       const field=$('archive-comment-'+d.id),comment=(field&&field.value||'').trim();
       if(!comment){toast('Tulis komentar terlebih dahulu.');break;}
       if(comment.length>280){toast('Komentar maksimal 280 karakter.');break;}
-      const ok=await run(()=>db.doc('classArchive/'+d.id).update({comment:comment}),'Komentar dikirim');
-      if(ok&&field)field.value='';
+      const entry={no:ME,text:comment,at:Date.now()},item=S.ca[d.id];
+      const nextComments=(Array.isArray(item&&item.comments)?item.comments:[]).concat(entry).slice(-100);
+      const ok=await run(()=>db.doc('classArchive/'+d.id).update({comment:comment,comments:nextComments}),'Komentar dikirim');
+      if(ok){if(item)item.comments=nextComments;if(field)field.value='';renderExhibition();}
       break;
     }
     case 'profile-save':{
