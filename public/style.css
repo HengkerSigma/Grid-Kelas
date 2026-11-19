@@ -1858,7 +1858,7 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
 }
 .constructor-course>.row2 .ph3{color:var(--fg);letter-spacing:-.025em}
 .constructor-course .constructor-list-toolbar{
-  display:flex;justify-content:flex-end;align-items:center;margin-top:14px;
+  display:flex;justify-content:flex-start;align-items:center;margin-top:14px;
   padding-top:12px;border-top:1px solid color-mix(in srgb,var(--course-color) 24%,var(--line));
 }
 .constructor-course .constructor-list-toolbar .btn{
@@ -1915,7 +1915,7 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
 
 /* Course logos as subtle watermarks in Constructor Line-Up and History */
 .constructor-grid .constructor-course{position:relative;isolation:isolate;overflow:hidden}
-.constructor-course-watermark{position:absolute;z-index:0;right:18px;top:50%;width:min(230px,34%);height:190px;display:grid;place-items:center;transform:translateY(-50%);opacity:.13;pointer-events:none}
+.constructor-course-watermark{position:absolute;z-index:0;right:22px;top:54%;width:min(220px,32%);height:180px;display:grid;place-items:center;transform:translateY(-50%);opacity:.17;pointer-events:none}
 .constructor-course-watermark .course-logo-mark,.constructor-course-watermark .logo{position:static;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;filter:none}
 .constructor-course-watermark .course-logo-mark{color:var(--course-color)}
 .constructor-course-watermark .course-logo-mark.alj,.constructor-course-watermark .course-logo-mark.ind,.constructor-course-watermark .course-logo-mark.eng,.constructor-course-watermark .course-logo-mark.ele,.constructor-course-watermark .course-logo-mark.fis,.constructor-course-watermark .course-logo-mark.kal,.constructor-course-watermark .course-logo-mark.wrg,.constructor-course-watermark .course-logo-mark.kim,.constructor-course-watermark .course-logo-mark.prg{color:var(--course-color)}
