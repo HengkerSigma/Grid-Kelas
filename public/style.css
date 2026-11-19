@@ -1903,3 +1903,7 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
 .task-review-manager>summary{font-weight:750}
 .task-review-list li[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.history-course-group.history-focus-pulse>.panel{animation:none}}
+
+.task-review-student{display:grid;gap:4px;min-width:0;flex:1 1 auto}
+.task-review-evidence{display:grid;gap:3px;padding-left:24px;min-width:0;font-size:.78rem;color:var(--muted)}
+.task-review-evidence a{overflow-wrap:anywhere}
