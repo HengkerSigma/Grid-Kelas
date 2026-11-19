@@ -310,15 +310,15 @@ function courseLogoHtml(course,uploadedLogo){
   if(uploadedLogo&&okImg(uploadedLogo.data))return '<img class="logo" src="'+esc(uploadedLogo.data)+'" alt="Logo '+esc(course.nama)+'">';
   const code=String(course.k||'').trim().toUpperCase();
   const icons={
-    ALJ:{type:'alj',desc:'Matriks dan vektor aljabar linier',art:'<path d="M49 28H37v64h12M111 28h12v64h-12"/><path d="M59 43h42v34H59z"/><g fill="currentColor" stroke="none"><circle cx="69" cy="53" r="3"/><circle cx="90" cy="53" r="3"/><circle cx="69" cy="66" r="3"/><circle cx="90" cy="66" r="3"/></g><path d="M76 100 95 81m-19 19v-12m12 12h-12" />'},
-    IND:{type:'ind',desc:'Pena dan tulisan Bahasa Indonesia',art:'<path d="m58 88 9-27 34-34 18 18-34 34-27 9z"/><path d="m67 61 18 18M101 27l18 18M51 99h66M77 91l-10-10"/>'},
-    ENG:{type:'eng',desc:'Gelembung percakapan Bahasa Inggris',art:'<path d="M35 30h90a10 10 0 0 1 10 10v43a10 10 0 0 1-10 10H78l-24 17V93H35a10 10 0 0 1-10-10V40a10 10 0 0 1 10-10z"/><path d="M48 52h64M48 68h48"/>'},
-    ELE:{type:'ele',desc:'Kilat dan rangkaian listrik',art:'<path d="m91 16-48 59h34l-8 34 49-62H83z"/><path d="M30 29h18m-9-9v18M115 99h18m-9-9v18"/><circle cx="39" cy="29" r="5"/><circle cx="124" cy="99" r="5"/>'},
-    FIS:{type:'fis',desc:'Lintasan parabola dan vektor gaya',art:'<path d="M30 91Q80-9 130 91"/><path d="M80 68V24m0 0-9 12m9-12 9 12M80 68l36-20m0 0-13 1m13-1-5 12"/><path d="M25 96h110"/>'},
-    KAL:{type:'kal',desc:'Integral dan grafik fungsi',art:'<path d="M65 23c-14 0-16 12-8 24l25 37c8 12 6 23-9 23"/><path d="M34 92h96M46 96V27"/><path d="M48 83Q70 83 82 61T122 34"/><path d="m87 61 17-4-7-14"/>'},
-    WRG:{type:'wrg',desc:'Perisai dan bintang kewarganegaraan',art:'<path d="M80 17 122 32v31c0 25-17 42-42 54C55 105 38 88 38 63V32z"/><path d="m80 38 6 14 15 1-12 10 4 15-13-8-13 8 4-15-12-10 15-1z"/>'},
-    KIM:{type:'kim',desc:'Struktur molekul kimia',art:'<path d="m80 19 34 19v39l-34 20-34-20V38z"/><path d="m80 19 34 19M114 77 80 97 46 77M46 38l34-19"/><circle cx="80" cy="19" r="5"/><circle cx="114" cy="77" r="5"/><circle cx="46" cy="77" r="5"/><circle cx="80" cy="97" r="5"/>'},
-    PRG:{type:'prg',desc:'Simbol kode dan alur pemrograman',art:'<path d="m53 39-25 27 25 27m54-54 25 27-25 27M93 29 67 103"/><path d="M80 15h22l12 12-12 12H80zM80 87h22l12 12-12 12H80z"/>'}
+    ALJ:{type:'alj',desc:'Kurung siku matriks aljabar linier',art:'<path d="M66 24H43v72h23M94 24h23v72H94"/>'},
+    IND:{type:'ind',desc:'Lembar teks bergaris Bahasa Indonesia',art:'<path d="M48 18h64v84H48z"/><path d="M61 39h38M61 54h38M61 69h38M61 84h38"/>'},
+    ENG:{type:'eng',desc:'Globe minimalis komunikasi Bahasa Inggris',art:'<circle cx="80" cy="60" r="42"/><path d="M38 60h84M80 18c14 12 21 26 21 42s-7 30-21 42M80 18C66 30 59 44 59 60s7 30 21 42M45 39h70M45 81h70"/>'},
+    ELE:{type:'ele',desc:'Simbol kilat atau tegangan listrik',art:'<path d="m91 16-48 59h34l-8 34 49-62H83z"/>'},
+    FIS:{type:'fis',desc:'Simbol omega untuk Fisika Dasar',art:'<path d="M48 92V77c0-35 11-55 32-55s32 20 32 55v15h18v12H30V92h18z"/>'},
+    KAL:{type:'kal',desc:'Simbol integral kalkulus dasar',art:'<path d="M94 20c-22-8-27 8-29 25l-8 48c-3 18-14 20-28 12"/><path d="M46 27h61"/>'},
+    WRG:{type:'wrg',desc:'Timbangan keadilan untuk Kewarganegaraan',art:'<path d="M80 20v76M52 36h56M80 20l-7 9h14zM80 96H42M80 96h38"/><path d="M50 36 35 81m15-45 15 45M110 36 95 81m15-45 15 45"/><path d="M20 81h30a15 15 0 0 1-30 0zM110 81h30a15 15 0 0 1-30 0z"/><path d="M65 108h30"/>'},
+    KIM:{type:'kim',desc:'Gelas kimia atau beaker',art:'<path d="M64 18h32M70 18v30L43 96a7 7 0 0 0 6 11h62a7 7 0 0 0 6-11L90 48V18"/><path d="M55 82h50M61 69h38"/>'},
+    PRG:{type:'prg',desc:'Simbol kode pemrograman',art:'<path d="m61 34-29 26 29 26M99 34l29 26-29 26M91 23 69 97"/>'}
   };
   const item=icons[code]||{type:'general',desc:'Ilmu dan pembelajaran',art:'<path d="M42 28h76v62H42zM52 40h56M52 54h38M52 68h46"/><path d="M62 90v12h36V90"/>'};
   return '<svg class="course-logo-mark '+item.type+'" viewBox="0 0 160 120" role="img" aria-label="'+item.desc+'"><g fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">'+item.art+'</g><text x="80" y="116" text-anchor="middle">'+esc(code||'ELSE3')+'</text></svg>';
