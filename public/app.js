@@ -306,6 +306,19 @@ function dosenHtml(c){
   if(p.length>1){const last=p.pop();txt=esc(p.join(' '))+' <b>'+esc(last)+'</b>';}else txt='<b>'+esc(nm)+'</b>';
   return '<li><span class="dav">'+photo('d_'+c.k)+'</span><span>'+txt+'</span></li>';
 }
+function courseLogoHtml(course,uploadedLogo){
+  if(uploadedLogo&&okImg(uploadedLogo.data))return '<img class="logo" src="'+esc(uploadedLogo.data)+'" alt="Logo '+esc(course.nama)+'">';
+  const label=(String(course.k||'')+' '+String(course.nama||'')).toLocaleLowerCase('id');
+  let art='<path d="M42 28h76v62H42zM52 40h56M52 54h38M52 68h46" /><path d="M62 90v12h36V90" />';
+  let type='general',desc='Ilmu dan pembelajaran';
+  if(/alj|aljabar|matematika|kalkulus|statistika/.test(label)){type='math';desc='Matematika';art='<path d="M48 32h62M48 88h62M60 24l-12 72M104 24 92 96" /><path d="M64 44c8-10 26-10 32 0 7 12-25 20-25 32 0 9 12 12 25 5" />';}
+  else if(/ele|elektro|listrik|rangkaian|instalasi/.test(label)){type='electrical';desc='Teknik Elektro';art='<path d="M88 18 48 66h27l-7 38 44-54H84z" /><circle cx="42" cy="28" r="6"/><circle cx="120" cy="88" r="6"/><path d="M48 32 60 42M108 80l8 5" />';}
+  else if(/eng|inggris|bahasa|linguistik|komunikasi/.test(label)){type='language';desc='Bahasa dan komunikasi';art='<path d="M36 34h88a9 9 0 0 1 9 9v38a9 9 0 0 1-9 9H77l-22 15V90H36a9 9 0 0 1-9-9V43a9 9 0 0 1 9-9z" /><path d="M48 57h64M48 72h43" />';}
+  else if(/kim|kimia|chemical/.test(label)){type='chemistry';desc='Kimia';art='<path d="M64 20h32M72 20v34L44 96a8 8 0 0 0 7 12h58a8 8 0 0 0 7-12L88 54V20" /><path d="M56 84h48M68 72h28" /><circle cx="77" cy="92" r="4"/><circle cx="94" cy="82" r="3"/>';}
+  else if(/fis|fisika|physics/.test(label)){type='physics';desc='Fisika';art='<ellipse cx="80" cy="66" rx="49" ry="19"/><ellipse cx="80" cy="66" rx="49" ry="19" transform="rotate(60 80 66)"/><ellipse cx="80" cy="66" rx="49" ry="19" transform="rotate(120 80 66)"/><circle cx="80" cy="66" r="7" fill="currentColor" stroke="none"/>';}
+  else if(/program|coding|informatika|komput/.test(label)){type='coding';desc='Komputasi';art='<path d="m62 38-27 28 27 28M98 38l27 28-27 28M90 27 70 101" />';}
+  return '<svg class="course-logo-mark '+type+'" viewBox="0 0 160 120" role="img" aria-label="'+desc+'"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+art+'</g><text x="80" y="116" text-anchor="middle">'+esc(course.k||'ELSE3')+'</text></svg>';
+}
 function renderCourses(){
   const host=$('cgrid');
   if(COURSE_SUBTAB==='history'){
@@ -333,7 +346,7 @@ function renderCourses(){
       '<ul class="dosen">'+dosenHtml(c)+'</ul>'+
       '<p class="jadwal">'+esc(c.sks)+' SKS · '+esc(hariLabel(c))+' '+esc(c.jam)+' · '+esc(c.ruang)+'</p>'+
       '<button type="button" class="pic" data-act="open-course" data-k="'+esc(c.k)+'" aria-label="Buka absen dan tugas '+esc(c.nama)+'">'+
-      (logo&&okImg(logo.data)?'<img class="logo" src="'+logo.data+'" alt="">':'<span class="ph" aria-hidden="true">'+esc(c.k)+'</span>')+
+      courseLogoHtml(c,logo)+
       (ak?'<span class="aktif">'+ak+' tugas aktif</span>':'')+
       '<span class="cta">Absen &amp; Tugas<i>&#8250;</i></span></button></li>';
   });

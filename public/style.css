@@ -179,6 +179,9 @@ td .lnk:hover{text-decoration-color:var(--accent)}
 .pic::before{content:"";position:absolute;inset:0;background:radial-gradient(circle,rgba(0,0,0,.34) 1.3px,transparent 1.8px) 0 0/8px 8px;-webkit-mask-image:linear-gradient(100deg,#000 0,transparent 78%);mask-image:linear-gradient(100deg,#000 0,transparent 78%)}
 .logo{position:relative;max-width:82%;max-height:80%;object-fit:contain;filter:drop-shadow(0 10px 14px rgba(0,0,0,.4))}
 .ph{position:relative;font-family:var(--f-disp);font-weight:800;font-size:clamp(3.2rem,10vw,5.4rem);color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.55);letter-spacing:.02em}
+.course-logo-mark{position:relative;width:min(68%,220px);height:150px;overflow:visible;color:rgba(255,255,255,.94);filter:drop-shadow(0 9px 13px rgba(0,0,0,.28))}
+.course-logo-mark text{fill:currentColor;stroke:none;font-family:var(--f-disp);font-size:11px;font-weight:800;letter-spacing:2px}
+.course-logo-mark.electrical{color:#ffe08a}.course-logo-mark.math{color:#b9d8ff}.course-logo-mark.language{color:#ffd0c8}.course-logo-mark.chemistry{color:#b8f0d5}.course-logo-mark.physics{color:#e2d0ff}.course-logo-mark.coding{color:#b8e9f4}
 .cta{position:absolute;right:16px;bottom:14px;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.58);padding:7px 14px;border-radius:999px;font-weight:700;font-size:.9rem}
 .cta i{font-style:normal;font-size:1.1rem;line-height:1}
 .pic:hover .cta,.pic:focus-visible .cta{background:#fff;color:#000}
