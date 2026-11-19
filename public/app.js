@@ -1555,10 +1555,10 @@ function participationStudentRows(){
         });
       }
       const submission=subs[String(no)],submitted=!!(submission&&typeof submission.at==='number')||groupSubmitted;
-      const reviewed=review[String(no)]==='sudah';
+      
       const mode=taskActivityModeOf(task)==='online'?'Online':'Tatap Muka';
       if(!submitted)taskItems.push({course:cname(task.k),meeting:Number(task.meeting_number)||0,title:task.judul||'Tugas',mode:mode,status:isLocked(task)?'Belum mengumpulkan · tenggat lewat':'Belum mengumpulkan',done:false});
-      else if(!reviewed)taskItems.push({course:cname(task.k),meeting:Number(task.meeting_number)||0,title:task.judul||'Tugas',mode:mode,status:'Sudah dikumpulkan · belum diperiksa',done:false});
+      
     });
     sessions.forEach(([id,se])=>{
       const status=(se.present||{})[String(no)]||'';
@@ -1581,7 +1581,7 @@ function participationStudentRows(){
 function participationStudentRecapText(rows){
   const pending=rows.filter(r=>r.tasks.length||r.attendance.length);
   return '*REKAP PARTISIPASI PER MAHASISWA · GRID KELAS*\n'+
-    'Daftar tugas yang belum dikumpulkan/belum diperiksa dan absensi yang belum diisi.\n'+
+    'Daftar tugas yang belum dikumpulkan dan absensi yang belum diisi.\n'+
     'Mahasiswa dengan tindak lanjut: '+pending.length+'/'+N+'\n\n'+
     (pending.length?pending.map(r=>r.text).join('\n\n'):'Semua mahasiswa tidak memiliki tugas atau absensi tertinggal.');
 }
@@ -1607,7 +1607,7 @@ function participationRecapPanel(cl){
     '<div class="row2" style="margin-bottom:14px"><button type="button" class="btn sm '+(f.view!=='student'?'pri':'')+'" data-act="participation-view-course">Per Mata Kuliah</button><button type="button" class="btn sm '+(f.view==='student'?'pri':'')+'" data-act="participation-view-student">Per Mahasiswa</button></div>'+
     (f.view==='student'?
       '<div class="task-management-inline"><div class="row2" style="justify-content:space-between"><b>Rekap seluruh mahasiswa</b><span class="chip">'+pendingRows.length+' / '+N+' mahasiswa perlu tindak lanjut</span></div>'+
-      '<p class="s">Tugas yang belum dikumpulkan, sudah dikumpulkan tetapi belum diperiksa, dan absensi yang belum diisi ditampilkan per mahasiswa.</p>'+
+      '<p class="s">Tugas yang belum dikumpulkan dan absensi yang belum diisi ditampilkan per mahasiswa.</p>'+
       studentCards+
       '<div class="field" style="margin-top:14px"><label for="participation-student-recap-text">Rekap WhatsApp seluruh mahasiswa</label><textarea id="participation-student-recap-text" rows="12" readonly>'+esc(studentText)+'</textarea></div>'+
       '<button type="button" class="btn pri" data-act="participation-student-copy-all">Salin rekap seluruh mahasiswa</button></div>'
