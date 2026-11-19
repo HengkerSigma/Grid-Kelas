@@ -979,9 +979,10 @@ button.is-busy{cursor:wait;opacity:.65}
 
 /* Exhibition: Super License, Class Archive, and Paddock Club */
 .exhibition-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px;align-items:start}
+.exhibition-column{display:grid;align-content:start;gap:14px;min-width:0}
 .exhibition-section{min-width:0}
 .exhibition-section>.panel{height:100%}
-.paddock-club{margin-top:14px}
+.paddock-club{margin-top:0}
 .paddock-club-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
 .paddock-club-head>div{min-width:0;max-width:760px}
 .paddock-club-head .ph3{margin:4px 0 8px;font-size:clamp(1.15rem,3vw,1.55rem)}
