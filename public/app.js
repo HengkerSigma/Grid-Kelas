@@ -59,7 +59,7 @@ const MAKRAB_START_AT=Date.UTC(2026,9,31,17,0,0,0),MAKRAB_DEADLINE_AT=Date.UTC(2
 function makrabWindowOpen(now){now=Number(now)||Date.now();return now>=MAKRAB_START_AT&&now<=MAKRAB_DEADLINE_AT;}
 function makrabStatus(item,now){now=Number(now)||Date.now();if(item&&Number(item.at)>0)return Number(item.at)<=MAKRAB_DEADLINE_AT?'Sudah Mengumpulkan':'Terlambat';return now>MAKRAB_DEADLINE_AT?'Terlambat':'Belum Mengumpulkan';}
 const S={st:{},co:{},md:{},se:{},tu:{},an:{},ak:{},be:{},ca:{},dr:{},pl:{},cu:{},cs:{},pc:{},pr:{}};
-let TASK_REVIEW_SELECTIONS={},ATTENDANCE_REVIEW_SELECTIONS={},PARTICIPATION_RECAP={course:'',meeting:'1',type:'attendance',mode:'tatap_muka',status:'missing',task:''},CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,PLATFORM_FORM_ACTIVITY='',ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',COURSE_HISTORY_FOCUS='',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
+let TASK_SUBMISSION_SELECTIONS={},ATTENDANCE_REVIEW_SELECTIONS={},PARTICIPATION_RECAP={course:'',meeting:'1',type:'attendance',mode:'tatap_muka',status:'missing',task:''},CONSTRUCTOR_EDIT_ID=null,CONSTRUCTOR_CREATE_COURSE=null,CONSTRUCTOR_COURSE_OPEN={},CU_EDIT=null,CU_PENDING_IMAGES=[],ADMIN_SECTION='',ADMIN_MAIN_TAB='academic',ADMIN_NOTIFY_TAB='tasks',PLATFORM_FORM_COURSE='',PLATFORM_FORM_MEETING=0,PLATFORM_FORM_ACTIVITY='',ATTENDANCE_SESSION_DELETE=null,TEAM_RADIO_INDEX=0,TEAM_RADIO_TOUCH_X=null,COURSE_SUBTAB='grand-prix',COURSE_HISTORY_FOCUS='',STUDENT_SUBTAB='line-up',CONSTRUCTOR_SUBTAB='list',OVERVIEW_SUBTAB='overview',defaultConstructorSeedPromise=null;
 const loaded={st:false,co:false,cs:false};
 const DR={};
 let ME=null,D=null,raf=0,toastT=0,stripFocusedNo=null,PROFILE_EDITING=false,presenceTimer=null,greetingCooldownUntil=0,greetingCooldownTimer=null;
@@ -1526,9 +1526,9 @@ function participationRecapRows(){
     if(!task)return {title:title,rows:[],available:false,text:'Belum ada tugas yang terhubung ke pertemuan ini.'};
     source=task;const subs=task.subs||{},review=subs.__review||{},groupSubmitted=new Set();
     if(task.mode==='group')constructorGroups(task.k).forEach(g=>{const submission=task.groupSubs&&task.groupSubs[g.id];if(submission&&typeof submission.at==='number')[Number(g.principal),...(g.members||[]).map(Number)].forEach(no=>{if(Number.isInteger(no)&&no>=1&&no<=N)groupSubmitted.add(no);});});
-    rows=students.filter(no=>{const submitted=!!(subs[String(no)]&&typeof subs[String(no)].at==='number')||groupSubmitted.has(no),reviewed=review[String(no)]==='sudah';if(f.status==='submitted')return submitted;if(f.status==='not_submitted')return !submitted;if(f.status==='reviewed')return reviewed;if(f.status==='not_reviewed')return !reviewed;return true;}).map(no=>({no:no,name:nameOf(no),status:f.status==='reviewed'||f.status==='not_reviewed'?(review[String(no)]==='sudah'?'Sudah diperiksa':'Belum diperiksa'):(subs[String(no)]||groupSubmitted.has(no)?'Sudah mengumpulkan':'Belum mengumpulkan')}));
+    rows=students.filter(no=>{const submitted=!!(subs[String(no)]&&typeof subs[String(no)].at==='number')||groupSubmitted.has(no),reviewed=review[String(no)]==='sudah';if(f.status==='submitted')return submitted;if(f.status==='not_submitted')return !submitted;return true;}).map(no=>({no:no,name:nameOf(no),status:(subs[String(no)]||groupSubmitted.has(no)?'Sudah mengumpulkan':'Belum mengumpulkan')}));
   }
-  const label=f.type==='attendance'?({all:'Semua mahasiswa',filled:'Sudah mengisi absensi',missing:'Belum mengisi absensi',H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa',K:'Kelas Berjalan'}[f.status]||f.status):({submitted:'Sudah mengumpulkan',not_submitted:'Belum mengumpulkan',reviewed:'Sudah diperiksa',not_reviewed:'Belum diperiksa'}[f.status]||f.status);
+  const label=f.type==='attendance'?({all:'Semua mahasiswa',filled:'Sudah mengisi absensi',missing:'Belum mengisi absensi',H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa',K:'Kelas Berjalan'}[f.status]||f.status):({submitted:'Sudah mengumpulkan',not_submitted:'Belum mengumpulkan'}[f.status]||f.status);
   const showStatus=['all','filled','missing','submitted','not_submitted'].includes(f.status);
   const list=rows.length?rows.map((r,i)=>(i+1)+'. '+r.name+' (No. '+String(r.no).padStart(2,'0')+')'+(showStatus?' — '+r.status:'')).join('\n'):'Tidak ada mahasiswa yang sesuai filter.';
   return {title:title,rows:rows,available:true,text:'*REKAP '+(f.type==='attendance'?'ABSENSI':'TUGAS')+' GRID KELAS*\n'+title+'\nFilter: '+label+'\nJumlah: '+rows.length+'/'+N+' mahasiswa\n\n'+list};
@@ -1592,7 +1592,7 @@ function participationRecapPanel(cl){
   const courseOptions=cl.map(c=>'<option value="'+esc(c.k)+'"'+(c.k===f.course?' selected':'')+'>'+esc(c.nama)+'</option>').join('');
   const taskOptions=Object.keys(S.tu||{}).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.k===f.course&&Number(t.meeting_number)===meeting).map(t=>'<option value="'+esc(t.id)+'"'+(t.id===f.task?' selected':'')+'>'+esc(t.judul)+'</option>').join('');
   const attendanceOptions='<option value="all"'+(f.status==='all'?' selected':'')+'>Semua mahasiswa</option><option value="filled"'+(f.status==='filled'?' selected':'')+'>Sudah mengisi absensi</option><option value="missing"'+(f.status==='missing'?' selected':'')+'>Belum mengisi absensi</option><option value="H"'+(f.status==='H'?' selected':'')+'>Hadir</option><option value="I"'+(f.status==='I'?' selected':'')+'>Izin</option><option value="S"'+(f.status==='S'?' selected':'')+'>Sakit</option><option value="A"'+(f.status==='A'?' selected':'')+'>Alpa</option><option value="K"'+(f.status==='K'?' selected':'')+'>Kelas Berjalan</option>';
-  const taskFilterOptions='<option value="submitted"'+(f.status==='submitted'?' selected':'')+'>Sudah mengumpulkan</option><option value="not_submitted"'+(f.status==='not_submitted'?' selected':'')+'>Belum mengumpulkan</option><option value="reviewed"'+(f.status==='reviewed'?' selected':'')+'>Sudah diperiksa</option><option value="not_reviewed"'+(f.status==='not_reviewed'?' selected':'')+'>Belum diperiksa</option>';
+  const taskFilterOptions='<option value="submitted"'+(f.status==='submitted'?' selected':'')+'>Sudah mengumpulkan</option><option value="not_submitted"'+(f.status==='not_submitted'?' selected':'')+'>Belum mengumpulkan</option>';
   const studentRows=participationStudentRows(),pendingRows=studentRows.filter(r=>r.tasks.length||r.attendance.length);
   const studentText=participationStudentRecapText(studentRows);
   const studentCards=studentRows.map(r=>{
@@ -2216,7 +2216,7 @@ function tugasAdmin(c){
   let h='';
   if(!list.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   const renderTask=t=>{
-    const subs=t.subs||{},cnt=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)&&!subs[no].adminRecorded).length,late=isLocked(t),closeControl=(!late||t.closed)?'<button type="button" class="btn sm" data-act="task-close-toggle" data-id="'+esc(t.id)+'" data-closed="'+(t.closed?'true':'false')+'">'+(t.closed?'Buka kembali':'Tutup Tugas')+'</button>':'';
+    const subs=t.subs||{},cnt=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)&&!!subs[no]).length,late=isLocked(t),closeControl=(!late||t.closed)?'<button type="button" class="btn sm" data-act="task-close-toggle" data-id="'+esc(t.id)+'" data-closed="'+(t.closed?'true':'false')+'">'+(t.closed?'Buka kembali':'Tutup Tugas')+'</button>':'';
     const taskUrl=(t.link&&okUrl(t.link))?t.link:(isPlatformCourse(c)?platOf(c.k):'');
     const taskAction=taskUrl?'<a class="btn sm" href="'+esc(taskUrl)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Tautan instruksi belum diatur.</span>';
     if(t.mode==='group'){
@@ -2230,10 +2230,8 @@ function tugasAdmin(c){
       const ownGroup=ME?myConstructor(ME,t.k):null,ownSub=ownGroup&&t.groupSubs?t.groupSubs[ownGroup.id]:null;
       return '<div class="admin-task-stack">'+managerCard+(ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+groupTaskCard(t,ownGroup,ownSub,!!(ownGroup&&Number(ownGroup.principal)===Number(ME)))+'</div>':'')+'</div>';
     }
-    const review=subs.__review&&typeof subs.__review==='object'&&!Array.isArray(subs.__review)?subs.__review:{};
-    const reviewed=Array.from({length:N},(_,i)=>i+1).filter(no=>review[String(no)]==='sudah').length;
-    const selectedReview=TASK_REVIEW_SELECTIONS[t.id]||{},selectedCount=Object.keys(selectedReview).length;
-    const reviewList='<details open class="task-review-manager"><summary>Status pengumpulan &amp; pemeriksaan ('+cnt+'/'+N+' mengumpulkan · '+reviewed+'/'+N+' diperiksa)</summary><div class="task-review-toolbar"><div class="task-review-filter"><label for="task-review-filter-'+esc(t.id)+'">Filter pengumpulan</label><select id="task-review-filter-'+esc(t.id)+'" data-status-filter="task"><option value="all">Semua mahasiswa</option><option value="submitted">Sudah mengumpulkan</option><option value="missing">Belum mengumpulkan</option></select></div><div class="task-review-bulk-actions"><div class="row2" style="justify-content:space-between;align-items:center"><button type="button" class="btn sm" data-act="task-review-select-all" data-id="'+esc(t.id)+'">'+(selectedCount===N?'Batalkan pilih semua':'Pilih semua')+'</button><span class="s">'+selectedCount+' mahasiswa dipilih</span></div><div class="row2"><button type="button" class="btn sm pri" data-act="task-review-bulk" data-id="'+esc(t.id)+'" data-status="sudah">Tandai Sudah</button><button type="button" class="btn sm" data-act="task-review-bulk" data-id="'+esc(t.id)+'" data-status="belum">Tandai Belum</button></div></div></div><ul class="subs task-review-list">'+Array.from({length:N},(_,i)=>i+1).map(no=>{const status=review[String(no)]==='sudah'?'sudah':'belum',submitted=!!(subs[String(no)]&&!subs[String(no)].adminRecorded);const sub=subs[String(no)]||null,submissionDetail=submitted?(okUrl(sub.tautan)?'<a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka tautan</a>':(sub.berkas&&sub.berkas.id?fileHtml(sub.berkas,true):''))+(sub.platformConfirmation?' · Konfirmasi online':'')+(sub.catatan?'<small class="task-review-submission">'+esc(sub.catatan)+'</small>':''):'';return '<li data-task-submission="'+(submitted?'submitted':'missing')+'"><div class="task-review-student"><label class="task-review-select"><input type="checkbox" data-review-select data-id="'+esc(t.id)+'" data-no="'+no+'"'+(selectedReview[String(no)]?' checked':'')+'><span><b>No. '+no+' · '+esc(nameOf(no))+'</b><small class="task-review-submission">Status: '+(submitted?'Sudah mengumpulkan':'Belum mengumpulkan')+' · '+(status==='sudah'?'Sudah diperiksa':'Belum diperiksa')+'</small></span></label>'+(submissionDetail?'<div class="task-review-evidence">'+submissionDetail+'</div>':'')+'</div><span class="task-review-actions"><button type="button" class="btn sm'+(status==='sudah'?' pri':'')+'" data-act="task-review-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="sudah" aria-pressed="'+(status==='sudah')+'">Sudah</button><button type="button" class="btn sm'+(status==='belum'?' pri':'')+'" data-act="task-review-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="belum" aria-pressed="'+(status==='belum')+'">Belum</button></span></li>';}).join('')+'</ul></details>';
+    const selectedSubmission=TASK_SUBMISSION_SELECTIONS[t.id]||{},selectedCount=Object.keys(selectedSubmission).length;
+    const submissionList='<details open class="task-review-manager"><summary>Status pengumpulan ('+cnt+'/'+N+' mengumpulkan)</summary><div class="task-review-toolbar"><div class="task-review-filter"><label for="task-review-filter-'+esc(t.id)+'">Filter pengumpulan</label><select id="task-review-filter-'+esc(t.id)+'" data-status-filter="task"><option value="all">Semua mahasiswa</option><option value="submitted">Sudah mengumpulkan</option><option value="missing">Belum mengumpulkan</option></select></div><div class="task-review-bulk-actions"><div class="row2" style="justify-content:space-between;align-items:center"><button type="button" class="btn sm" data-act="task-submission-select-all" data-id="'+esc(t.id)+'">'+(selectedCount===N?'Batalkan pilih semua':'Pilih semua')+'</button><span class="s">'+selectedCount+' mahasiswa dipilih</span></div><div class="row2"><button type="button" class="btn sm pri" data-act="task-submission-bulk" data-id="'+esc(t.id)+'" data-status="submitted">Tandai Dikumpulkan</button><button type="button" class="btn sm" data-act="task-submission-bulk" data-id="'+esc(t.id)+'" data-status="missing">Batalkan Status Pengelola</button></div></div></div><ul class="subs task-review-list">'+Array.from({length:N},(_,i)=>i+1).map(no=>{const sub=subs[String(no)]||null,submitted=!!sub,adminRecorded=!!(sub&&sub.adminRecorded),detail=submitted?(okUrl(sub.tautan)?'<a href="'+esc(sub.tautan)+'" target="_blank" rel="noopener noreferrer">Buka tautan</a>':(sub.berkas&&sub.berkas.id?fileHtml(sub.berkas,true):''))+(sub.platformConfirmation?' · Konfirmasi online':'')+(adminRecorded?' · Dicatat pengelola':'')+(sub.catatan&&!adminRecorded?'<small class="task-review-submission">'+esc(sub.catatan)+'</small>':''):'';return '<li data-task-submission="'+(submitted?'submitted':'missing')+'"><div class="task-review-student"><label class="task-review-select"><input type="checkbox" data-submission-select data-id="'+esc(t.id)+'" data-no="'+no+'"'+(selectedSubmission[String(no)]?' checked':'')+'><span><b>No. '+no+' · '+esc(nameOf(no))+'</b><small class="task-review-submission">Status: '+(submitted?'Sudah mengumpulkan':'Belum mengumpulkan')+'</small></span></label>'+(detail?'<div class="task-review-evidence">'+detail+'</div>':'')+'</div>'+(adminRecorded?'<button type="button" class="btn sm" data-act="task-submission-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="missing">Batalkan</button>':(!submitted?'<button type="button" class="btn sm pri" data-act="task-submission-set" data-id="'+esc(t.id)+'" data-no="'+no+'" data-status="submitted">Tandai Dikumpulkan</button>':''))+'</li>';}).join('')+'</ul></details>';
     const mine=ME&&subs[ME]?subs[ME]:null;
     const ownActions=ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+taskActions(t,mine)+'</div>':'';
     return '<article class="tcard"><div class="row2" style="justify-content:space-between"><h3>'+esc(t.judul)+'</h3>'+
@@ -2241,7 +2239,7 @@ function tugasAdmin(c){
       (t.deskripsi?'<p>'+esc(t.deskripsi)+'</p>':'')+
       '<div class="row2 manager-task-actions">'+taskAction+closeControl+'</div>'+
       '<div><div class="track" aria-hidden="true"><i style="width:'+Math.round(cnt/N*100)+'%"></i></div><span class="s">'+cnt+' dari '+N+' mahasiswa sudah mengumpulkan</span></div>'+
-      ownActions+reviewList+
+      ownActions+submissionList+
       '</article>';
   };
   if(active.length)h+='<h3 class="ph3">Tugas aktif</h3>'+active.map(renderTask).join('');
@@ -3012,43 +3010,29 @@ document.addEventListener('click',async e=>{
        if(ok){S.se[id]=Object.assign({},session,{present:present});delete ATTENDANCE_REVIEW_SELECTIONS[id];renderDialog(true);refreshAll();}
        break;
      }
-     case 'task-review-set':
-     case 'task-review-bulk':{
+     case 'task-submission-set':
+     case 'task-submission-bulk':{
        if(!adm())break;
        const id=d.id,status=d.status,task=S.tu[id];
-       if(!task||!['sudah','belum'].includes(status))break;
-       const selected=TASK_REVIEW_SELECTIONS[id]||{};
-       const numbers=d.act==='task-review-bulk'?Object.keys(selected).map(Number):[Number(d.no)];
+       if(!task||!['submitted','missing'].includes(status)||task.mode==='group')break;
+       const selected=TASK_SUBMISSION_SELECTIONS[id]||{};
+       const numbers=d.act==='task-submission-bulk'?Object.keys(selected).map(Number):[Number(d.no)];
        if(!numbers.length){toast('Pilih minimal satu mahasiswa terlebih dahulu.');break;}
        if(numbers.some(no=>!Number.isInteger(no)||no<1||no>N))break;
-       if(d.act==='task-review-bulk'&&!confirm('Ubah status pemeriksaan '+numbers.length+' mahasiswa terpilih menjadi '+(status==='sudah'?'Sudah':'Belum')+'?'))break;
-       const review=Object.fromEntries(numbers.map(no=>[String(no),status]));
-       const ok=await run(()=>db.doc('tugas/'+id).update({review:review}),d.act==='task-review-bulk'?'Status pemeriksaan seluruh kelas diperbarui':'Status tugas diperbarui');
-       if(ok){
-         if(!task.subs||typeof task.subs!=='object')task.subs={};
-         if(!task.subs.__review||typeof task.subs.__review!=='object')task.subs.__review={};
-         const at=Date.now();
-         numbers.forEach(no=>{
-           const key=String(no);
-           task.subs.__review[key]=status;
-           if(status==='sudah'&&!task.subs[key]){
-             task.subs[key]={tautan:'',catatan:'Dicatat oleh pengelola sebagai pengumpulan.',berkas:null,at:at,adminRecorded:true};
-           }else if(status==='belum'&&task.subs[key]&&task.subs[key].adminRecorded){
-             delete task.subs[key];
-           }
-         });
-         if(d.act==='task-review-bulk')delete TASK_REVIEW_SELECTIONS[id];
-         renderDialog(true);
-         loadHasil(true);
-       }
+       const subs=task.subs||{};
+       const eligible=numbers.filter(no=>status==='submitted'?!subs[String(no)]:(subs[String(no)]&&subs[String(no)].adminRecorded===true));
+       if(!eligible.length){toast(status==='submitted'?'Semua mahasiswa terpilih sudah mengumpulkan.':'Tidak ada status pengumpulan dari pengelola yang dapat dibatalkan.');break;}
+       if(d.act==='task-submission-bulk'&&!confirm((status==='submitted'?'Tandai ':'Batalkan status pengumpulan untuk ')+eligible.length+' mahasiswa terpilih?'))break;
+       const submission=Object.fromEntries(eligible.map(no=>[String(no),status]));
+       const ok=await run(()=>db.doc('tugas/'+id).update({submission:submission}),status==='submitted'?'Status pengumpulan pengelola disimpan':'Status pengumpulan pengelola dibatalkan');
+       if(ok){if(!task.subs||typeof task.subs!=='object')task.subs={};const at=Date.now();eligible.forEach(no=>{const key=String(no);if(status==='submitted')task.subs[key]={tautan:'',catatan:'Dicatat oleh pengelola sebagai pengumpulan.',berkas:null,at:at,adminRecorded:true};else if(task.subs[key]&&task.subs[key].adminRecorded===true)delete task.subs[key];});if(d.act==='task-submission-bulk')delete TASK_SUBMISSION_SELECTIONS[id];renderDialog(true);loadHasil(true);}
        break;
      }
-     case 'task-review-select-all':{
+     case 'task-submission-select-all':{
        if(!adm()||!S.tu[d.id])break;
-       const current=TASK_REVIEW_SELECTIONS[d.id]||{};
-       TASK_REVIEW_SELECTIONS[d.id]=Object.keys(current).length===N?{}:Object.fromEntries(Array.from({length:N},(_,i)=>[String(i+1),true]));
-       renderDialog(true);
-       break;
+       const current=TASK_SUBMISSION_SELECTIONS[d.id]||{};
+       TASK_SUBMISSION_SELECTIONS[d.id]=Object.keys(current).length===N?{}:Object.fromEntries(Array.from({length:N},(_,i)=>[String(i+1),true]));
+       renderDialog(true);break;
      }
      case 'task-close-toggle':{
        if(!adm())break;
@@ -3424,15 +3408,15 @@ document.addEventListener('change',async e=>{
     if(selectAll)selectAll.textContent=selectedCount===N?'Batalkan pilih semua':'Pilih semua';
     return;
   }
-  if(t.matches&&t.matches('input[data-review-select]')){
+  if(t.matches&&t.matches('input[data-submission-select]')){
     const id=t.dataset.id,no=String(Number(t.dataset.no));
-    if(!TASK_REVIEW_SELECTIONS[id])TASK_REVIEW_SELECTIONS[id]={};
-    if(t.checked)TASK_REVIEW_SELECTIONS[id][no]=true;
-    else delete TASK_REVIEW_SELECTIONS[id][no];
+    if(!TASK_SUBMISSION_SELECTIONS[id])TASK_SUBMISSION_SELECTIONS[id]={};
+    if(t.checked)TASK_SUBMISSION_SELECTIONS[id][no]=true;
+    else delete TASK_SUBMISSION_SELECTIONS[id][no];
     const details=t.closest('.task-review-manager'),count=details&&details.querySelector('.task-review-bulk-actions .s');
-    if(count)count.textContent=Object.keys(TASK_REVIEW_SELECTIONS[id]).length+' mahasiswa dipilih';
-    const selectAll=details&&details.querySelector('[data-act="task-review-select-all"]');
-    if(selectAll)selectAll.textContent=Object.keys(TASK_REVIEW_SELECTIONS[id]).length===N?'Batalkan pilih semua':'Pilih semua';
+    if(count)count.textContent=Object.keys(TASK_SUBMISSION_SELECTIONS[id]).length+' mahasiswa dipilih';
+    const selectAll=details&&details.querySelector('[data-act="task-submission-select-all"]');
+    if(selectAll)selectAll.textContent=Object.keys(TASK_SUBMISSION_SELECTIONS[id]).length===N?'Batalkan pilih semua':'Pilih semua';
     return;
   }
   // Keep the attendance course/meeting state in sync with the visible selectors.
