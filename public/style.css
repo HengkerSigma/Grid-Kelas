@@ -1875,3 +1875,20 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
   .constructor-course>.row2>.btn{flex:none}
   .constructor-course .constructor-list-toolbar{margin-top:12px}
 }
+
+/* Consistent bulk review and status filters */
+.attendance-bulk-manager,.task-review-manager{gap:12px}
+.attendance-bulk-heading,.task-review-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px);gap:12px;align-items:center}
+.attendance-filter,.task-review-filter{display:grid;gap:5px;font-size:.82rem;font-weight:700;color:var(--muted)}
+.attendance-filter select,.task-review-filter select{width:100%;min-height:38px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.task-review-bulk-actions{display:grid;gap:8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:9px}
+.task-review-bulk-actions>.row2{align-items:center;flex-wrap:wrap}
+.task-review-list{margin-top:10px}
+.task-review-list li{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.task-review-select{display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer}
+.task-review-select input{flex:none}
+.task-review-select>span{display:grid;gap:3px;min-width:0}
+.task-review-submission{font-size:.78rem;color:var(--muted)}
+.task-review-actions{display:flex;gap:5px;flex:none}
+.task-review-list li[hidden],.arow[hidden]{display:none!important}
+@media(max-width:600px){.attendance-bulk-heading,.task-review-toolbar{grid-template-columns:1fr}.task-review-list li{align-items:flex-start;flex-direction:column}.task-review-actions{padding-left:24px}.task-review-bulk-actions>.row2{justify-content:flex-start}}
