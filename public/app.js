@@ -1017,6 +1017,8 @@ function pitDlg(){
   const tab=D.taskTab==='group'?'group':'individual';
   const groupTasks=Object.keys(S.tu).map(id=>Object.assign({id:id},S.tu[id])).filter(t=>t.mode==='group').sort((a,b)=>(a.tenggat||'9999').localeCompare(b.tenggat||'9999'));
   const individual=pitData(ME);
+  const todayWeekday=(new Date().getDay()+6)%7,daysLeftThisWeek=6-todayWeekday;
+  const doneThisWeek=individual.done.filter(x=>{const d=dayDiff(x.t.tenggat);return d===null||(d>=0&&d<=daysLeftThisWeek);});
   let h='<div class="dh" style="--tc:#e10600"><button type="button" class="x" data-act="close" aria-label="Tutup">&times;</button><div class="dk">HUB TUGAS</div></div>';
   h+='<div class="db"><div class="constructor-subtabs hub-task-tabs" role="tablist" aria-label="Kategori tugas"><button type="button" class="student-subtab" data-act="hub-task-tab" data-tab="individual" aria-selected="'+(tab==='individual')+'">PIT TUGAS · INDIVIDU</button><span class="course-subtab-sep">-</span><button type="button" class="student-subtab" data-act="hub-task-tab" data-tab="group" aria-selected="'+(tab==='group')+'">PADDOCK CONSTRUCTOR · KELOMPOK</button></div>';
   if(tab==='individual'){
