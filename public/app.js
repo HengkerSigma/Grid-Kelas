@@ -314,7 +314,7 @@ function courseLogoHtml(course,uploadedLogo){
     IND:{type:'ind',desc:'Lembar teks bergaris Bahasa Indonesia',art:'<path d="M48 18h64v84H48z"/><path d="M61 39h38M61 54h38M61 69h38M61 84h38"/>'},
     ENG:{type:'eng',desc:'Globe minimalis komunikasi Bahasa Inggris',art:'<circle cx="80" cy="60" r="42"/><path d="M38 60h84M80 18c14 12 21 26 21 42s-7 30-21 42M80 18C66 30 59 44 59 60s7 30 21 42M45 39h70M45 81h70"/>'},
     ELE:{type:'ele',desc:'Simbol kilat atau tegangan listrik',art:'<path d="m91 16-48 59h34l-8 34 49-62H83z"/>'},
-    FIS:{type:'fis',desc:'Simbol omega untuk Fisika Dasar',art:'<path d="M38 91h84M43 91V76c0-29 15-51 37-51s37 22 37 51v15M43 76l-13-12m13 12 13-12M117 76l-13-12m13 12 13-12"/>'},
+    FIS:{type:'fis',desc:'Simbol omega untuk Fisika Dasar',art:'<path d="M48 92V77c0-35 11-55 32-55s32 20 32 55v15h18v12H30V92h18z"/>'},
     KAL:{type:'kal',desc:'Simbol integral kalkulus dasar',art:'<path d="M94 20c-22-8-27 8-29 25l-8 48c-3 18-14 20-28 12"/><path d="M46 27h61"/>'},
     WRG:{type:'wrg',desc:'Perisai dan bintang kewarganegaraan',art:'<path d="M80 17 122 32v31c0 25-17 42-42 54C55 105 38 88 38 63V32z"/><path d="m80 38 6 14 15 1-12 10 4 15-13-8-13 8 4-15-12-10 15-1z"/>'},
     KIM:{type:'kim',desc:'Gelas kimia atau beaker',art:'<path d="M64 18h32M70 18v30L43 96a7 7 0 0 0 6 11h62a7 7 0 0 0 6-11L90 48V18"/><path d="M55 82h50M61 69h38"/>'},
