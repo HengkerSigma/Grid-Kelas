@@ -921,24 +921,19 @@ async function decide(method, p, body, sess, existing) {
         out.subs.__meta = Object.assign({}, out.subs.__meta || {}, { closed: body.closed });
         return { data: out };
       }
-      if (onlyKeys(body, ['review'])) {
-        if (!admin || !isObj(body.review)) return ERR_FORBID;
-        const entries = Object.entries(body.review);
+      if (onlyKeys(body, ['submission'])) {
+        if (!admin || !isObj(body.submission)) return ERR_FORBID;
+        const entries = Object.entries(body.submission);
         if (!entries.length || entries.length > N || entries.some(([rawNo, status]) => {
           const no = Number(rawNo);
-          return !/^(?:[1-9]|[12]\d|3[0-2])$/.test(rawNo) || !Number.isInteger(no) || no < 1 || no > N || !['sudah','belum'].includes(status);
-        })) return ERR_BAD('Status pemeriksaan tugas tidak valid.');
+          return !/^(?:[1-9]|[12]\\d|3[0-2])$/.test(rawNo) || !Number.isInteger(no) || no < 1 || no > N || !['submitted','missing'].includes(status);
+        })) return ERR_BAD('Status pengumpulan tugas tidak valid.');
         const out = clone(existing); if (!isObj(out.subs)) out.subs = {};
-        out.subs.__review = Object.assign({}, isObj(out.subs.__review) ? out.subs.__review : {});
         const at = Date.now();
         entries.forEach(([rawNo, status]) => {
           const key = String(Number(rawNo)), current = out.subs[key];
-          out.subs.__review[key] = status;
-          if (status === 'sudah' && !current) {
-            out.subs[key] = { tautan: '', catatan: 'Dicatat oleh pengelola sebagai pengumpulan.', berkas: null, at: at, adminRecorded: true };
-          } else if (status === 'belum' && isObj(current) && current.adminRecorded === true) {
-            delete out.subs[key];
-          }
+          if (status === 'submitted' && !current) out.subs[key] = { tautan: '', catatan: 'Dicatat oleh pengelola sebagai pengumpulan.', berkas: null, at: at, adminRecorded: true };
+          else if (status === 'missing' && isObj(current) && current.adminRecorded === true) delete out.subs[key];
         });
         return { data: out };
       }
