@@ -310,11 +310,11 @@ function courseLogoHtml(course,uploadedLogo){
   if(uploadedLogo&&okImg(uploadedLogo.data))return '<img class="logo" src="'+esc(uploadedLogo.data)+'" alt="Logo '+esc(course.nama)+'">';
   const code=String(course.k||'').trim().toUpperCase();
   const icons={
-    ALJ:{type:'alj',desc:'Kurung siku matriks aljabar linier',art:'<path d="M66 24H43v72h23M94 24h23v72H94"/><path d="M78 38v44"/>'},
+    ALJ:{type:'alj',desc:'Kurung siku matriks aljabar linier',art:'<path d="M66 24H43v72h23M94 24h23v72H94"/>'},
     IND:{type:'ind',desc:'Lembar teks bergaris Bahasa Indonesia',art:'<path d="M48 18h64v84H48z"/><path d="M61 39h38M61 54h38M61 69h38M61 84h38"/>'},
     ENG:{type:'eng',desc:'Globe komunikasi Bahasa Inggris',art:'<circle cx="80" cy="60" r="42"/><path d="M38 60h84M80 18c14 12 21 26 21 42s-7 30-21 42M80 18C66 30 59 44 59 60s7 30 21 42M45 39h70M45 81h70"/>'},
     ELE:{type:'ele',desc:'Kilat dan rangkaian listrik',art:'<path d="m91 16-48 59h34l-8 34 49-62H83z"/><path d="M30 29h18m-9-9v18M115 99h18m-9-9v18"/><circle cx="39" cy="29" r="5"/><circle cx="124" cy="99" r="5"/>'},
-    FIS:{type:'fis',desc:'Lintasan parabola dan vektor gaya',art:'<path d="M30 91Q80-9 130 91"/><path d="M80 68V24m0 0-9 12m9-12 9 12M80 68l36-20m0 0-13 1m13-1-5 12"/><path d="M25 96h110"/>'},
+    FIS:{type:'fis',desc:'Simbol omega untuk Fisika Dasar',art:'<path d="M28 38c0-12 9-20 21-20 16 0 24 19 31 42 7-23 15-42 31-42 12 0 21 8 21 20 0 15-11 27-25 27-11 0-18-7-23-18-2 17-9 38-23 49-8 6-19 7-28 1"/><path d="M28 38c0 15 11 27 25 27 11 0 18-7 23-18"/>'},
     KAL:{type:'kal',desc:'Simbol integral kalkulus dasar',art:'<path d="M94 20c-22-8-27 8-29 25l-8 48c-3 18-14 20-28 12"/><path d="M46 27h61"/>'},
     WRG:{type:'wrg',desc:'Perisai dan bintang kewarganegaraan',art:'<path d="M80 17 122 32v31c0 25-17 42-42 54C55 105 38 88 38 63V32z"/><path d="m80 38 6 14 15 1-12 10 4 15-13-8-13 8 4-15-12-10 15-1z"/>'},
     KIM:{type:'kim',desc:'Gelas kimia atau beaker',art:'<path d="M64 18h32M70 18v30L43 96a7 7 0 0 0 6 11h62a7 7 0 0 0 6-11L90 48V18"/><path d="M55 82h50M61 69h38"/>'},
