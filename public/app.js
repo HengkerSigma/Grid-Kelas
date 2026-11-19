@@ -2216,7 +2216,7 @@ function tugasAdmin(c){
   let h='';
   if(!list.length)return '<p class="empty">Belum ada tugas untuk mata kuliah ini.</p>';
   const renderTask=t=>{
-    const subs=t.subs||{},cnt=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).length,late=isLocked(t),closeControl=(!late||t.closed)?'<button type="button" class="btn sm" data-act="task-close-toggle" data-id="'+esc(t.id)+'" data-closed="'+(t.closed?'true':'false')+'">'+(t.closed?'Buka kembali':'Tutup Tugas')+'</button>':'';
+    const subs=t.subs||{},cnt=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)&&!subs[no].adminRecorded).length,late=isLocked(t),closeControl=(!late||t.closed)?'<button type="button" class="btn sm" data-act="task-close-toggle" data-id="'+esc(t.id)+'" data-closed="'+(t.closed?'true':'false')+'">'+(t.closed?'Buka kembali':'Tutup Tugas')+'</button>':'';
     const taskUrl=(t.link&&okUrl(t.link))?t.link:(isPlatformCourse(c)?platOf(c.k):'');
     const taskAction=taskUrl?'<a class="btn sm" href="'+esc(taskUrl)+'" target="_blank" rel="noopener noreferrer">Kerjakan <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Tautan instruksi belum diatur.</span>';
     if(t.mode==='group'){
@@ -2230,7 +2230,6 @@ function tugasAdmin(c){
       const ownGroup=ME?myConstructor(ME,t.k):null,ownSub=ownGroup&&t.groupSubs?t.groupSubs[ownGroup.id]:null;
       return '<div class="admin-task-stack">'+managerCard+(ME?'<div class="admin-own-submission"><p class="s"><b>Pengumpulan akun mahasiswa · No. '+esc(ME)+'</b></p>'+groupTaskCard(t,ownGroup,ownSub,!!(ownGroup&&Number(ownGroup.principal)===Number(ME)))+'</div>':'')+'</div>';
     }
-    const keys=Object.keys(subs).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).map(Number).sort((a,b)=>a-b);
     const review=subs.__review&&typeof subs.__review==='object'&&!Array.isArray(subs.__review)?subs.__review:{};
     const reviewed=Array.from({length:N},(_,i)=>i+1).filter(no=>review[String(no)]==='sudah').length;
     const selectedReview=TASK_REVIEW_SELECTIONS[t.id]||{},selectedCount=Object.keys(selectedReview).length;
