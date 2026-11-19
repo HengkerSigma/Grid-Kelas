@@ -1393,11 +1393,11 @@ function classArchivePanel(){
 function renderExhibition(){
   const host=$('exhibition');if(!host)return;
   const seminars=Object.keys(S.pc).map(id=>Object.assign({id:id},S.pc[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  let h='<div class="exhibition-sections"><section class="exhibition-section">'+superLicensePanel()+'</section><section class="exhibition-section">'+classArchivePanel()+'</section></div>';
+  let h='<div class="exhibition-sections"><div class="exhibition-column exhibition-column-main"><section class="exhibition-section">'+superLicensePanel()+'</section>';
   h+='<section class="panel paddock-club" id="paddockClubPanel"><div class="paddock-club-head"><div><h2 class="ph3">Paddock Club</h2><p class="s">Pusat informasi seminar dan kegiatan akademik untuk membantu mengumpulkan poin KAK sebagai salah satu persiapan syarat sidang proposal skripsi.</p></div></div>';
   if(!seminars.length)h+='<div class="seminar-empty"><b>Belum ada seminar yang ditambahkan.</b><span class="s">Informasi seminar akan ditampilkan di sini setelah dipublikasikan pengelola.</span></div>';
   else{h+='<div class="seminar-list">';seminars.forEach(x=>{const poster=x.poster||{},src=poster.url||(poster.id?('/_blob/'+poster.id):'');h+='<article class="seminar-card"><div class="seminar-poster">'+(src?'<img src="'+esc(src)+'" alt="Poster '+esc(x.title||'seminar')+'" loading="lazy">':'<div class="seminar-poster-empty">POSTER<br>SEMINAR</div>')+'</div><div class="seminar-info"><h3>'+esc(x.title||'Seminar tanpa judul')+'</h3><p class="seminar-price"><b>Harga:</b> '+esc(x.price||'Belum dicantumkan')+'</p><div class="seminar-actions">'+(x.registrationType==='contact'&&/^\d{9,15}$/.test(String(x.contactPerson||''))?'<a class="btn pri" href="https://wa.me/'+esc(x.contactPerson)+'" target="_blank" rel="noopener noreferrer">Hubungi '+esc(x.contactPersonName||'Contact Person')+' <span aria-hidden="true">&#8599;</span></a>':okHttps(x.registrationUrl)?'<a class="btn pri" href="'+esc(x.registrationUrl)+'" target="_blank" rel="noopener noreferrer">Daftar <span aria-hidden="true">&#8599;</span></a>':'<span class="s">Informasi pendaftaran belum tersedia.</span>')+(adm()?'<button type="button" class="btn sm" data-act="seminar-del" data-id="'+esc(x.id)+'">Hapus</button>':'')+'</div></div>';});h+='</div>';}
-  h+='</section>';host.innerHTML=h;
+  h+='</section></div><div class="exhibition-column exhibition-column-archive"><section class="exhibition-section">'+classArchivePanel()+'</section></div></div>';host.innerHTML=h;
   if(D&&D.kind==='super-license'&&dlg.open)renderDialog(true);
 }
 
