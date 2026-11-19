@@ -181,7 +181,7 @@ td .lnk:hover{text-decoration-color:var(--accent)}
 .ph{position:relative;font-family:var(--f-disp);font-weight:800;font-size:clamp(3.2rem,10vw,5.4rem);color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.55);letter-spacing:.02em}
 .course-logo-mark{position:relative;width:min(68%,220px);height:150px;overflow:visible;color:rgba(255,255,255,.94);filter:drop-shadow(0 9px 13px rgba(0,0,0,.28))}
 .course-logo-mark text{fill:currentColor;stroke:none;font-family:var(--f-disp);font-size:11px;font-weight:800;letter-spacing:2px}
-.course-logo-mark.electrical{color:#ffe08a}.course-logo-mark.math{color:#b9d8ff}.course-logo-mark.language{color:#ffd0c8}.course-logo-mark.chemistry{color:#b8f0d5}.course-logo-mark.physics{color:#e2d0ff}.course-logo-mark.coding{color:#b8e9f4}
+.course-logo-mark.alj{color:#b9d8ff}.course-logo-mark.ind{color:#ffd0c8}.course-logo-mark.eng{color:#b8e9f4}.course-logo-mark.ele{color:#ffe08a}.course-logo-mark.fis{color:#e2d0ff}.course-logo-mark.kal{color:#a9e6f2}.course-logo-mark.wrg{color:#f5d69b}.course-logo-mark.kim{color:#b8f0d5}.course-logo-mark.prg{color:#b8e9f4}
 .cta{position:absolute;right:16px;bottom:14px;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.58);padding:7px 14px;border-radius:999px;font-weight:700;font-size:.9rem}
 .cta i{font-style:normal;font-size:1.1rem;line-height:1}
 .pic:hover .cta,.pic:focus-visible .cta{background:#fff;color:#000}
