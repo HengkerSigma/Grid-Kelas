@@ -1892,3 +1892,14 @@ h3.ph3{margin-bottom:16px;font-weight:600;letter-spacing:.045em}
 .task-review-actions{display:flex;gap:5px;flex:none}
 .task-review-list li[hidden],.arow[hidden]{display:none!important}
 @media(max-width:600px){.attendance-bulk-heading,.task-review-toolbar{grid-template-columns:1fr}.task-review-list li{align-items:flex-start;flex-direction:column}.task-review-actions{padding-left:24px}.task-review-bulk-actions>.row2{justify-content:flex-start}}
+
+
+/* Highlight the selected course when opening its History section */
+.history-course-group{scroll-margin-top:96px}
+.history-course-group.is-focused>.panel{border-color:var(--accent,#e10600);box-shadow:0 0 0 2px rgba(225,6,0,.18)}
+.history-course-group.history-focus-pulse>.panel{animation:historyFocusPulse 1.1s ease-in-out 2}
+@keyframes historyFocusPulse{0%,100%{box-shadow:0 0 0 2px rgba(225,6,0,.14)}50%{box-shadow:0 0 0 5px rgba(225,6,0,.3)}}
+.task-review-manager[open]{display:block}
+.task-review-manager>summary{font-weight:750}
+.task-review-list li[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){.history-course-group.history-focus-pulse>.panel{animation:none}}
