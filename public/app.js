@@ -1024,7 +1024,8 @@ function pitDlg(){
     if(individual.open.length)h+='<ul class="plist">'+individual.open.map(x=>{const f=flagOf(x.t);return '<li class="pit-it f-'+f+'">'+flagSvg(f)+'<div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm'+(f==='r'?' pri':'')+'" data-act="open-course" data-k="'+esc(x.t.k)+'" data-tab="tugas">Kumpulkan</button>'+hasilBtn(x.t)+'</span></li>';}).join('')+'</ul>';
     else h+='<p class="empty">Tidak ada tugas individu yang sedang menunggu pengumpulan.</p>';
     if(individual.dnf.length)h+='<h3 class="ph3" style="margin-top:16px">DNF · Tidak terselesaikan</h3><ul class="plist">'+individual.dnf.map(x=>'<li class="pit-it dnf"><span class="dnfb">DNF</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact">'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
-    if(individual.done.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah Dikumpulkan</h3><ul class="plist">'+individual.done.map(x=>'<li class="pit-it done"><span class="pck">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" disabled>Selesai</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
+    if(doneThisWeek.length)h+='<h3 class="ph3" style="margin-top:16px">Sudah Dikumpulkan</h3><ul class="plist">'+doneThisWeek.map(x=>'<li class="pit-it done"><span class="pck">&#10003;</span><div><b>'+esc(x.t.judul)+'</b><span class="s">'+esc(cname(x.t.k))+' · '+dueText(x.t)+'</span></div><span class="pact"><button type="button" class="btn sm" disabled>Selesai</button>'+hasilBtn(x.t)+'</span></li>').join('')+'</ul>';
+    if(individual.done.length)h+='<h3 class="ph3 hub-history-heading" style="margin-top:16px"><button type="button" class="hub-history-link" data-act="task-history-open">Lihat History <span aria-hidden="true">→</span></button></h3>';
   }else{
     h+='<p class="s hub-task-explainer">Tugas Constructor dikumpulkan oleh masing-masing Team Principal.</p>';
     const mineTasks=groupTasks.map(t=>({t:t,g:myConstructor(ME,t.k)})).filter(x=>x.g);
@@ -2136,7 +2137,7 @@ function absenBtn(c){
   return scheduleAttendanceMeetings(c).map(n=>{
     const state=scheduleAttendanceState(c,n),session=scheduleAttendanceSession(c,n),status=session&&session.present&&session.present[ME];
     const displayState=activityModel.attendanceDisplayState(state,status);
-    if(displayState==='done')return '<div class="tcard attendance-done" role="status" style="margin:0;padding:10px 12px"><b>✓ Kamu sudah absen, P-'+n+'</b></div>';
+    if(displayState==='done')return '<button type="button" class="btn sm" disabled aria-label="Kamu sudah absen, P-'+n+'">✓ Kamu sudah absen, P-'+n+'</button>';
     if(!session||displayState==='not_open')return '<button type="button" class="btn sm" disabled>Absensi Belum Dibuka</button>';
     if(displayState==='closed')return '<button type="button" class="btn sm" disabled>P'+n+' · Absensi ditutup pengelola</button>';
     if(displayState==='ended')return '<button type="button" class="btn sm" disabled>P'+n+' · Periode absensi berakhir</button>';
