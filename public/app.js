@@ -308,16 +308,20 @@ function dosenHtml(c){
 }
 function courseLogoHtml(course,uploadedLogo){
   if(uploadedLogo&&okImg(uploadedLogo.data))return '<img class="logo" src="'+esc(uploadedLogo.data)+'" alt="Logo '+esc(course.nama)+'">';
-  const label=(String(course.k||'')+' '+String(course.nama||'')).toLocaleLowerCase('id');
-  let art='<path d="M42 28h76v62H42zM52 40h56M52 54h38M52 68h46" /><path d="M62 90v12h36V90" />';
-  let type='general',desc='Ilmu dan pembelajaran';
-  if(/alj|aljabar|matematika|kalkulus|statistika/.test(label)){type='math';desc='Matematika';art='<path d="M48 32h62M48 88h62M60 24l-12 72M104 24 92 96" /><path d="M64 44c8-10 26-10 32 0 7 12-25 20-25 32 0 9 12 12 25 5" />';}
-  else if(/ele|elektro|listrik|rangkaian|instalasi/.test(label)){type='electrical';desc='Teknik Elektro';art='<path d="M88 18 48 66h27l-7 38 44-54H84z" /><circle cx="42" cy="28" r="6"/><circle cx="120" cy="88" r="6"/><path d="M48 32 60 42M108 80l8 5" />';}
-  else if(/eng|inggris|bahasa|linguistik|komunikasi/.test(label)){type='language';desc='Bahasa dan komunikasi';art='<path d="M36 34h88a9 9 0 0 1 9 9v38a9 9 0 0 1-9 9H77l-22 15V90H36a9 9 0 0 1-9-9V43a9 9 0 0 1 9-9z" /><path d="M48 57h64M48 72h43" />';}
-  else if(/kim|kimia|chemical/.test(label)){type='chemistry';desc='Kimia';art='<path d="M64 20h32M72 20v34L44 96a8 8 0 0 0 7 12h58a8 8 0 0 0 7-12L88 54V20" /><path d="M56 84h48M68 72h28" /><circle cx="77" cy="92" r="4"/><circle cx="94" cy="82" r="3"/>';}
-  else if(/fis|fisika|physics/.test(label)){type='physics';desc='Fisika';art='<ellipse cx="80" cy="66" rx="49" ry="19"/><ellipse cx="80" cy="66" rx="49" ry="19" transform="rotate(60 80 66)"/><ellipse cx="80" cy="66" rx="49" ry="19" transform="rotate(120 80 66)"/><circle cx="80" cy="66" r="7" fill="currentColor" stroke="none"/>';}
-  else if(/program|coding|informatika|komput/.test(label)){type='coding';desc='Komputasi';art='<path d="m62 38-27 28 27 28M98 38l27 28-27 28M90 27 70 101" />';}
-  return '<svg class="course-logo-mark '+type+'" viewBox="0 0 160 120" role="img" aria-label="'+desc+'"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+art+'</g><text x="80" y="116" text-anchor="middle">'+esc(course.k||'ELSE3')+'</text></svg>';
+  const code=String(course.k||'').trim().toUpperCase();
+  const icons={
+    ALJ:{type:'alj',desc:'Matriks dan vektor aljabar linier',art:'<path d="M49 28H37v64h12M111 28h12v64h-12"/><path d="M59 43h42v34H59z"/><g fill="currentColor" stroke="none"><circle cx="69" cy="53" r="3"/><circle cx="90" cy="53" r="3"/><circle cx="69" cy="66" r="3"/><circle cx="90" cy="66" r="3"/></g><path d="M76 100 95 81m-19 19v-12m12 12h-12" />'},
+    IND:{type:'ind',desc:'Pena dan tulisan Bahasa Indonesia',art:'<path d="m58 88 9-27 34-34 18 18-34 34-27 9z"/><path d="m67 61 18 18M101 27l18 18M51 99h66M77 91l-10-10"/>'},
+    ENG:{type:'eng',desc:'Gelembung percakapan Bahasa Inggris',art:'<path d="M35 30h90a10 10 0 0 1 10 10v43a10 10 0 0 1-10 10H78l-24 17V93H35a10 10 0 0 1-10-10V40a10 10 0 0 1 10-10z"/><path d="M48 52h64M48 68h48"/>'},
+    ELE:{type:'ele',desc:'Kilat dan rangkaian listrik',art:'<path d="m91 16-48 59h34l-8 34 49-62H83z"/><path d="M30 29h18m-9-9v18M115 99h18m-9-9v18"/><circle cx="39" cy="29" r="5"/><circle cx="124" cy="99" r="5"/>'},
+    FIS:{type:'fis',desc:'Lintasan parabola dan vektor gaya',art:'<path d="M30 91Q80-9 130 91"/><path d="M80 68V24m0 0-9 12m9-12 9 12M80 68l36-20m0 0-13 1m13-1-5 12"/><path d="M25 96h110"/>'},
+    KAL:{type:'kal',desc:'Integral dan grafik fungsi',art:'<path d="M65 23c-14 0-16 12-8 24l25 37c8 12 6 23-9 23"/><path d="M34 92h96M46 96V27"/><path d="M48 83Q70 83 82 61T122 34"/><path d="m87 61 17-4-7-14"/>'},
+    WRG:{type:'wrg',desc:'Perisai dan bintang kewarganegaraan',art:'<path d="M80 17 122 32v31c0 25-17 42-42 54C55 105 38 88 38 63V32z"/><path d="m80 38 6 14 15 1-12 10 4 15-13-8-13 8 4-15-12-10 15-1z"/>'},
+    KIM:{type:'kim',desc:'Struktur molekul kimia',art:'<path d="m80 19 34 19v39l-34 20-34-20V38z"/><path d="m80 19 34 19M114 77 80 97 46 77M46 38l34-19"/><circle cx="80" cy="19" r="5"/><circle cx="114" cy="77" r="5"/><circle cx="46" cy="77" r="5"/><circle cx="80" cy="97" r="5"/>'},
+    PRG:{type:'prg',desc:'Simbol kode dan alur pemrograman',art:'<path d="m53 39-25 27 25 27m54-54 25 27-25 27M93 29 67 103"/><path d="M80 15h22l12 12-12 12H80zM80 87h22l12 12-12 12H80z"/>'}
+  };
+  const item=icons[code]||{type:'general',desc:'Ilmu dan pembelajaran',art:'<path d="M42 28h76v62H42zM52 40h56M52 54h38M52 68h46"/><path d="M62 90v12h36V90"/>'};
+  return '<svg class="course-logo-mark '+item.type+'" viewBox="0 0 160 120" role="img" aria-label="'+item.desc+'"><g fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">'+item.art+'</g><text x="80" y="116" text-anchor="middle">'+esc(code||'ELSE3')+'</text></svg>';
 }
 function renderCourses(){
   const host=$('cgrid');
