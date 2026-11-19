@@ -306,22 +306,27 @@ function dosenHtml(c){
   if(p.length>1){const last=p.pop();txt=esc(p.join(' '))+' <b>'+esc(last)+'</b>';}else txt='<b>'+esc(nm)+'</b>';
   return '<li><span class="dav">'+photo('d_'+c.k)+'</span><span>'+txt+'</span></li>';
 }
-function courseLogoHtml(course,uploadedLogo){
-  if(uploadedLogo&&okImg(uploadedLogo.data))return '<img class="logo" src="'+esc(uploadedLogo.data)+'" alt="Logo '+esc(course.nama)+'">';
+function courseLogoHtml(course,uploadedLogo,variant){
+  const watermark=variant==='watermark';
+  if(uploadedLogo&&okImg(uploadedLogo.data))return '<img class="logo'+(watermark?' course-logo-watermark-image':'')+'" src="'+esc(uploadedLogo.data)+'" alt="'+(watermark?'':('Logo '+esc(course.nama)))+'"'+(watermark?' aria-hidden="true"':'')+'>';
   const code=String(course.k||'').trim().toUpperCase();
   const icons={
     ALJ:{type:'alj',desc:'Kurung siku matriks aljabar linier',art:'<path d="M66 24H43v72h23M94 24h23v72H94"/>'},
     IND:{type:'ind',desc:'Lembar teks bergaris Bahasa Indonesia',art:'<path d="M48 18h64v84H48z"/><path d="M61 39h38M61 54h38M61 69h38M61 84h38"/>'},
     ENG:{type:'eng',desc:'Globe minimalis komunikasi Bahasa Inggris',art:'<circle cx="80" cy="60" r="42"/><path d="M38 60h84M80 18c14 12 21 26 21 42s-7 30-21 42M80 18C66 30 59 44 59 60s7 30 21 42M45 39h70M45 81h70"/>'},
     ELE:{type:'ele',desc:'Simbol kilat atau tegangan listrik',art:'<path d="m91 16-48 59h34l-8 34 49-62H83z"/>'},
-    FIS:{type:'fis',desc:'Simbol omega untuk Fisika Dasar',art:'<path d="M48 92V77c0-35 11-55 32-55s32 20 32 55v15h18v12H30V92h18z"/>'},
+    FIS:{type:'fis',desc:'Pendulum untuk Fisika Dasar',art:'<path d="M52 24h56M80 24v9l-2 55"/><circle cx="80" cy="24" r="4"/><circle cx="78" cy="91" r="11"/><path d="M48 47a43 43 0 0 1 64 0" stroke-dasharray="4 6"/>'},
     KAL:{type:'kal',desc:'Simbol integral kalkulus dasar',art:'<path d="M94 20c-22-8-27 8-29 25l-8 48c-3 18-14 20-28 12"/><path d="M46 27h61"/>'},
     WRG:{type:'wrg',desc:'Timbangan keadilan untuk Kewarganegaraan',art:'<path d="M80 20v76M52 36h56M80 20l-7 9h14zM80 96H42M80 96h38"/><path d="M50 36 35 81m15-45 15 45M110 36 95 81m15-45 15 45"/><path d="M20 81h30a15 15 0 0 1-30 0zM110 81h30a15 15 0 0 1-30 0z"/><path d="M65 108h30"/>'},
     KIM:{type:'kim',desc:'Gelas kimia atau beaker',art:'<path d="M64 18h32M70 18v30L43 96a7 7 0 0 0 6 11h62a7 7 0 0 0 6-11L90 48V18"/><path d="M55 82h50M61 69h38"/>'},
     PRG:{type:'prg',desc:'Simbol kode pemrograman',art:'<path d="m61 34-29 26 29 26M99 34l29 26-29 26M91 23 69 97"/>'}
   };
   const item=icons[code]||{type:'general',desc:'Ilmu dan pembelajaran',art:'<path d="M42 28h76v62H42zM52 40h56M52 54h38M52 68h46"/><path d="M62 90v12h36V90"/>'};
-  return '<svg class="course-logo-mark '+item.type+'" viewBox="0 0 160 120" role="img" aria-label="'+item.desc+'"><g fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">'+item.art+'</g><text x="80" y="116" text-anchor="middle">'+esc(code||'ELSE3')+'</text></svg>';
+  return '<svg class="course-logo-mark '+item.type+(watermark?' course-logo-watermark-svg':'')+'" viewBox="0 0 160 120" '+(watermark?'aria-hidden="true"':'role="img" aria-label="'+item.desc+'"')+'><g fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">'+item.art+'</g></svg>';
+}
+function courseLogoWatermarkHtml(code){
+  const course=courseList().find(c=>String(c.k).toUpperCase()===String(code).toUpperCase())||{k:code,nama:cname(code)};
+  return courseLogoHtml(course,S.md['c_'+code],'watermark');
 }
 function renderCourses(){
   const host=$('cgrid');
@@ -331,9 +336,9 @@ function renderCourses(){
     if(!history.length){host.innerHTML='<li class="history-empty">Belum ada tugas yang lewat tenggat atau ditutup pengelola. Nikmati dulu track yang masih berjalan!</li>';host.setAttribute('aria-busy',String(!loaded.co));return;}
     const byCourse=new Map();history.forEach(t=>{if(!byCourse.has(t.k))byCourse.set(t.k,[]);byCourse.get(t.k).push(t);});
     host.innerHTML=Array.from(byCourse.entries()).map(([k,tasks])=>'<li class="history-course-group'+(k===COURSE_HISTORY_FOCUS?' is-focused':'')+'" data-history-course="'+esc(k)+'"><section class="panel"><div class="history-course-heading"><h3 class="ph3">'+esc(cname(k))+'</h3><span class="chip">'+tasks.length+' tugas</span></div><div class="history-course-list">'+tasks.map(t=>{
-      if(t.mode==='group'){const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,ids=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(id=>ids.includes(id)).length,total=ids.length,done=ME?!!sub:total>0&&count===total,status=done?'<span class="history-status done" aria-label="Sudah selesai">✓</span>':'<span class="history-status late" aria-label="Belum selesai">!</span>';return '<article class="tcard history-item"><span class="history-initial">'+esc(k.toUpperCase())+'</span><div class="history-content"><div class="history-top"><h3>'+esc(t.judul)+'</h3>'+status+'</div><div class="history-deadline">'+(t.closed?'Ditutup pengelola':'Tenggat · '+fmtDate(t.tenggat))+'</div>'+'<div class="history-bottom"><span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></div></article>';}
+      if(t.mode==='group'){const g=ME?myConstructor(ME,t.k):null,sub=g&&t.groupSubs?t.groupSubs[g.id]:null,ids=constructorGroups(t.k).map(x=>x.id),count=Object.keys(t.groupSubs||{}).filter(id=>ids.includes(id)).length,total=ids.length,done=ME?!!sub:total>0&&count===total,status=done?'<span class="history-status done" aria-label="Sudah selesai">✓</span>':'<span class="history-status late" aria-label="Belum selesai">!</span>';return '<article class="tcard history-item"><span class="history-logo">'+courseLogoWatermarkHtml(k)+'</span><div class="history-content"><div class="history-top"><h3>'+esc(t.judul)+'</h3>'+status+'</div><div class="history-deadline">'+(t.closed?'Ditutup pengelola':'Tenggat · '+fmtDate(t.tenggat))+'</div>'+'<div class="history-bottom"><span class="s">'+count+'/'+total+' Constructor mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-group-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></div></article>';}
       const mine=ME&&t.subs?t.subs[ME]:null,count=Object.keys(t.subs||{}).filter(no=>/^(?:[1-9]|[12]\d|3[0-2])$/.test(no)).length,done=ME?!!mine:count===N,status=done?'<span class="history-status done" aria-label="Sudah dikumpulkan">✓</span>':'<span class="history-status late" aria-label="Belum dikumpulkan">!</span>';
-      return '<article class="tcard history-item"><span class="history-initial">'+esc(k.toUpperCase())+'</span><div class="history-content"><div class="history-top"><h3>'+esc(t.judul)+'</h3>'+status+'</div><div class="history-deadline">'+(t.closed?'Ditutup pengelola':'Tenggat · '+fmtDate(t.tenggat))+'</div>'+'<div class="history-bottom"><span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></div></article>';
+      return '<article class="tcard history-item"><span class="history-logo">'+courseLogoWatermarkHtml(k)+'</span><div class="history-content"><div class="history-top"><h3>'+esc(t.judul)+'</h3>'+status+'</div><div class="history-deadline">'+(t.closed?'Ditutup pengelola':'Tenggat · '+fmtDate(t.tenggat))+'</div>'+'<div class="history-bottom"><span class="s">'+count+'/'+N+' mahasiswa mengumpulkan</span>'+(ME||adm()?'<button type="button" class="btn sm" data-act="open-hasil" data-id="'+esc(t.id)+'">Time Tower</button>':'')+'</div></div></article>';
     }).join('')+'</div></section></li>').join('');
     host.setAttribute('aria-busy',String(!loaded.co));return;
   }
@@ -447,7 +452,7 @@ function renderConstructor(){
  if(!courses.length){h+='<div class="constructor-empty">Data mata kuliah belum tersedia.</div>';host.innerHTML=h;return;}
  courses.forEach(c=>{
   const groups=constructorGroups(c.k);
-  h+='<section class="panel constructor-course" data-course="'+esc(c.k)+'" style="--course-color:'+colr(c.warna)+'"><div class="row2" style="justify-content:space-between;align-items:center"><div><h3 class="ph3">'+esc(c.nama)+'</h3></div>';
+  h+='<section class="panel constructor-course" data-course="'+esc(c.k)+'" style="--course-color:'+colr(c.warna)+'"><div class="constructor-course-watermark" aria-hidden="true">'+courseLogoHtml(c,S.md['c_'+c.k],'watermark')+'</div><div class="row2" style="justify-content:space-between;align-items:center"><div><h3 class="ph3">'+esc(c.nama)+'</h3></div>';
   if(isAdmin)h+='<button type="button" class="btn pri" data-act="constructor-create" data-course="'+esc(c.k)+'">+ Tambah Constructor</button>';
   h+='</div>';
   if(isAdmin&&CONSTRUCTOR_CREATE_COURSE===c.k)h+='<div class="row2 constructor-create"><input id="constructor-new-name" type="text" maxlength="80" placeholder="Nama Constructor"><button type="button" class="btn pri" data-act="constructor-create-save" data-course="'+esc(c.k)+'">Simpan</button><button type="button" class="btn" data-act="constructor-create-cancel">Batal</button></div>';
