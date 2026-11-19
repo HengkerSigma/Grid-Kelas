@@ -1526,7 +1526,7 @@ function participationRecapRows(){
     if(!task)return {title:title,rows:[],available:false,text:'Belum ada tugas yang terhubung ke pertemuan ini.'};
     source=task;const subs=task.subs||{},review=subs.__review||{},groupSubmitted=new Set();
     if(task.mode==='group')constructorGroups(task.k).forEach(g=>{const submission=task.groupSubs&&task.groupSubs[g.id];if(submission&&typeof submission.at==='number')[Number(g.principal),...(g.members||[]).map(Number)].forEach(no=>{if(Number.isInteger(no)&&no>=1&&no<=N)groupSubmitted.add(no);});});
-    rows=students.filter(no=>{const submitted=!!(subs[String(no)]&&typeof subs[String(no)].at==='number')||groupSubmitted.has(no),reviewed=review[String(no)]==='sudah';if(f.status==='submitted')return submitted;if(f.status==='not_submitted')return !submitted;return true;}).map(no=>({no:no,name:nameOf(no),status:(subs[String(no)]||groupSubmitted.has(no)?'Sudah mengumpulkan':'Belum mengumpulkan')}));
+    rows=students.filter(no=>{const submitted=!!(subs[String(no)]&&typeof subs[String(no)].at==='number')||groupSubmitted.has(no);if(f.status==='submitted')return submitted;if(f.status==='not_submitted')return !submitted;return true;}).map(no=>({no:no,name:nameOf(no),status:(subs[String(no)]||groupSubmitted.has(no)?'Sudah mengumpulkan':'Belum mengumpulkan')}));
   }
   const label=f.type==='attendance'?({all:'Semua mahasiswa',filled:'Sudah mengisi absensi',missing:'Belum mengisi absensi',H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa',K:'Kelas Berjalan'}[f.status]||f.status):({submitted:'Sudah mengumpulkan',not_submitted:'Belum mengumpulkan'}[f.status]||f.status);
   const showStatus=['all','filled','missing','submitted','not_submitted'].includes(f.status);
