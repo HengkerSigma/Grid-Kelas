@@ -231,14 +231,18 @@ async function listCol(cp) {
   }
   if (cp === 'tugas') {
     // Koleksi tugas adalah proyeksi langsung dari course_updates; task_id tidak lagi menjadi syarat.
-    const r = must(await supabase.from('course_updates').select('*').order('course_code').order('meeting_number'));
+    const [r, legacy] = await Promise.all([
+      supabase.from('course_updates').select('*').order('course_code').order('meeting_number'),
+      supabase.from('app_data').select('key,content').like('key', 'tugas/%')
+    ]);
+    must(r);
+    must(legacy);
     const seen = new Set();
     (r.data || []).forEach((u) => {
       const task = taskFromCourseUpdate(u);
       if (task) { seen.add(u.id); out.push({ key: 'tugas/' + u.id, data: task }); }
     });
     // Fallback hanya untuk tugas lama yang belum bisa dipindahkan karena seluruh 16 slot pertemuan sudah terisi.
-    const legacy = must(await supabase.from('app_data').select('key,content').like('key', 'tugas/%'));
     (legacy.data || []).forEach((row) => {
       if (!row.key.startsWith('tugas/') || row.key.indexOf('/', 6) !== -1) return;
       const id = row.key.slice(6);
@@ -519,7 +523,7 @@ function pick(o, keys) {
   keys.forEach((k) => { if (o[k] !== undefined) r[k] = o[k]; });
   return r;
 }
-async function view(p, data, sess) {
+async function view(p, data, sess, context) {
   const parts = p.split('/'), root = parts[0];
   const me = sess ? String(sess.no) : null;
   const admin = !!(sess && sess.admin);
@@ -558,7 +562,7 @@ async function view(p, data, sess) {
     const me = String(sess.no);
     if (isObj(data.task_submissions) && data.task_submissions[me]) out.task_submissions[me] = data.task_submissions[me];
     if (data.task_mode === 'group') {
-      const groups = await listCol('constructors');
+      const groups = context && Array.isArray(context.constructors) ? context.constructors : await listCol('constructors');
       const own = groups.find((row) => {
         const g = row.data || {};
         return g.courseCode === data.course_code && ((Array.isArray(g.members) && g.members.map(Number).includes(sess.no)) || Number(g.principal) === Number(sess.no));
@@ -597,7 +601,7 @@ async function view(p, data, sess) {
     const out = Object.assign({}, data, { subs: {}, groupSubs: {} });
     if (me && isObj(data.subs) && data.subs[me]) out.subs[me] = data.subs[me];
     if (sess && data.mode === 'group') {
-      const groups = await listCol('constructors');
+      const groups = context && Array.isArray(context.constructors) ? context.constructors : await listCol('constructors');
       const own = groups.find((row) => {
         const g = row.data || {};
         return g.courseCode === data.k && ((Array.isArray(g.members) && g.members.map(Number).includes(sess.no)) || Number(g.principal) === Number(sess.no));
@@ -1328,8 +1332,12 @@ const server = http.createServer(async (req, res) => {
         const docs = [];
         let rows = await listCol(cp);
         if (cp === 'tugas') rows = await dropExpired(rows);
+        const needsConstructorContext = !!sess && !sess.admin &&
+          (cp === 'tugas' || cp === 'course_updates') &&
+          rows.some((row) => row.data && (row.data.mode === 'group' || row.data.task_mode === 'group'));
+        const context = needsConstructorContext ? { constructors: await listCol('constructors') } : null;
         for (const row of rows) {
-          const v = await view(row.key, row.data, sess);
+          const v = await view(row.key, row.data, sess, context);
           if (v !== null) docs.push({ id: row.key.slice(cp.length + 1), data: v });
         }
         docs.sort((a, b) => (a.id < b.id ? -1 : 1));
