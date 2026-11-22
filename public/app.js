@@ -73,7 +73,8 @@ const PRESENCE_SESSION_ID=makePresenceSessionId();
 const dlg=$('dlg'),box=$('dbox');
 let studentPreviewMode=false;
 const hasAdminRole=no=>!!(S.ak[PAD(no)]&&S.ak[PAD(no)].admin===true);
-const isAd=no=>hasAdminRole(no)&&!(studentPreviewMode&&Number(no)===4);
+const isMainAdmin=()=>Number(ME)===4;
+const isAd=no=>(Number(no)===4||hasAdminRole(no))&&!(studentPreviewMode&&Number(no)===4);
 const hasRealAdminAccess=()=>!!((isAdmin&&ownerMode)||(ME!=null&&hasAdminRole(ME)));
 const canPreviewStudentMode=()=>Number(ME)===4&&hasRealAdminAccess();
 const adm=()=>hasRealAdminAccess()&&!studentPreviewMode;
@@ -1779,11 +1780,11 @@ function renderAdmin(force=false){
     const k=S.ak[PAD(n)]||{};
     ar+='<tr><td class="num">'+n+'</td><td>'+esc(nameOf(n))+(isAd(n)?' '+FLAG:'')+'</td>'+
       '<td><input class="nim" type="text" inputmode="numeric" maxlength="20" data-nim="'+n+'" value="'+esc(k.nim||'')+'" aria-label="NIM nomor absen '+n+'"></td>'+
-      '<td><button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'"'+(n===ME?' disabled':'')+'>'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button></td>'+
+      '<td>'+(n===4?'<strong>Admin Utama</strong>':(isMainAdmin()?'<button type="button" class="btn sm" data-act="adm-toggle" data-no="'+n+'" aria-pressed="'+isAd(n)+'">'+(isAd(n)?'Admin · Cabut':'Jadikan admin')+'</button>':(isAd(n)?'Admin':'Mahasiswa')) )+'</td>'+
       ''+
       '<td>'+(k.hash?'Sudah diganti':'Bawaan')+(k.resetReq?' <span class="chip late">Minta reset '+fmtDate(new Date(k.resetReq).toISOString().slice(0,10))+'</span>':'')+' <button type="button" class="btn sm" data-act="pw-reset" data-no="'+n+'"'+(k.hash||k.resetReq?'':' disabled')+'>Reset</button></td></tr>';
   }
-  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Atur NIM, akses admin, dan reset password langsung dari daftar ini.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
+  h+='<div id="account-panel"><h3 class="ph3">Akun mahasiswa</h3><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><p class="s" style="margin:0 0 10px">Atur NIM dan reset password. Hanya Admin Utama yang dapat mengubah akses admin; akun No. 4 tetap Admin Utama.</p><div class="tblw"><table><thead><tr><th class="num">No</th><th>Nama</th><th>NIM</th><th>Admin</th><th>Password</th></tr></thead><tbody>'+ar+'</tbody></table></div></div>';
   h+='</div><div id="admin-academic-recap"'+(ADMIN_MAIN_TAB==='academic'?'':' hidden')+'><div id="recap-panel"><h3 class="ph3">Rekap mata kuliah</h3><p class="s">Lihat ringkasan absensi dan tugas dari tiap mata kuliah.</p><button type="button" class="btn sm admin-back-top" data-act="admin-top">↑ Kembali ke atas</button><div class="tblw"><table><thead><tr><th>Mata kuliah</th><th class="num">Pertemuan terisi</th><th class="num">Kehadiran</th><th class="num">Tugas</th><th class="num">Pengumpulan</th><th></th></tr></thead><tbody>'+
     perC.map(o=>'<tr><td>'+esc(o.c.nama)+'</td><td class="num">'+o.terisi+'/'+PERT+'</td><td class="num">'+(o.pa==null?'—':o.pa+'%')+'</td><td class="num">'+o.nt+'</td><td class="num">'+(o.pp==null?'—':o.pp+'%')+'</td><td><button type="button" class="btn sm" data-act="open-course" data-k="'+esc(o.c.k)+'">Buka</button></td></tr>').join('')+'</tbody></table></div></div>';
   h+='</div><div id="admin-student-recap"'+(ADMIN_MAIN_TAB==='students'?'':' hidden')+'>';
@@ -3234,7 +3235,7 @@ document.addEventListener('click',async e=>{
       toast(ownerMode?'Mode pengelola aktif':'Kembali sebagai tamu');
       break;
     case 'adm-toggle':{
-      if(!adm())break;
+      if(!adm()||!isMainAdmin()){toast('Hanya Admin Utama yang dapat mengubah akses admin.');break;}
       const no=+d.no;
       if(no===ME){toast('Anda tidak bisa mencabut admin diri sendiri.');break;}
       await run(()=>upsertAkun(no,{admin:!isAd(no)}),isAd(no)?'Admin dicabut':'Admin ditambahkan');

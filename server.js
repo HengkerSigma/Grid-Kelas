@@ -42,6 +42,8 @@ const MAKRAB_DEADLINE_AT = Date.UTC(2026, 10, 30, 16, 59, 59, 999);
 const SESSION_MS = 30 * 24 * 3600 * 1000;
 const FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const activityModel = require('./src/features/courses/activity-model.js');
+const adminRolePolicy = require('./src/security/admin-role-policy.js');
+const MAIN_ADMIN_NO = adminRolePolicy.MAIN_ADMIN_NO;
 const STATIC = {
   '/': ['public/index.html', 'text/html; charset=utf-8'],
   '/index.html': ['public/index.html', 'text/html; charset=utf-8'],
@@ -297,11 +299,12 @@ async function getSession(req) {
   if (!s || !Number.isInteger(s.no) || s.exp < Date.now()) return null;
   const acc = await getDoc('akun/' + pad(s.no));
   if (!acc || accVer(acc) !== s.v) return null;
-  return { token: t, no: s.no, admin: acc.admin === true };
+  const role = adminRolePolicy.roleFor(s.no, acc);
+  return { token: t, no: s.no, admin: role !== 'student', mainAdmin: role === 'main_admin' };
 }
 async function isAdminNo(no) {
   const a = await getDoc('akun/' + pad(no));
-  return !!(a && a.admin === true);
+  return adminRolePolicy.roleFor(no, a) !== 'student';
 }
 function setCookie(req, res, token, maxAgeSec) {
   const secure = process.env.COOKIE_SECURE === '1' ||
@@ -577,7 +580,7 @@ async function view(p, data, sess, context) {
   if (root === 'drives') return sess ? data : null; // folder Drive: hanya untuk yang sudah masuk
   if (root === 'platform') return sess ? data : null; // link absen platform: hanya untuk yang sudah masuk
   if (root === 'akun') {
-    const out = { no: data.no, admin: data.admin === true };
+    const out = { no: data.no, admin: adminRolePolicy.roleFor(data.no, data) !== 'student' };
     // NIM, tanggal lahir, dan WhatsApp dapat dilihat mahasiswa yang sudah login.
     if (sess) { out.nim = data.nim; out.tanggalLahir = data.tanggalLahir || ''; out.whatsapp = data.whatsapp || ''; }
     out.teamPrincipal = data.teamPrincipal || null;
@@ -658,12 +661,16 @@ async function decide(method, p, body, sess, existing) {
     }
     if (!admin || method === 'DELETE' || method === 'POST') return ERR_FORBID;
     if (method === 'PATCH' && !existing) return ERR_MISSING;
+    const changesAdminRole = Object.prototype.hasOwnProperty.call(body, 'admin');
+    if (Number(id) === MAIN_ADMIN_NO && changesAdminRole) return ERR_FORBID;
+    if (changesAdminRole && !adminRolePolicy.canChangeAdminRole(sess.no, Number(id))) return ERR_FORBID;
     const base = existing ? clone(existing) : { no: Number(id), nim: '', admin: false, hash: null, salt: null, resetReq: null };
+    if (Number(id) === MAIN_ADMIN_NO) base.admin = true;
     let reset = false;
     for (const k of Object.keys(body)) {
       const v = body[k];
       if (k === 'nim' && isStr(v, 20)) base.nim = v;
-      else if (k === 'admin' && typeof v === 'boolean') base.admin = v;
+      else if (k === 'admin' && typeof v === 'boolean' && adminRolePolicy.canChangeAdminRole(sess.no, Number(id))) base.admin = v;
       else if (k === 'teamPrincipal' && (v === null || (typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v)))) {
         if (v !== null && !(await getDoc('constructors/' + v))) return ERR_BAD('Kelompok untuk Team Principal tidak ditemukan.');
         if (v !== null) {
@@ -1149,7 +1156,7 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/me' && method === 'GET') {
       const s = await getSession(req);
-      return json(res, 200, s ? { no: s.no, admin: s.admin } : { no: null, admin: false });
+      return json(res, 200, s ? { no: s.no, admin: s.admin, mainAdmin: s.mainAdmin } : { no: null, admin: false, mainAdmin: false });
     }
 
     if (pathname === '/api/login' && method === 'POST') {
@@ -1168,7 +1175,7 @@ const server = http.createServer(async (req, res) => {
       await deleteDoc(RL(lk.pair)); // login benar: hitungan gagal dari perangkat ini dikosongkan
       const token = signToken(no, acc);
       setCookie(req, res, token, Math.floor(SESSION_MS / 1000));
-      return json(res, 200, { no: no, admin: await isAdminNo(no) });
+      return json(res, 200, { no: no, admin: await isAdminNo(no), mainAdmin: adminRolePolicy.isMainAdmin(no) });
     }
 
     if (pathname === '/api/logout' && method === 'POST') {
