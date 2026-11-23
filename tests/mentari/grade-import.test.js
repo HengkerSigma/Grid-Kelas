@@ -40,3 +40,15 @@ test('attaches no-record warnings to activity and counts accepted rows per activ
   assert.equal(r.activities[1].accepted_rows,3);
   assert.ok(r.warnings.some(x=>x.code==='W_NO_RECORD'&&x.activity==='quiz-a'));
 });
+
+
+test('exposes capture metadata so history can distinguish complete snapshots from missing captures',()=>{
+  const p=sample();
+  p.courses[0].activities[0].data_complete=false;
+  p.courses[0].activities[0].captured_at=null;
+  p.courses[0].activities[0].results=[];
+  const r=normalizeImport(p,index());
+  assert.equal(r.activities[0].data_complete,false);
+  assert.equal(r.activities[0].captured_at,null);
+  assert.equal(r.activities[0].total_rows,0);
+});
