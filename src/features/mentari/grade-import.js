@@ -77,7 +77,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
           quiz_type:type,external_activity_id:uuid,title:str(activity.title),grade,result_status:'graded',
           captured_at:activity.captured_at || null});
       }
-      activities.push({external_activity_id:uuid,course_code:mappedCourse,meeting_number:meet,
+      activities.push({external_activity_id:uuid,title:str(activity.title),course_code:mappedCourse,meeting_number:meet,
         quiz_type:type,total_rows:results.length,accepted_rows:rows.length-activityStartRows});
     }
   }
