@@ -11,7 +11,7 @@ view.className='view';view.id='v-rekap-nilai';view.hidden=true;
 view.innerHTML='<div class="inner gut"><h2 class="title">Personal Grade Recap</h2><p class="lede">Rekap nilai Pre-test dan Post-test dari Mentari. Data ini terpisah dari nilai tugas dan absensi.</p><div id="gradeRecapContent" aria-live="polite"></div></div>';
 document.querySelector('main').appendChild(view);
 const style=document.createElement('style');
-style.textContent='.grade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:18px 0}.grade-card{border:1px solid var(--line,#333);border-radius:14px;padding:16px;background:var(--panel,rgba(128,128,128,.08))}.grade-card h3{margin:0 0 8px;font-size:1rem}.grade-card p{margin:4px 0;color:var(--muted,#888)}.grade-score{font:700 1.7rem/1.2 sans-serif;margin-top:10px}.grade-tools{padding:16px;border:1px solid var(--line,#444);border-radius:14px;margin:18px 0}.grade-tools input{display:block;margin:12px 0}.grade-actions{display:flex;gap:8px;flex-wrap:wrap}.grade-actions button{border:1px solid var(--line,#777);border-radius:9px;padding:9px 13px;background:var(--panel,#222);color:inherit;cursor:pointer}.grade-actions button:disabled{opacity:.45;cursor:not-allowed}.grade-warning{color:#b87918}.grade-error{color:#d45b5b}.grade-muted{color:var(--muted,#888)}';
+style.textContent='.grade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:18px 0}.grade-card{border:1px solid var(--line,#333);border-radius:14px;padding:16px;background:var(--panel,rgba(128,128,128,.08))}.grade-card h3{margin:0 0 8px;font-size:1rem}.grade-card p{margin:4px 0;color:var(--muted,#888)}.grade-score{font:700 1.7rem/1.2 sans-serif;margin-top:10px}.grade-tools{padding:16px;border:1px solid var(--line,#444);border-radius:14px;margin:18px 0}.grade-tools input{display:block;margin:12px 0}.grade-actions{display:flex;gap:8px;flex-wrap:wrap}.grade-actions button{border:1px solid var(--line,#777);border-radius:9px;padding:9px 13px;background:var(--panel,#222);color:inherit;cursor:pointer}.grade-actions button:disabled{opacity:.45;cursor:not-allowed}.grade-warning{color:#b87918}.grade-error{color:#d45b5b}.grade-history-item{border:1px solid var(--line,#444);border-radius:12px;padding:12px;margin:10px 0}.grade-history-open{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;padding:4px}.grade-history-open:hover{text-decoration:underline}.grade-history-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#444)}.grade-history-detail[hidden]{display:none}.grade-muted{color:var(--muted,#888)}';
 document.head.appendChild(style);
 const root=view.querySelector('#gradeRecapContent');
 let me=null,pendingBatch=null;
@@ -35,7 +35,31 @@ function renderAdminTools(){
  box.innerHTML='<h3>Impor nilai Mentari</h3><p class="grade-muted">Unggah file JSON hasil ekspor Collector v2. Data akan divalidasi dan ditampilkan sebelum disimpan.</p><input id="gradeImportFile" type="file" accept=".json,application/json"><div class="grade-actions" id="gradeImportActions"></div><div id="gradeImportStatus" aria-live="polite"></div>';
  root.prepend(box);
  const history=document.createElement('section');history.className='grade-tools';history.innerHTML='<h3>Riwayat impor</h3><div class="grade-history"><p class="grade-muted">Memuat riwayat…</p></div>';root.appendChild(history);
- request('/api/mentari/grades/history').then(data=>{const target=history.querySelector('.grade-history');const batches=data.batches||[];target.innerHTML=batches.length?batches.map(x=>'<p><b>'+esc(x.status)+'</b> · '+esc(x.semester)+' · '+esc(x.created_at)+' · '+esc((x.summary||{}).rows||0)+' baris</p>').join(''):'<p class="grade-muted">Belum ada riwayat impor.</p>';}).catch(e=>{history.querySelector('.grade-history').textContent=e.message;});
+ request('/api/mentari/grades/history').then(data=>{
+  const target=history.querySelector('.grade-history'),batches=data.batches||[];
+  target.innerHTML=batches.length?batches.map(x=>'<article class="grade-history-item"><button type="button" class="grade-history-open" data-batch-id="'+esc(x.batch_id)+'"><span><b>'+esc(x.status)+'</b> · '+esc(x.semester)+'<br><span class="grade-muted">'+esc(x.created_at)+'</span></span><span>'+esc((x.summary||{}).rows||0)+' baris　⌄</span></button><div class="grade-history-detail" hidden aria-live="polite"></div></article>').join(''):'<p class="grade-muted">Belum ada riwayat impor.</p>';
+  target.querySelectorAll('[data-batch-id]').forEach(openButton=>openButton.addEventListener('click',async()=>{
+   const detail=openButton.parentElement.querySelector('.grade-history-detail');
+   if(!detail.hidden){detail.hidden=true;openButton.setAttribute('aria-expanded','false');return;}
+   detail.hidden=false;openButton.setAttribute('aria-expanded','true');detail.innerHTML='<p class="grade-muted">Memuat detail batch…</p>';
+   try{
+    const result=await request('/api/mentari/grades/history/'+encodeURIComponent(openButton.dataset.batchId));
+    const batch=result.batch||{},activities=result.activities||[],warnings=result.warnings||[];
+    const warningCounts=new Map();
+    warnings.forEach(w=>{const key=String(w.activity||''),code=String(w.code||'W_UNKNOWN'),bucket=warningCounts.get(key)||{};bucket[code]=(bucket[code]||0)+1;warningCounts.set(key,bucket);});
+    const labels={W_PARTIAL_EXPORT:'Ekspor parsial',W_NO_RECORD:'Peserta tanpa rekaman nilai',W_OLD_CAPTURE:'Ekspor berusia lebih dari 7 hari'};
+    const cards=activities.map(a=>{
+      const id=String(a.external_activity_id||''),counts=warningCounts.get(id)||{};
+      if(Number(a.no_record_rows)>0)counts.W_NO_RECORD=counts.W_NO_RECORD||Number(a.no_record_rows);
+      if(!warnings.length&&Number(a.total_rows)<32)counts.W_PARTIAL_EXPORT=1;
+      const warningHtml=Object.keys(counts).length?'<div class="grade-warning">'+Object.keys(counts).map(code=>esc(labels[code]||code)+' ('+esc(counts[code])+')').join(' · ')+'</div>':'<p class="grade-muted">Tidak ada peringatan tersimpan</p>';
+      return '<article class="grade-card"><h3>'+esc(a.course_code||'?')+' · Pertemuan '+esc(a.meeting_number||'?')+'</h3><p><b>'+esc(a.title||a.quiz_type||'Aktivitas kuis')+'</b></p><p>'+esc(a.quiz_type||'')+'</p><p>'+esc(a.staged_rows||0)+' baris staging · '+esc(a.total_rows||0)+' hasil ekspor</p>'+warningHtml+'</article>';
+    }).join('');
+    const summary=batch.summary||{};
+    detail.innerHTML='<p><b>Status:</b> '+esc(batch.status)+' · <b>Semester:</b> '+esc(batch.semester)+'</p><p><b>Dibuat:</b> '+esc(batch.created_at)+'</p><p><b>Baris:</b> '+esc(summary.rows||0)+' · <b>Aktivitas:</b> '+esc(summary.activities_count||activities.length)+'</p>'+(batch.committed_at?'<p><b>Disimpan:</b> '+esc(batch.committed_at)+'</p>':'')+'<h4>Rincian aktivitas</h4>'+(cards?'<div class="grade-grid">'+cards+'</div>':'<p class="grade-muted">Rincian aktivitas tidak tersedia pada batch ini.</p>');
+   }catch(error){detail.innerHTML='<p class="grade-error">'+esc(error.message)+'</p>';}
+  }));
+ }).catch(e=>{history.querySelector('.grade-history').textContent=e.message;});
  const file=box.querySelector('#gradeImportFile'),actions=box.querySelector('#gradeImportActions'),status=box.querySelector('#gradeImportStatus');
  actions.appendChild(button('Sinkronkan Mentari',()=>{
     pendingBatch=null;
