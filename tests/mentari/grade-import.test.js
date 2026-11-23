@@ -11,6 +11,19 @@ function sample() {
 }
 function index() { return new Map(Array.from({length:32},(_,i)=>[String(100000+i),{key:'akun/'+String(i+1).padStart(2,'0')} ])); }
 test('maps supported Mentari course and meeting codes',()=>{assert.equal(courseCode('20261-01ELSE003-26FTK0011'),'KAL');assert.equal(meeting('PERTEMUAN_16'),16);});
+test('allows FIS through meeting 21 but keeps other courses capped at 16',()=>{
+  const fis = sample();
+  fis.courses[0].kode_course = '20261-01ELSE003-26FTK0021';
+  fis.courses[0].activities[0].kode_section = 'PERTEMUAN_21';
+  const accepted = normalizeImport(fis,index());
+  assert.equal(accepted.ok,true);
+  assert.equal(accepted.rows[0].meeting_number,21);
+
+  const kal = sample();
+  kal.courses[0].activities[0].kode_section = 'PERTEMUAN_17';
+  const rejected = normalizeImport(kal,index());
+  assert.ok(rejected.errors.some(x=>x.code==='E_ACTIVITY_INVALID'));
+});
 test('accepts complete 32-person import and preserves grade zero',()=>{const r=normalizeImport(sample(),index());assert.equal(r.ok,true);assert.equal(r.rows.length,32);assert.equal(r.rows[0].grade,0);});
 test('rejects unknown NIM and invalid grade',()=>{const p=sample();p.courses[0].activities[0].results[0].nim='999999';p.courses[0].activities[0].results[1].grade=101;const r=normalizeImport(p,index());assert.equal(r.ok,false);assert.ok(r.errors.some(x=>x.code==='E_NIM_UNKNOWN'));assert.ok(r.errors.some(x=>x.code==='E_GRADE_INVALID'));});
 test('partial export is warning and never declares missing students as no_record',()=>{const p=sample();p.courses[0].activities[0].data_complete=false;p.courses[0].activities[0].results=p.courses[0].activities[0].results.slice(0,2);const r=normalizeImport(p,index());assert.equal(r.ok,true);assert.ok(r.warnings.some(x=>x.code==='W_PARTIAL_EXPORT'));assert.equal(r.rows.length,2);});
