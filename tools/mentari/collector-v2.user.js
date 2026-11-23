@@ -46,13 +46,14 @@ function buildExport(activities,results){
  });
  return {schema_version:'1.0',source:'mentari_unpam',semester:SEMESTER,batch_id:root?.crypto?.randomUUID?.()||'batch-'+Date.now(),exported_at:new Date().toISOString(),courses:[...groups.values()].sort((a,b)=>a.course_code.localeCompare(b.course_code))};
 }
-const api={courseCode,meeting,extractActivities,normalizeCapture,buildExport};
+const api={courseCode,meeting,extractActivities,normalizeCapture,buildExport,snapshotResultChanges};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 if(!root||!root.document)return;
 const page=typeof unsafeWindow!=='undefined'?unsafeWindow:root;if(page[PATCH])return;page[PATCH]=true;
 let dbp,cache=new Map(),status;
 function db(){if(dbp)return dbp;dbp=new Promise((ok,no)=>{const q=page.indexedDB.open(DB,VERSION);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains(ACT))d.createObjectStore(ACT,{keyPath:'quiz_uuid'});if(!d.objectStoreNames.contains(RES))d.createObjectStore(RES,{keyPath:'key'});};q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error);});return dbp;}
-function writeCapture(c){return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES],'readwrite'),a={...c};delete a.results;t.objectStore(ACT).put(a);c.results.forEach(r=>t.objectStore(RES).put({...r,key:c.quiz_uuid+'::'+r.nim,quiz_uuid:c.quiz_uuid}));t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);}));}
+function snapshotResultChanges(existing,capture){const quizUuid=str(capture&&capture.quiz_uuid),results=Array.isArray(capture&&capture.results)?capture.results:[];if(!quizUuid)return {deleteKeys:[],putRows:[]};const putRows=results.filter(r=>obj(r)&&/^[0-9]{6,20}$/.test(str(r.nim))).map(r=>({key:quizUuid+'::'+str(r.nim),quiz_uuid:quizUuid,nim:str(r.nim),grade:r.grade,attempt_status:r.attempt_status,start_at:r.start_at,end_at:r.end_at}));const currentKeys=new Set(putRows.map(r=>r.key));const deleteKeys=(existing||[]).filter(r=>r&&r.quiz_uuid===quizUuid&&!currentKeys.has(r.key)).map(r=>r.key);return {deleteKeys,putRows};}
+function writeCapture(c){return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES],'readwrite'),a={...c};delete a.results;const store=t.objectStore(RES),request=store.getAll();t.objectStore(ACT).put(a);request.onsuccess=()=>{const changes=snapshotResultChanges(request.result,c);changes.deleteKeys.forEach(key=>store.delete(key));changes.putRows.forEach(row=>store.put(row));};request.onerror=()=>{try{t.abort();}catch(_){}};t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);}));}
 function read(name){return db().then(d=>new Promise((ok,no)=>{const q=d.transaction(name).objectStore(name).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error);}));}
 function clear(){return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES],'readwrite');t.objectStore(ACT).clear();t.objectStore(RES).clear();t.oncomplete=ok;t.onerror=()=>no(t.error);}));}
 function kind(url){try{const u=new URL(url,page.location.href);if(u.origin!==page.location.origin)return null;if(/^\/api\/user-course\/[^/]+\/?$/.test(u.pathname))return 'course';if(/^\/api\/quiz\/peserta\/[^/]+\/?$/.test(u.pathname))return 'quiz';}catch(_){}return null;}
