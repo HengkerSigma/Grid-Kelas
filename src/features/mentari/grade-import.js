@@ -69,7 +69,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
             captured_at:activity.captured_at || null});
           continue;
         }
-        if (grade === null) { warnings.push({code:'W_NO_RECORD'}); continue; }
+        if (grade === null) { warnings.push({code:'W_NO_RECORD',activity:uuid}); continue; }
         const key = [uuid,nim].join('|');
         if (seenRows.has(key)) { errors.push({code:'E_BATCH_DUPLICATE'}); continue; }
         seenRows.add(key);
