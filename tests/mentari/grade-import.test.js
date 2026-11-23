@@ -33,7 +33,7 @@ test('attaches no-record warnings to activity and counts accepted rows per activ
   const p=sample();
   p.courses[0].activities[0].results[0].attempt_status='no_record';
   p.courses[0].activities.push({...p.courses[0].activities[0],quiz_uuid:'quiz-b',kode_section:'PERTEMUAN_2',
-    results:p.courses[0].activities[0].results.slice(0,3)});
+    data_complete:false,results:p.courses[0].activities[0].results.slice(0,3)});
   const r=normalizeImport(p,index());
   assert.equal(r.ok,true);
   assert.equal(r.activities[0].accepted_rows,32);
