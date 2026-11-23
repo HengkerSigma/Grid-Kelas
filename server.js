@@ -1185,6 +1185,7 @@ const server = http.createServer(async (req, res) => {
       }
       const preview = mentariGradeImport.normalizeImport(payload, accountIndex);
       if (!preview.ok) return json(res, 422, { ok:false, errors:preview.errors, warnings:preview.warnings, summary:preview.summary });
+      if (!preview.rows.length) return fail(res, 422, 'no_complete_snapshot', 'Belum ada snapshot kuis lengkap yang dapat disinkronkan.');
       const sourceBatchId = payload.batch_id;
       const duplicateBatch = must(await supabase.from('quiz_import_batches').select('batch_id').eq('source_batch_id',sourceBatchId).maybeSingle());
       if (duplicateBatch.data) return fail(res, 409, 'already_exists', 'Token ini sudah pernah digunakan untuk membuat preview.');
