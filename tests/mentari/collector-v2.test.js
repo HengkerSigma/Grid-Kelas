@@ -15,7 +15,8 @@ test('Collector has safe fallback matching by course, section, and quiz type',()
 
 test('Collector preserves participants without a quiz record as no_record',()=>{
   assert.match(source,/attempt_status:!q\?'no_record'/);
-  assert.match(source,/p\.data\.length===32&&results\.length===32&&!duplicate/);
+  assert.match(source,/p\.data\.length===CLASS_SIZE&&results\.length===CLASS_SIZE&&!duplicate/);
+  assert.match(source,/CLASS_SIZE\s*=\s*32/);
 });
 
 test('Collector reports a failed activity match instead of silently dropping the response',()=>{
