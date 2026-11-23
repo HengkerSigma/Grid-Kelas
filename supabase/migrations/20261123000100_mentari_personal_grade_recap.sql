@@ -139,8 +139,8 @@ CREATE OR REPLACE FUNCTION public.mentari_commit_grade_import(p_batch_id UUID, p
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
+SET search_path = public, extensions, pg_temp
+AS $
 DECLARE
   b public.quiz_import_batches%ROWTYPE;
   s RECORD;

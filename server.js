@@ -461,9 +461,9 @@ function readBody(req, limit) {
     req.on('error', reject);
   });
 }
-async function readJson(req, res) {
+async function readJson(req, res, limit) {
   try {
-    const buf = await readBody(req, MAX_JSON);
+    const buf = await readBody(req, Number(limit) || MAX_JSON);
     const v = JSON.parse(buf.toString('utf8') || '{}');
     if (!isObj(v)) { fail(res, 400, 'invalid_argument', 'Isi harus berupa objek JSON.'); return null; }
     return v;
@@ -1151,7 +1151,7 @@ const server = http.createServer(async (req, res) => {
       const session = await getSession(req);
       if (!session) return fail(res, 401, 'unauthenticated', 'Silakan masuk kembali.');
       if (!session.admin) return fail(res, 403, 'forbidden', 'Hanya pengelola yang dapat mengimpor nilai.');
-      const payload = await readJson(req, res); if (!payload) return;
+      const payload = await readJson(req, res, 5 * 1024 * 1024); if (!payload) return;
       const accountRows = must(await supabase.from('app_data').select('key,content').like('key', 'akun/%'));
       const accountIndex = new Map();
       for (const row of (accountRows.data || [])) {
