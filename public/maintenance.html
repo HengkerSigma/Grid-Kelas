@@ -32,8 +32,26 @@
     .progress{height:7px;margin-top:13px;overflow:hidden;background:#292f37}
     .progress span{display:block;width:38%;height:100%;background:linear-gradient(90deg,var(--red),var(--yellow),var(--teal));animation:move 2.2s ease-in-out infinite alternate}
     @keyframes move{to{width:94%}}
-    footer{margin-top:22px;color:#66717d;font:9px Consolas,monospace;letter-spacing:.12em}
-    footer b{color:var(--teal)}
+    footer{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px 22px;margin-top:22px;font:700 10px Consolas,monospace;letter-spacing:.1em}
+    footer a,footer button{color:#b9c0c9;text-decoration:none;border:0;border-bottom:1px solid rgba(225,6,0,.7);padding:8px 2px;background:transparent;font:inherit;letter-spacing:inherit;cursor:pointer}
+    footer a:hover,footer button:hover,footer a:focus-visible,footer button:focus-visible{color:#fff;border-color:var(--red);outline:none}
+    footer .manager-link{color:var(--teal);border-color:rgba(0,210,190,.65)}
+    .modal[hidden]{display:none}
+    .modal{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:18px;background:rgba(0,0,0,.78);backdrop-filter:blur(8px)}
+    .modal-card{width:min(100%,480px);max-height:calc(100vh - 36px);overflow:auto;text-align:left;padding:22px;border:1px solid #414954;background:#14171c;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+    .modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+    .modal-head h2{margin:0;font-size:18px;letter-spacing:.04em}
+    .modal-close{border:1px solid #414954;background:#20252c;color:#fff;width:34px;height:34px;cursor:pointer;font-size:20px}
+    .field{display:grid;gap:7px;margin:13px 0}
+    .field label{font-size:11px;color:#b9c0c9;font-weight:700;letter-spacing:.08em}
+    .field input{width:100%;padding:12px;border:1px solid #414954;background:#0b0d10;color:#fff;font:14px Arial,sans-serif}
+    .field input:focus{outline:1px solid var(--teal);border-color:var(--teal)}
+    .hint{color:#9aa4af;font-size:12px;line-height:1.6}
+    .submit-btn{width:100%;margin-top:12px;padding:13px;border:0;background:var(--red);color:#fff;font-weight:800;letter-spacing:.06em;cursor:pointer}
+    .submit-btn:disabled{opacity:.55;cursor:wait}
+    .form-status{min-height:20px;margin-top:12px;color:#b9c0c9;font-size:12px;line-height:1.5}
+    .form-status.error{color:#ff7772}.form-status.success{color:var(--teal)}
+    body.modal-open{overflow:hidden}
     @media(max-width:580px){.flag-stage{margin:24px auto 22px;padding:16px 12px}.digital-flag{min-height:68px}}
     @media(max-width:580px){body{padding:20px 14px}.garage{grid-template-columns:1fr;gap:10px}.panel{padding:15px}.wheel-stage{height:125px}.wheel{width:110px;height:110px}.intro{font-size:13px}.progress-head{font-size:9px}}
     @media(prefers-reduced-motion:reduce){.lamp,.dot,.wheel,.bar,.progress span{animation-duration:8s!important}}
@@ -47,12 +65,65 @@
       <div class="digital-flag"><strong>RED FLAG</strong></div>
     </section>
     <h1>WE'RE IN THE <em>PIT LANE.</em></h1>
-    <p class="intro">Grid Kelas sedang menjalani pit stop. Tim teknis melakukan pemeriksaan dan penyempurnaan sistem agar pengalaman akademik ELSE3 kembali optimal. Silakan kembali beberapa saat lagi.</p>
+    <p class="intro">Grid Kelas sedang menjalani pit stop. Pemeriksaan dan penyempurnaan sistem sedang dilakukan agar pengalaman akademik 1ELSE3 lebih optimal. Silakan kembali beberapa saat lagi.</p>
     <section class="progress-panel">
       <div class="progress-head"><span>RACE CONTROL // SYSTEM CHECK</span><span>IN PROGRESS</span></div>
       <div class="progress"><span></span></div>
     </section>
-    <footer>ENGINEERED FOR THE NEXT SESSION <b>///</b> THANK YOU FOR YOUR PATIENCE</footer>
+    <footer aria-label="Tautan penting">
+      <button type="button" id="openMakrab">PENGUMPULAN ABSENSI MAKRAB</button>
+      <a class="manager-link" href="https://www.1else3.my.id/">MASUK KE WEBSITE · KHUSUS PENGELOLA</a>
+    </footer>
   </main>
+  <section class="modal" id="makrabModal" role="dialog" aria-modal="true" aria-labelledby="makrabTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-head"><h2 id="makrabTitle">PENGUMPULAN ABSENSI MAKRAB</h2><button class="modal-close" type="button" id="closeMakrab" aria-label="Tutup">&times;</button></div>
+      <p class="hint">Masuk menggunakan NIM dan password akun mahasiswa untuk memverifikasi identitas. Setiap mahasiswa hanya dapat mengumpulkan satu kali.</p>
+      <form id="makrabForm">
+        <div class="field"><label for="makrabNim">NIM</label><input id="makrabNim" name="nim" autocomplete="username" maxlength="40" required></div>
+        <div class="field"><label for="makrabPassword">PASSWORD AKUN</label><input id="makrabPassword" name="password" type="password" autocomplete="current-password" maxlength="200" required></div>
+        <div class="field"><label for="makrabFile">BUKTI ABSENSI</label><input id="makrabFile" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" required><span class="hint">Foto atau PDF · Maksimal 20 MB.</span></div>
+        <button class="submit-btn" id="makrabSubmit" type="submit">VERIFIKASI & KIRIM DOKUMEN</button>
+        <p class="form-status" id="makrabStatus" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+  <script>
+    (function(){
+      const modal=document.getElementById('makrabModal'),form=document.getElementById('makrabForm'),status=document.getElementById('makrabStatus'),submit=document.getElementById('makrabSubmit');
+      const open=()=>{modal.hidden=false;document.body.classList.add('modal-open');document.getElementById('makrabNim').focus();};
+      const close=()=>{modal.hidden=true;document.body.classList.remove('modal-open');};
+      document.getElementById('openMakrab').addEventListener('click',open);
+      document.getElementById('closeMakrab').addEventListener('click',close);
+      modal.addEventListener('click',e=>{if(e.target===modal)close();});
+      document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.hidden)close();});
+      const request=async(url,body)=>{const r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'gk'},body:JSON.stringify(body)});let j={};try{j=await r.json();}catch(e){}if(!r.ok)throw new Error(j.message||'Permintaan gagal ('+r.status+').');return j;};
+      form.addEventListener('submit',async e=>{
+        e.preventDefault();if(submit.disabled)return;
+        const nim=form.elements.nim.value.trim(),password=form.elements.password.value,file=form.elements.file.files[0];
+        if(!file){status.textContent='Pilih foto atau PDF bukti absensi.';status.className='form-status error';return;}
+        if(file.size<=0||file.size>20*1024*1024){status.textContent='Ukuran berkas harus lebih dari 0 dan maksimal 20 MB.';status.className='form-status error';return;}
+        const allowed=['image/jpeg','image/png','image/webp','image/gif','application/pdf'];
+        if(!allowed.includes(file.type)){status.textContent='Format berkas harus JPG, PNG, WebP, GIF, atau PDF.';status.className='form-status error';return;}
+        submit.disabled=true;status.className='form-status';status.textContent='Memverifikasi akun mahasiswa…';
+        let uploadId='';
+        try{
+          await request('/api/maintenance/makrab/login',{nim,password});
+          status.textContent='Menyiapkan penyimpanan dokumen…';
+          const init=await request('/api/upload',{type:file.type,size:file.size,bucket:'uploads'});uploadId=init.id;
+          const fd=new FormData();fd.append('cacheControl','3600');fd.append('',file);
+          const uploaded=await fetch(init.uploadUrl,{method:'PUT',headers:{'x-upsert':'false'},body:fd});
+          if(!uploaded.ok)throw new Error('Unggahan gagal. Silakan coba lagi.');
+          status.textContent='Menyimpan pengumpulan…';
+          await request('/api/c/berkas',{jenis:'makrab',judul:'Bukti Absen Makrab',file:{id:init.id,name:file.name.slice(0,80),type:init.contentType||file.type,bucket:'uploads',url:null}});
+          status.className='form-status success';status.textContent='Dokumen berhasil dikumpulkan. Terima kasih!';
+          form.reset();uploadId='';
+        }catch(err){
+          if(uploadId)fetch('/api/upload/'+encodeURIComponent(uploadId),{method:'DELETE',credentials:'same-origin',headers:{'X-Requested-With':'gk'}}).catch(()=>{});
+          status.className='form-status error';status.textContent=err.message||'Terjadi kesalahan. Silakan coba lagi.';
+        }finally{submit.disabled=false;}
+      });
+    })();
+  </script>
 </body>
 </html>
