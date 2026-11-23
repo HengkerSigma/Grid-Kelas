@@ -47,12 +47,12 @@ function renderAdminTools(){
     status.innerHTML='<p>Preview siap. '+esc(result.summary.activities)+' aktivitas · '+esc(result.summary.rows)+' baris nilai.</p>'+
       (result.warnings||[]).map(w=>'<p class="grade-warning">'+esc(w.code)+'</p>').join('')+
       '<p class="grade-muted">Batch berlaku selama 30 menit. Periksa peringatan sebelum konfirmasi.</p>';
-    actions.appendChild(button('Konfirmasi & Simpan',async()=>{
+    const confirmButton=button('Konfirmasi & Simpan',async()=>{
       if(!pendingBatch)return;
       try{const saved=await request('/api/mentari/grades/import/confirm',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'gk'},body:JSON.stringify({batchId:pendingBatch})});
         status.textContent='Impor berhasil: '+JSON.stringify(saved.result);pendingBatch=null;await load();
       }catch(e){status.textContent=e.message;}
-    }));
+    });confirmButton.dataset.confirmImport='1';actions.appendChild(confirmButton);
    }catch(e){pendingBatch=null;status.innerHTML='<p class="grade-error">'+esc(e.message)+'</p>';}
  }),false);
 }
