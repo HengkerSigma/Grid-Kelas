@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B0D10">
+  <title>System Maintenance | Race Control</title>
+  <style>
+    :root{
+      color-scheme:dark;
+      --bg:#0B0D10;--panel:#14171C;--panel2:#101318;--line:#303740;
+      --red:#E10600;--yellow:#FFD100;--teal:#00D2BE;--white:#F4F6F8;
+      --muted:#9AA4AF;--mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+      --display:Impact,"Arial Narrow",Arial,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html{min-height:100%;background:var(--bg)}
+    body{
+      margin:0;min-height:100vh;overflow-x:hidden;color:var(--white);
+      background:
+        radial-gradient(ellipse at 50% 0%,rgba(225,6,0,.10),transparent 38%),
+        linear-gradient(135deg,transparent 0 48%,rgba(255,255,255,.018) 49% 51%,transparent 52%),
+        repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px),
+        repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 1px,transparent 1px 4px),
+        var(--bg);
+      font-family:Arial,Helvetica,sans-serif;
+    }
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;
+      background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+      background-size:36px 36px;mask-image:linear-gradient(to bottom,#000,transparent 95%)}
+    .wrap{position:relative;width:min(100% - 32px,980px);margin:0 auto;padding:30px 0 26px;text-align:center}
+    .topline{display:flex;justify-content:center;align-items:center;gap:12px;color:var(--muted);font:700 10px var(--mono);letter-spacing:.2em}
+    .brand-mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--red);color:var(--red);font:italic 900 20px var(--display);transform:skew(-10deg)}
+    .brand-name{color:var(--white);letter-spacing:.16em}
+    .lights-wrap{margin:25px auto 20px;width:min(100%,330px);padding:12px 18px 13px;border:1px solid var(--line);background:rgba(20,23,28,.9);clip-path:polygon(4% 0,96% 0,100% 18%,100% 82%,96% 100%,4% 100%,0 82%,0 18%)}
+    .lights-label{margin-bottom:10px;color:var(--muted);font:700 9px var(--mono);letter-spacing:.2em}
+    .lights{display:flex;justify-content:center;gap:13px}
+    .light{width:19px;height:19px;border-radius:50%;background:#252a31;border:2px solid #414852;box-shadow:inset 0 0 7px #000}
+    .light:nth-child(1){animation:starting 5s infinite .2s}
+    .light:nth-child(2){animation:starting 5s infinite .55s}
+    .light:nth-child(3){animation:starting 5s infinite .9s}
+    .light:nth-child(4){animation:starting 5s infinite 1.25s}
+    .light:nth-child(5){animation:starting 5s infinite 1.6s}
+    @keyframes starting{
+      0%,8%,100%{background:#252a31;box-shadow:inset 0 0 7px #000}
+      12%,72%{background:var(--red);border-color:#ff625d;box-shadow:0 0 8px var(--red),0 0 20px rgba(225,6,0,.55),inset 0 0 5px #ffaaa7}
+      78%,92%{background:var(--teal);border-color:#75fff2;box-shadow:0 0 8px var(--teal),0 0 20px rgba(0,210,190,.45)}
+    }
+    .status{display:inline-flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px;margin:4px auto 14px;padding:9px 14px;border:1px solid rgba(225,6,0,.55);background:rgba(225,6,0,.09);color:#ff7772;font:700 10px var(--mono);letter-spacing:.12em}
+    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 12px var(--red);animation:blink 1s infinite}
+    @keyframes blink{50%{opacity:.25}}
+    h1{margin:0 auto;max-width:850px;font:italic 900 clamp(42px,8vw,82px)/.96 var(--display);letter-spacing:-.025em;text-transform:uppercase;text-shadow:0 5px 30px rgba(0,0,0,.45)}
+    h1 span{color:var(--red)}
+    .intro{max-width:610px;margin:18px auto 0;color:#B9C0C9;font-size:15px;line-height:1.7}
+    .intro strong{color:var(--white)}
+    .scene{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:28px auto 16px;text-align:center}
+    .card{position:relative;min-width:0;padding:17px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(24,28,34,.97),rgba(16,19,24,.97));box-shadow:0 14px 35px rgba(0,0,0,.2);overflow:hidden}
+    .card:before{content:"";position:absolute;top:0;left:0;width:48px;height:2px;background:var(--red)}
+    .card-title{margin:0 0 13px;color:var(--muted);font:700 10px var(--mono);letter-spacing:.18em}
+    .wheel-stage{height:190px;display:grid;place-items:center;position:relative}
+    .wheel-stage:after{content:"";position:absolute;bottom:14px;width:190px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);filter:blur(10px)}
+    .wheel{width:148px;height:148px;position:relative;z-index:1;animation:wheelSpin 13s linear infinite}
+    @keyframes wheelSpin{to{transform:rotate(360deg)}}
+    .wheel svg{width:100%;height:100%;overflow:visible}
+    .wheel-caption{margin-top:1px;color:var(--muted);font:10px var(--mono);letter-spacing:.12em}
+    .wheel-caption b{color:var(--yellow);font-weight:700}
+    .telemetry{display:flex;align-items:flex-end;justify-content:center;gap:5px;height:130px;padding:0 8px 8px;border-bottom:1px solid #414953;background:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(255,255,255,.055) 32px)}
+    .bar{width:8%;height:var(--h);background:linear-gradient(to top,var(--red),#ff655f);box-shadow:0 0 12px rgba(225,6,0,.15);transform-origin:bottom;animation:barPulse var(--speed) ease-in-out infinite alternate}
+    .bar:nth-child(3n){background:linear-gradient(to top,#007d75,var(--teal))}
+    @keyframes barPulse{from{transform:scaleY(.35);opacity:.55}to{transform:scaleY(1);opacity:1}}
+    .telemetry-meta{display:flex;justify-content:center;flex-wrap:wrap;gap:18px;margin-top:12px;color:var(--muted);font:10px var(--mono)}
+    .telemetry-meta b{color:var(--teal);font-weight:700}
+    .diagnostic{margin:14px auto 0;padding:17px;border:1px solid var(--line);background:var(--panel);text-align:center}
+    .diag-head{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px 18px;margin-bottom:14px}
+    .diag-title{color:var(--white);font:italic 800 15px var(--display);letter-spacing:.08em}
+    .diag-state{color:var(--teal);font:700 9px var(--mono);letter-spacing:.15em}
+    .progress-meta{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;color:var(--muted);font:9px var(--mono);letter-spacing:.1em}
+    .progress{height:7px;background:#292f37;overflow:hidden}
+    .progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--yellow),var(--teal));box-shadow:0 0 14px rgba(0,210,190,.3);animation:progress 18s ease-in-out infinite}
+    @keyframes progress{0%{width:8%}50%{width:72%}85%,100%{width:96%}}
+    .terminal{min-height:48px;margin-top:13px;padding:10px 12px;border:1px solid #29313a;background:#0c0f13;color:#b8c2cc;font:11px/1.7 var(--mono);text-align:center}
+    .terminal:before{content:"ROOT@RACE-CONTROL:~$ ";color:var(--teal)}
+    .cursor{display:inline-block;width:7px;height:13px;margin-left:4px;vertical-align:-2px;background:var(--teal);animation:blink .8s steps(2) infinite}
+    .bottom-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-top:14px}
+    .count-card,.sector-card{padding:16px;border:1px solid var(--line);background:var(--panel);text-align:center}
+    .small-label{color:var(--muted);font:700 9px var(--mono);letter-spacing:.17em}
+    .countdown{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:10px;font:700 clamp(25px,5vw,37px) var(--mono);font-variant-numeric:tabular-nums}
+    .time-unit{min-width:48px}
+    .time-unit b{display:block;color:var(--white);font-weight:700}
+    .time-unit small{display:block;margin-top:4px;color:var(--muted);font-size:8px;letter-spacing:.14em}
+    .colon{color:var(--red);transform:translateY(-7px)}
+    .sectors{display:flex;justify-content:center;gap:9px;margin-top:13px}
+    .sector{min-width:58px;padding:9px 8px;border:1px solid #3a424b;background:#101419;color:var(--muted);font:700 11px var(--mono)}
+    .sector i{display:block;width:6px;height:6px;margin:0 auto 7px;border-radius:50%;background:var(--yellow);box-shadow:0 0 10px var(--yellow);animation:sectorBlink 1.4s infinite}
+    .sector:nth-child(2) i{animation-delay:.35s}.sector:nth-child(3) i{animation-delay:.7s}
+    @keyframes sectorBlink{50%{opacity:.25;box-shadow:none}}
+    .contact{margin:20px auto 0}
+    .contact p{margin:0 auto 13px;color:var(--muted);font-size:12px}
+    .actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
+    .btn{display:inline-flex;justify-content:center;align-items:center;min-width:160px;padding:12px 17px;border:1px solid var(--red);background:var(--red);color:white;text-decoration:none;font:800 10px var(--mono);letter-spacing:.08em;transition:transform .2s,background .2s}
+    .btn.secondary{border-color:#47515c;background:#171c22;color:#e8edf2}
+    .btn:hover{transform:translateY(-2px);background:#b90500}
+    .btn.secondary:hover{background:#252c34}
+    footer{margin:24px auto 0;color:#66717d;font:9px var(--mono);letter-spacing:.12em}
+    footer span{color:var(--teal)}
+    @media(max-width:650px){
+      .wrap{width:min(100% - 22px,520px);padding-top:20px}
+      .scene,.bottom-grid{grid-template-columns:1fr}
+      .scene{gap:10px;margin-top:20px}
+      .card{padding:14px}
+      .wheel-stage{height:160px}
+      .wheel{width:128px;height:128px}
+      .telemetry{height:105px}
+      .intro{font-size:13px}
+      .status{font-size:9px;letter-spacing:.07em}
+      .count-card,.sector-card{padding:14px}
+      .btn{width:min(100%,300px)}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .light,.wheel,.bar,.sector i,.status-dot,.cursor,.progress-fill{animation-duration:3s!important}
+      .wheel{animation-duration:28s!important}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="topline">
+      <div class="brand-mark">F1</div>
+      <div class="brand-name">RACE CONTROL <span style="color:var(--red)">/</span> GARAGE SYSTEMS</div>
+    </header>
+
+    <section class="lights-wrap" aria-label="System starting lights">
+      <div class="lights-label">SYSTEM STATUS // STARTING SEQUENCE</div>
+      <div class="lights">
+        <span class="light"></span><span class="light"></span><span class="light"></span><span class="light"></span><span class="light"></span>
+      </div>
+    </section>
+
+    <div class="status"><span class="status-dot"></span> RED FLAG // BOX BOX — SYSTEM MAINTENANCE</div>
+    <h1>WE'RE IN THE <span>PIT LANE.</span></h1>
+    <p class="intro">
+      Sistem sedang menjalani <strong>pit stop terjadwal</strong>. Tim teknis sedang melakukan
+      pemeriksaan server, kalibrasi database, dan sinkronisasi telemetry agar semuanya kembali
+      ke lintasan dalam kondisi optimal.
+    </p>
+
+    <section class="scene" aria-label="Pit stop and telemetry status">
+      <article class="card">
+        <h2 class="card-title">01 // TYRE SERVICE</h2>
+        <div class="wheel-stage">
+          <div class="wheel" aria-label="Animated Formula 1 tyre">
+            <svg viewBox="0 0 200 200" role="img">
+              <defs>
+                <radialGradient id="rubber"><stop offset="0" stop-color="#555d66"/><stop offset=".66" stop-color="#171b20"/><stop offset="1" stop-color="#050607"/></radialGradient>
+                <linearGradient id="rim" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#cbd2d9"/><stop offset=".5" stop-color="#535d68"/><stop offset="1" stop-color="#151a20"/></linearGradient>
+              </defs>
+              <circle cx="100" cy="100" r="91" fill="url(#rubber)" stroke="#050607" stroke-width="5"/>
+              <circle cx="100" cy="100" r="80" fill="none" stroke="#303740" stroke-width="3" stroke-dasharray="3 5"/>
+              <circle cx="100" cy="100" r="67" fill="#0a0c0f" stroke="#68727d" stroke-width="3"/>
+              <circle cx="100" cy="100" r="53" fill="url(#rim)" stroke="#d4dae0" stroke-width="2"/>
+              <g stroke="#171c22" stroke-width="8" stroke-linecap="round">
+                <path d="M100 49V151M49 100H151M64 64L136 136M136 64L64 136"/>
+              </g>
+              <circle cx="100" cy="100" r="19" fill="#11161b" stroke="#9aa4af" stroke-width="4"/>
+              <circle cx="100" cy="100" r="7" fill="#E10600"/>
+              <g fill="#FFD100"><circle cx="100" cy="24" r="3"/><circle cx="176" cy="100" r="3"/><circle cx="100" cy="176" r="3"/><circle cx="24" cy="100" r="3"/></g>
+              <path d="M100 7A93 93 0 0 1 193 100" fill="none" stroke="#E10600" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="wheel-caption">COMPOUND: <b>MEDIUM</b> // ROTATION CHECK</div>
+      </article>
+
+      <article class="card">
+        <h2 class="card-title">02 // LIVE TELEMETRY</h2>
+        <div class="telemetry" id="telemetry" aria-label="Animated telemetry graph">
+          <i class="bar" style="--h:38%;--speed:.7s"></i><i class="bar" style="--h:72%;--speed:.9s"></i>
+          <i class="bar" style="--h:52%;--speed:.6s"></i><i class="bar" style="--h:88%;--speed:1s"></i>
+          <i class="bar" style="--h:43%;--speed:.8s"></i><i class="bar" style="--h:66%;--speed:.65s"></i>
+          <i class="bar" style="--h:95%;--speed:.95s"></i><i class="bar" style="--h:57%;--speed:.72s"></i>
+          <i class="bar" style="--h:78%;--speed:.85s"></i><i class="bar" style="--h:47%;--speed:.62s"></i>
+          <i class="bar" style="--h:87%;--speed:.9s"></i><i class="bar" style="--h:61%;--speed:.75s"></i>
+        </div>
+        <div class="telemetry-meta"><span>RPM <b id="rpm">10,842</b></span><span>ERS <b id="ers">87%</b></span></div>
+      </article>
+    </section>
+
+    <section class="diagnostic">
+      <div class="diag-head">
+        <div class="diag-title">RACE CONTROL // GARAGE DIAGNOSTIC</div>
+        <div class="diag-state">● SYSTEM SCANNING</div>
+      </div>
+      <div class="progress-meta"><span>ECU CALIBRATION</span><span id="progressValue">08%</span></div>
+      <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="terminal" aria-live="polite"><span id="terminalText">Checking telemetry packet...</span><span class="cursor"></span></div>
+    </section>
+
+    <section class="bottom-grid">
+      <article class="count-card">
+        <div class="small-label">ESTIMATED TIME TO GREEN LIGHT</div>
+        <div class="countdown" aria-label="Maintenance countdown">
+          <div class="time-unit"><b id="hours">02</b><small>HOURS</small></div><span class="colon">:</span>
+          <div class="time-unit"><b id="minutes">30</b><small>MINUTES</small></div><span class="colon">:</span>
+          <div class="time-unit"><b id="seconds">00</b><small>SECONDS</small></div>
+        </div>
+      </article>
+      <article class="sector-card">
+        <div class="small-label">TRACK STATUS // SECTORS</div>
+        <div class="sectors">
+          <div class="sector"><i></i>S1</div><div class="sector"><i></i>S2</div><div class="sector"><i></i>S3</div>
+        </div>
+        <div class="small-label" style="margin-top:12px;color:var(--yellow)">YELLOW FLAG // SERVICE IN PROGRESS</div>
+      </article>
+    </section>
+
+    <section class="contact">
+      <p>Butuh bantuan mendesak selama pit stop? Hubungi tim kami.</p>
+      <div class="actions">
+        <!-- Ganti nomor dan username di bawah dengan kontak resmi. -->
+        <a class="btn" href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer">WHATSAPP // EMERGENCY</a>
+        <a class="btn secondary" href="https://instagram.com/username" target="_blank" rel="noopener noreferrer">INSTAGRAM // RACE DESK</a>
+      </div>
+    </section>
+
+    <footer>ENGINEERED FOR THE NEXT SESSION <span>///</span> THANK YOU FOR YOUR PATIENCE</footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // Ubah durasi sesuai estimasi maintenance (dalam detik).
+      const MAINTENANCE_SECONDS = 2 * 60 * 60 + 30 * 60;
+      const endAt = Date.now() + MAINTENANCE_SECONDS * 1000;
+      const $ = (id) => document.getElementById(id);
+      const pad = (n) => String(n).padStart(2, "0");
+
+      function updateCountdown() {
+        const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+        $("hours").textContent = pad(Math.floor(remaining / 3600));
+        $("minutes").textContent = pad(Math.floor((remaining % 3600) / 60));
+        $("seconds").textContent = pad(remaining % 60);
+        if (remaining === 0) {
+          $("hours").textContent = "00";
+          $("minutes").textContent = "00";
+          $("seconds").textContent = "00";
+        }
+      }
+      updateCountdown();
+      window.setInterval(updateCountdown, 250);
+
+      const messages = [
+        "Checking telemetry packet...",
+        "Updating server aero config...",
+        "Calibrating database...",
+        "Verifying race control connection...",
+        "Optimizing session cache...",
+        "Running final integrity checks..."
+      ];
+      let messageIndex = 0;
+      const terminal = $("terminalText");
+      function cycleLog() {
+        messageIndex = (messageIndex + 1) % messages.length;
+        terminal.textContent = messages[messageIndex];
+      }
+      window.setInterval(cycleLog, 2600);
+
+      let progress = 8;
+      window.setInterval(() => {
+        progress = progress >= 96 ? 8 : progress + Math.floor(Math.random() * 5 + 1);
+        $("progressValue").textContent = pad(Math.min(progress, 99)) + "%";
+      }, 900);
+
+      // Lightweight live-style telemetry values.
+      window.setInterval(() => {
+        $("rpm").textContent = (9800 + Math.floor(Math.random() * 1900)).toLocaleString("en-US");
+        $("ers").textContent = (72 + Math.floor(Math.random() * 27)) + "%";
+      }, 1100);
+    })();
+  </script>
+</body>
+</html>
