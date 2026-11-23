@@ -33,14 +33,14 @@ test('attaches no-record warnings to activity and counts accepted rows per activ
   const p=sample();
   p.courses[0].activities[0].results[0].attempt_status='no_record';
   p.courses[0].activities.push({...p.courses[0].activities[0],quiz_uuid:'quiz-b',kode_section:'PERTEMUAN_2',
-    data_complete:false,results:p.courses[0].activities[0].results.slice(0,3)});
+    data_complete:false,results:p.courses[0].activities[0].results.slice(1,4)});
   const r=normalizeImport(p,index());
   assert.equal(r.ok,true);
   assert.equal(r.activities[0].accepted_rows,32);
   assert.equal(r.activities[1].accepted_rows,3);
   assert.ok(r.warnings.some(x=>x.code==='W_NO_RECORD'&&x.activity==='quiz-a'));
   assert.equal(r.summary.no_record_rows,1);
-  assert.equal(r.summary.graded_rows,31);
+  assert.equal(r.summary.graded_rows,34);
   assert.equal(r.activities[0].no_record_rows,1);
 });
 
