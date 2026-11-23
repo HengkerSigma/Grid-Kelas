@@ -1147,6 +1147,73 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/ping') return json(res, 200, { ok: true });
     if (pathname === '/api/public-config' && method === 'GET') return json(res, 200, publicConfig());
+    // Mentari Collector bridge: short-lived, one-use upload ticket. It cannot confirm imports.
+    if (pathname === '/api/mentari/grades/sync/ticket' && method === 'POST') {
+      const session = await getSession(req);
+      if (!session) return fail(res, 401, 'unauthenticated', 'Silakan masuk kembali.');
+      if (!session.admin) return fail(res, 403, 'forbidden', 'Hanya pengelola yang dapat menyinkronkan Mentari.');
+      const ticket = { scope:'mentari-grade-upload', no:session.no, nonce:crypto.randomUUID(), exp:Date.now()+5*60*1000 };
+      const body = Buffer.from(JSON.stringify(ticket)).toString('base64url');
+      const signature = crypto.createHmac('sha256', SECRET).update(body).digest('base64url');
+      return json(res, 200, { ok:true, ticket:body+'.'+signature, expiresAt:new Date(ticket.exp).toISOString() });
+    }
+
+    if (pathname === '/api/mentari/grades/sync/upload' && method === 'POST') {
+      const auth = String(req.headers.authorization || '');
+      const token = /^Bearer ([A-Za-z0-9_.-]{20,2048})$/.exec(auth);
+      if (!token) return fail(res, 401, 'unauthenticated', 'Token sinkronisasi tidak tersedia.');
+      const parts = token[1].split('.');
+      if (parts.length !== 2) return fail(res, 401, 'invalid_ticket', 'Token sinkronisasi tidak valid.');
+      const expected = crypto.createHmac('sha256', SECRET).update(parts[0]).digest('base64url');
+      const supplied = parts[1];
+      if (supplied.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected)))
+        return fail(res, 401, 'invalid_ticket', 'Token sinkronisasi tidak valid.');
+      let ticket;
+      try { ticket = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')); } catch (_) { ticket = null; }
+      if (!ticket || ticket.scope !== 'mentari-grade-upload' || !Number.isInteger(ticket.no) ||
+          !/^[0-9a-f-]{36}$/i.test(ticket.nonce || '') || !Number.isFinite(ticket.exp) || ticket.exp < Date.now())
+        return fail(res, 401, 'expired_ticket', 'Token sinkronisasi kedaluwarsa atau tidak valid.');
+      if (!(await isAdminNo(ticket.no))) return fail(res, 403, 'forbidden', 'Hak akses pengelola sudah tidak berlaku.');
+      const payload = await readJson(req, res, 5 * 1024 * 1024); if (!payload) return;
+      payload.batch_id = 'mentari-sync:' + ticket.nonce;
+      const accountRows = must(await supabase.from('app_data').select('key,content').like('key', 'akun/%'));
+      const accountIndex = new Map();
+      for (const row of (accountRows.data || [])) {
+        const content = row.content || {};
+        const nim = String(content.nim || '').trim();
+        if (nim && !accountIndex.has(nim)) accountIndex.set(nim, { key: row.key });
+      }
+      const preview = mentariGradeImport.normalizeImport(payload, accountIndex);
+      if (!preview.ok) return json(res, 422, { ok:false, errors:preview.errors, warnings:preview.warnings, summary:preview.summary });
+      if (!preview.rows.length) return fail(res, 422, 'no_complete_snapshot', 'Belum ada snapshot kuis lengkap yang dapat disinkronkan.');
+      const sourceBatchId = payload.batch_id;
+      const duplicateBatch = must(await supabase.from('quiz_import_batches').select('batch_id').eq('source_batch_id',sourceBatchId).maybeSingle());
+      if (duplicateBatch.data) return fail(res, 409, 'already_exists', 'Token ini sudah pernah digunakan untuk membuat preview.');
+      const batchId = crypto.randomUUID();
+      const stagedRows = preview.rows.map(row => Object.assign({}, row, { row_hash:crypto.createHash('sha256').update(JSON.stringify(row)).digest('hex') }));
+      const payloadHash = crypto.createHash('sha256').update(stagedRows.slice().sort((a,b)=>(a.external_activity_id<b.external_activity_id?-1:a.external_activity_id>b.external_activity_id?1:0)||(a.nim<b.nim?-1:a.nim>b.nim?1:0)).map(row=>row.row_hash).join('|')).digest('hex');
+      const summary = Object.assign({}, preview.summary, { semester:preview.semester, activities:preview.activities });
+      must(await supabase.from('quiz_import_batches').insert({
+        batch_id:batchId, source_batch_id:sourceBatchId, semester:preview.semester, status:'preview', payload_hash:payloadHash,
+        summary, created_by:ticket.no, expires_at:new Date(Date.now()+30*60*1000).toISOString()
+      }));
+      for (let offset=0; offset<stagedRows.length; offset+=500) {
+        const chunk = stagedRows.slice(offset, offset+500).map(row => ({
+          batch_id:batchId, account_key:row.account_key, nim:row.nim, course_code:row.course_code,
+          meeting_number:row.meeting_number, quiz_type:row.quiz_type,
+          external_activity_id:row.external_activity_id, title:row.title, grade:row.grade,
+          result_status:row.result_status, captured_at:row.captured_at, row_hash:row.row_hash
+        }));
+        const inserted = await supabase.from('quiz_import_staging').insert(chunk);
+        if (inserted.error) {
+          await supabase.from('quiz_import_batches').delete().eq('batch_id',batchId);
+          throw inserted.error;
+        }
+      }
+      return json(res, 200, { ok:true, batchId, expiresAt:new Date(Date.now()+30*60*1000).toISOString(),
+        warnings:preview.warnings, summary });
+    }
+
     // Mentari Personal Grade Recap: all writes are admin-only and server-side.
     if (pathname === '/api/mentari/grades/import/preview' && method === 'POST') {
       const session = await getSession(req);
