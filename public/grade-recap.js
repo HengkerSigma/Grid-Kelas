@@ -86,6 +86,7 @@ function renderAdminTools(){
     const warningLabel = code => ({
       W_PARTIAL_EXPORT:'Ekspor parsial — data peserta belum lengkap',
       W_NO_RECORD:'Ada peserta tanpa rekaman nilai',
+      W_GRADE_MISSING:'Status nilai perlu diperiksa',
       W_OLD_CAPTURE:'Data ekspor berusia lebih dari 7 hari'
     })[code] || code;
     const activityMarkup = activityList.length ? activityList.map(a => {
@@ -95,11 +96,14 @@ function renderAdminTools(){
       const type = a.quiz_type === 'PRE_TEST' ? 'Pre-test' : a.quiz_type === 'POST_TEST' ? 'Post-test' : String(a.quiz_type || 'Jenis kuis tidak diketahui');
       return '<article class="grade-card"><h3>'+esc(a.course_code || 'Mata kuliah?')+' · Pertemuan '+esc(a.meeting_number || '?')+'</h3>'+
         '<p><b>'+esc(a.title || type)+'</b></p><p>'+esc(type)+'</p><p>'+esc(a.accepted_rows || 0)+' baris diterima dari '+esc(a.total_rows || 0)+' hasil Mentari</p>'+
+        '<p>'+esc(a.graded_rows||0)+' graded · '+esc(a.no_record_rows||0)+' no_record · '+esc(a.unresolved_rows||0)+' nilai belum terpetakan</p>'+
         (labels.length ? '<div>'+labels.join('<br>')+'</div>' : '<p class="grade-muted">Tidak ada peringatan khusus</p>')+
         '<details><summary>Detail ID aktivitas</summary><code>'+esc(id || 'Tidak tersedia')+'</code></details></article>';
     }).join('') : '<p class="grade-warning">Rincian aktivitas tidak dikirim oleh server. Perlu pemeriksaan lebih lanjut.</p>';
     const globalWarnings = warningCounts.get('') || {};
-    status.innerHTML='<p><b>Preview sinkronisasi siap.</b> '+esc(result.summary&&result.summary.activities||activityList.length)+' aktivitas · '+esc(result.summary&&result.summary.rows||0)+' baris nilai.</p>'+
+    const syncSummary=result.summary||{};
+    status.innerHTML='<p><b>Preview sinkronisasi siap.</b> '+esc(Number(syncSummary.activities)||activityList.length)+' aktivitas · '+esc(syncSummary.rows||0)+' baris diterima.</p>'+
+      '<p><b>Rincian status:</b> '+esc(syncSummary.graded_rows||0)+' graded · '+esc(syncSummary.no_record_rows||0)+' no_record · '+esc(syncSummary.unresolved_rows||0)+' nilai belum terpetakan.</p>'+
       (Object.keys(globalWarnings).length ? '<div class="grade-warning">'+Object.keys(globalWarnings).map(code=>esc(warningLabel(code))+' ('+esc(globalWarnings[code])+')').join(' · ')+'</div>' : '')+
       '<h4>Daftar aktivitas</h4><div class="grade-grid">'+activityMarkup+'</div>'+
       '<p class="grade-muted">Batch berlaku selama 30 menit. Periksa setiap aktivitas sebelum menyimpan. Penyimpanan belum dilakukan.</p>';
@@ -122,9 +126,14 @@ function renderAdminTools(){
     const result=await request('/api/mentari/grades/import/preview',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'gk'},body:JSON.stringify(payload)});
     pendingBatch=result.batchId;
     actions.querySelectorAll('[data-confirm-import]').forEach(x=>x.remove());
-    status.innerHTML='<p>Preview siap. '+esc(result.summary.activities)+' aktivitas · '+esc(result.summary.rows)+' baris nilai.</p>'+
-      (result.warnings||[]).map(w=>'<p class="grade-warning">'+esc(w.code)+'</p>').join('')+
-      '<p class="grade-muted">Batch berlaku selama 30 menit. Periksa peringatan sebelum konfirmasi.</p>';
+    const summary=result.summary||{},activities=Array.isArray(result.activities)?result.activities:[];
+    const activityCount=Number.isFinite(Number(summary.activities))?Number(summary.activities):activities.length;
+    const graded=Number(summary.graded_rows)||0,noRecord=Number(summary.no_record_rows)||0,unresolved=Number(summary.unresolved_rows)||0;
+    const warnings=Array.isArray(result.warnings)?result.warnings:[];
+    status.innerHTML='<p><b>Preview siap.</b> '+esc(activityCount)+' aktivitas · '+esc(summary.rows||0)+' baris diterima.</p>'+
+      '<p><b>Rincian status:</b> '+esc(graded)+' graded · '+esc(noRecord)+' no_record · '+esc(unresolved)+' nilai belum terpetakan.</p>'+
+      (warnings.length?'<div>'+warnings.map(w=>'<p class="grade-warning">'+esc(w.code)+(w.activity?' · aktivitas '+esc(w.activity):'')+'</p>').join('')+'</div>':'<p class="grade-muted">Tidak ada peringatan.</p>')+
+      '<p class="grade-muted">Batch berlaku selama 30 menit. Periksa rincian sebelum konfirmasi.</p>';
     const confirmButton=button('Konfirmasi & Simpan',async()=>{
       if(!pendingBatch)return;
       try{const saved=await request('/api/mentari/grades/import/confirm',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'gk'},body:JSON.stringify({batchId:pendingBatch})});
