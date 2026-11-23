@@ -72,5 +72,5 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h localhost -U postgres -d gridkelas_test -v ON_ERROR_STOP=1 \\
+          psql -h localhost -U postgres -d gridkelas_test -v ON_ERROR_STOP=1 \
             -f tests/mentari/grade-import.integration.sql
