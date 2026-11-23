@@ -1,0 +1,32 @@
+name: Mentari grade recap tests
+
+on:
+  pull_request:
+    paths:
+      - 'server.js'
+      - 'public/app.js'
+      - 'public/grade-recap.js'
+      - 'src/features/mentari/**'
+      - 'tests/mentari/**'
+      - 'supabase/migrations/**'
+      - '.github/workflows/mentari-grade-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/features/mentari/**'
+      - 'tests/mentari/**'
+      - '.github/workflows/mentari-grade-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --check server.js
+      - run: node --check public/app.js
+      - run: node --check public/grade-recap.js
+      - run: node --check src/features/mentari/grade-import.js
+      - run: node --test tests/mentari/*.test.js tests/security/*.test.js

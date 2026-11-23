@@ -26,7 +26,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
   if (!Array.isArray(payload.courses) || !payload.courses.length) errors.push({code:'E_FILE_INVALID'});
   const accounts = accountIndex instanceof Map ? accountIndex : new Map();
   const batchId = str(payload.batch_id);
-  if (!batchId) errors.push({code:'E_FILE_INVALID'});
+  if (!batchId || batchId.length > 120) errors.push({code:'E_FILE_INVALID'});
   const seenActivity = new Set(), seenRows = new Set();
   for (const course of (Array.isArray(payload.courses) ? payload.courses : [])) {
     if (!obj(course)) { errors.push({code:'E_COURSE_UNKNOWN'}); continue; }
