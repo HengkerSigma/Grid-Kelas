@@ -2,15 +2,15 @@
 
 ## Tujuan
 
-Userscript Tampermonkey ini menangkap snapshot nilai Pre-test/Post-test dari respons Mentari yang memang dimuat oleh browser saat pengguna menavigasi situs secara normal. Script tidak membuat request API sendiri, tidak membuka kuis yang belum diakses, tidak melewati kontrol akses, dan tidak mengirim data ke Grid Kelas atau Supabase.
+Userscript Tampermonkey ini menangkap snapshot nilai Pre-test/Post-test dari respons Mentari yang memang dimuat oleh browser saat pengguna menavigasi situs secara normal. Collector tidak membuat request API Mentari sendiri, tidak membuka kuis yang belum diakses, dan tidak melewati kontrol akses. Pengiriman ke Grid Kelas hanya terjadi setelah admin menekan tombol sinkronisasi, melalui tiket upload singkat.
 
 ## Endpoint yang diamati
 
-Hanya endpoint same-origin berikut:
+Untuk pengumpulan di Mentari, hanya endpoint same-origin berikut yang diamati:
 - `/api/user-course/{kode_course}` untuk metadata aktivitas kuis.
 - `/api/quiz/peserta/{quiz_uuid}` untuk hasil peserta.
 
-Script tidak menyimpan cookie, token, authorization header, nama, email, nomor telepon, jawaban, atau body mentah. Data minimal disimpan di IndexedDB lokal: UUID kuis, mata kuliah, pertemuan, jenis kuis, NIM, nilai, status, dan waktu pengerjaan.
+Script tidak membaca atau mengirim cookie maupun token login Mentari. Script tidak menyimpan authorization header, nama, email, nomor telepon, jawaban, atau body mentah. Data minimal disimpan di IndexedDB lokal: UUID kuis, mata kuliah, pertemuan, jenis kuis, NIM, nilai, status, dan waktu pengerjaan.
 
 ## Instalasi dan penggunaan
 
@@ -25,7 +25,7 @@ Untuk versi sinkronisasi klik, pasang versi terbaru dari `tools/mentari/collecto
 Sinkronisasi mengirim snapshot lengkap yang telah dikumpulkan sebelumnya. Kuis yang belum pernah dimuat belum otomatis dijelajahi; buka mata kuliah dan kuis melalui navigasi Mentari biasa, lalu ulangi sinkronisasi.
 
 1. Pasang Tampermonkey.
-2. Buat userscript baru dan salin seluruh isi `tools/mentari/collector-v2.user.js`.
+2. Buat userscript baru dan salin seluruh isi `tools/mentari/collector-v2.user.js` (versi 2.1.0).
 3. Aktifkan script lalu buka Mentari melalui login resmi.
 4. Buka halaman mata kuliah terlebih dahulu agar metadata kuis tertangkap.
 5. Buka halaman kuis melalui navigasi normal. Snapshot akan tersimpan otomatis.
