@@ -43,6 +43,7 @@ const SESSION_MS = 30 * 24 * 3600 * 1000;
 const FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const activityModel = require('./src/features/courses/activity-model.js');
 const mentariGradeImport = require('./src/features/mentari/grade-import.js');
+const mentariGradeHistory = require('./src/features/mentari/grade-history.js');
 const adminRolePolicy = require('./src/security/admin-role-policy.js');
 const MAIN_ADMIN_NO = adminRolePolicy.MAIN_ADMIN_NO;
 const STATIC = {
@@ -1320,21 +1321,16 @@ const server = http.createServer(async (req, res) => {
       const staged = must(await supabase.from('quiz_import_staging')
         .select('external_activity_id,result_status')
         .eq('batch_id',batchId));
-      const counts = new Map();
-      for (const row of (staged.data || [])) {
-        const key = String(row.external_activity_id || '');
-        const value = counts.get(key) || { staged_rows:0, no_record_rows:0 };
-        value.staged_rows++;
-        if (row.result_status === 'no_record') value.no_record_rows++;
-        counts.set(key,value);
-      }
-      const activities = Array.isArray(batch.data.summary && batch.data.summary.activities)
-        ? batch.data.summary.activities.map(activity => Object.assign({},activity,counts.get(String(activity.external_activity_id || '')) || {staged_rows:0,no_record_rows:0}))
-        : [];
+      const history = mentariGradeHistory.backfillLegacyStatusCounts(
+        Array.isArray(batch.data.summary && batch.data.summary.activities) ? batch.data.summary.activities : [],
+        staged.data || []
+      );
+      const activities = history.activities;
       const warnings = Array.isArray(batch.data.summary && batch.data.summary.warnings)
         ? batch.data.summary.warnings
         : [];
-      return json(res,200,{batch:Object.assign({},batch.data,{summary:Object.assign({},batch.data.summary,{activities})}),activities,warnings});
+      const summary = Object.assign({},batch.data.summary || {},history.summary,{activities});
+      return json(res,200,{batch:Object.assign({},batch.data,{summary}),activities,warnings});
     }
 
 
