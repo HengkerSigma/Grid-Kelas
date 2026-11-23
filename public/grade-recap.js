@@ -51,9 +51,11 @@ function renderAdminTools(){
     const cards=activities.map(a=>{
       const id=String(a.external_activity_id||''),counts=warningCounts.get(id)||{};
       if(Number(a.no_record_rows)>0)counts.W_NO_RECORD=counts.W_NO_RECORD||Number(a.no_record_rows);
-      if(!warnings.length&&Number(a.total_rows)<32)counts.W_PARTIAL_EXPORT=1;
-      const warningHtml=Object.keys(counts).length?'<div class="grade-warning">'+Object.keys(counts).map(code=>esc(labels[code]||code)+' ('+esc(counts[code])+')').join(' · ')+'</div>':'<p class="grade-muted">Tidak ada peringatan tersimpan</p>';
-      return '<article class="grade-card"><h3>'+esc(a.course_code||'?')+' · Pertemuan '+esc(a.meeting_number||'?')+'</h3><p><b>'+esc(a.title||a.quiz_type||'Aktivitas kuis')+'</b></p><p>'+esc(a.quiz_type||'')+'</p><p>'+esc(a.staged_rows||0)+' baris staging · '+esc(a.total_rows||0)+' hasil ekspor</p>'+warningHtml+'</article>';
+      const warningHtml=Object.keys(counts).length?'<div class="grade-warning">'+Object.keys(counts).map(code=>esc(labels[code]||code)+' ('+esc(counts[code])+')').join(' · ')+'</div>':'<p class="grade-muted">Peringatan historis tidak tersedia pada batch ini.</p>';
+      const captureHtml=Object.prototype.hasOwnProperty.call(a,'data_complete')
+        ? (a.data_complete===true?'<p class="grade-muted">Snapshot lengkap tersimpan · '+esc(a.captured_at||'waktu tidak tersedia')+'</p>':'<p class="grade-warning">Belum ada snapshot lengkap tersimpan dari Collector.</p>')
+        : '<p class="grade-muted">Status pengambilan tidak tercatat pada batch lama.</p>';
+      return '<article class="grade-card"><h3>'+esc(a.course_code||'?')+' · Pertemuan '+esc(a.meeting_number||'?')+'</h3><p><b>'+esc(a.title||a.quiz_type||'Aktivitas kuis')+'</b></p><p>'+esc(a.quiz_type||'')+'</p><p>'+esc(a.staged_rows||0)+' baris staging · '+esc(a.total_rows||0)+' hasil ekspor</p>'+captureHtml+warningHtml+'</article>';
     }).join('');
     const summary=batch.summary||{};
     detail.innerHTML='<p><b>Status:</b> '+esc(batch.status)+' · <b>Semester:</b> '+esc(batch.semester)+'</p><p><b>Dibuat:</b> '+esc(batch.created_at)+'</p><p><b>Baris:</b> '+esc(summary.rows||0)+' · <b>Aktivitas:</b> '+esc(summary.activities_count||activities.length)+'</p>'+(batch.committed_at?'<p><b>Disimpan:</b> '+esc(batch.committed_at)+'</p>':'')+'<h4>Rincian aktivitas</h4>'+(cards?'<div class="grade-grid">'+cards+'</div>':'<p class="grade-muted">Rincian aktivitas tidak tersedia pada batch ini.</p>');
