@@ -56,12 +56,35 @@
   <div class="maintenance-content">
     <div class="maintenance-brand"><svg viewBox="0 0 64 30" aria-hidden="true"><path d="M14 0H64L59 9H9Z"/><path d="M8 11H52L47 20H3Z"/><path d="M0 22H28L24 30H0Z"/></svg><span>FORMULA 1 ELSE3</span></div>
     <div class="maintenance-kicker"><span class="maintenance-light"></span> PIT LANE · SYSTEM UPDATE</div>
-    <div class="maintenance-car" aria-hidden="true"><div class="maintenance-speed"></div><svg viewBox="0 0 520 150"><path d="M46 94h48l35-42h145l65 13 62 29h69l24 15h-28a25 25 0 0 1-49 0H157a25 25 0 0 1-49 0H46z"/><path d="M151 52l26-31h80l35 31z" class="car-window"/><path d="M24 94h80M418 94h64M196 19h61" class="car-detail"/></svg><span class="wheel wheel-a"></span><span class="wheel wheel-b"></span></div>
+    <section class="pit-scene" aria-label="Simulasi pit stop server">
+      <div class="pit-scene-top"><span>GARAGE 01</span><span class="pit-live"><i></i> LIVE SERVICE</span><span>SERVER // ECU</span></div>
+      <div class="pit-visual">
+        <div class="pit-floor"></div>
+        <svg class="pit-car" viewBox="0 0 520 150" role="img" aria-label="Mobil balap Formula 1 di area pit">
+          <path class="pit-car-shadow" d="M45 119h430v12H45z"/>
+          <path class="pit-car-body" d="M28 94h67l37-37h128l55 10 66 27h91l27 15h-48a24 24 0 0 1-47 0H164a24 24 0 0 1-47 0H28z"/>
+          <path class="pit-car-wing" d="M20 88h92v8H20zM418 87h82v7h-82z"/>
+          <path class="pit-car-glass" d="M158 57l27-30h76l34 30z"/>
+          <path class="pit-car-line" d="M46 101h66m282 0h71M193 28h62"/>
+          <circle class="pit-wheel" cx="140" cy="111" r="19"/><circle class="pit-wheel-core" cx="140" cy="111" r="7"/>
+          <circle class="pit-wheel" cx="378" cy="111" r="19"/><circle class="pit-wheel-core" cx="378" cy="111" r="7"/>
+        </svg>
+        <div class="pit-mechanic"><span class="mechanic-helmet"></span><span class="mechanic-body"></span><span class="wheel-gun"></span><span class="gun-flash"></span></div>
+        <div class="pit-tire pit-tire-old"><i></i></div><div class="pit-tire pit-tire-new"><i></i></div>
+        <div class="pit-tool"><span></span><i></i></div>
+        <div class="pit-stop-timer"><small>PIT STOP IN PROGRESS</small><strong id="pitTimer">00.0<span>s</span></strong></div>
+      </div>
+      <div class="pit-compounds"><span class="compound soft">SOFT</span><span class="compound medium">MEDIUM</span><span class="compound hard">HARD</span><span class="pit-compound-note">TIRE SERVICE // FRONT LEFT</span></div>
+      <div class="telemetry-panel">
+        <div class="telemetry-head"><span>ECU / TELEMETRY SCAN</span><b><i></i> CONNECTED</b></div>
+        <div class="telemetry-bars" aria-label="Indikator pemindaian sistem"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="telemetry-log"><span id="telemetryLog">Checking telemetry packet...</span><b id="telemetryPercent">SYNC 08%</b></div>
+      </div>
+    </section>
     <p class="maintenance-eyebrow">WE'LL BE BACK ON TRACK</p>
     <h1 id="maintenanceTitle">Sedang <em>Upgrade</em><br>Grid Kelas</h1>
     <p class="maintenance-description">Kami sedang melakukan pembaruan sistem untuk menghadirkan pengalaman akademik yang lebih baik. Beberapa fitur sedang masuk pit untuk penyempurnaan.</p>
     <div class="maintenance-status"><span>STATUS</span><b>UPDATE IN PROGRESS</b><span class="maintenance-pulse"></span></div>
-    <div class="maintenance-progress" aria-label="Pembaruan sistem sedang berlangsung"><span></span></div>
     <p class="maintenance-footnote">Terima kasih sudah menunggu. Sampai jumpa kembali di lintasan.</p>
     <button type="button" id="maintenanceMakrab" class="maintenance-cta">Pengumpulan Dokumentasi Makrab <span aria-hidden="true">↗</span></button>
     <button type="button" id="maintenanceAdmin" class="maintenance-admin" hidden>Akses pengelola</button>
@@ -165,5 +188,5 @@
 <script src="/activity-model.js"></script>
 <script src="app.js?v=room-online-attendance-admin-ui-v1"></script>
 <script src="/grade-recap.js?v=1"></script>
-<script src="/maintenance.js?v=20261123-2"></script></body>
+<script src="/maintenance.js?v=20261123-3"></script></body>
 </html>
