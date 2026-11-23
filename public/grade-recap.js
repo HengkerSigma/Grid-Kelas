@@ -34,6 +34,8 @@ function renderAdminTools(){
  const box=document.createElement('section');box.className='grade-tools';
  box.innerHTML='<h3>Impor nilai Mentari</h3><p class="grade-muted">Unggah file JSON hasil ekspor Collector v2. Data akan divalidasi dan ditampilkan sebelum disimpan.</p><input id="gradeImportFile" type="file" accept=".json,application/json"><div class="grade-actions" id="gradeImportActions"></div><div id="gradeImportStatus" aria-live="polite"></div>';
  root.prepend(box);
+ const history=document.createElement('section');history.className='grade-tools';history.innerHTML='<h3>Riwayat impor</h3><div class="grade-history"><p class="grade-muted">Memuat riwayat…</p></div>';root.appendChild(history);
+ request('/api/mentari/grades/history').then(data=>{const target=history.querySelector('.grade-history');const batches=data.batches||[];target.innerHTML=batches.length?batches.map(x=>'<p><b>'+esc(x.status)+'</b> · '+esc(x.semester)+' · '+esc(x.created_at)+' · '+esc((x.summary||{}).rows||0)+' baris</p>').join(''):'<p class="grade-muted">Belum ada riwayat impor.</p>';}).catch(e=>{history.querySelector('.grade-history').textContent=e.message;});
  const file=box.querySelector('#gradeImportFile'),actions=box.querySelector('#gradeImportActions'),status=box.querySelector('#gradeImportStatus');
  actions.appendChild(button('Validasi & Preview',async()=>{
    if(!file.files||!file.files[0]){status.textContent='Pilih file JSON terlebih dahulu.';return;}
@@ -41,6 +43,7 @@ function renderAdminTools(){
     const payload=JSON.parse(await file.files[0].text());
     const result=await request('/api/mentari/grades/import/preview',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'gk'},body:JSON.stringify(payload)});
     pendingBatch=result.batchId;
+    actions.querySelectorAll('[data-confirm-import]').forEach(x=>x.remove());
     status.innerHTML='<p>Preview siap. '+esc(result.summary.activities)+' aktivitas · '+esc(result.summary.rows)+' baris nilai.</p>'+
       (result.warnings||[]).map(w=>'<p class="grade-warning">'+esc(w.code)+'</p>').join('')+
       '<p class="grade-muted">Batch berlaku selama 30 menit. Periksa peringatan sebelum konfirmasi.</p>';
