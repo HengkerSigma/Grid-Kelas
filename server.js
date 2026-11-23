@@ -42,6 +42,7 @@ const MAKRAB_DEADLINE_AT = Date.UTC(2026, 10, 30, 16, 59, 59, 999);
 const SESSION_MS = 30 * 24 * 3600 * 1000;
 const FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const activityModel = require('./src/features/courses/activity-model.js');
+const mentariGradeImport = require('./src/features/mentari/grade-import.js');
 const adminRolePolicy = require('./src/security/admin-role-policy.js');
 const MAIN_ADMIN_NO = adminRolePolicy.MAIN_ADMIN_NO;
 const STATIC = {
@@ -56,6 +57,7 @@ const STATIC = {
   '/file-utils.js': ['src/core/file-utils.js', 'text/javascript; charset=utf-8'],
   '/greeting-utils.js': ['src/core/greeting-utils.js', 'text/javascript; charset=utf-8'],
   '/activity-model.js': ['src/features/courses/activity-model.js', 'text/javascript; charset=utf-8'],
+  '/grade-recap.js': ['public/grade-recap.js', 'text/javascript; charset=utf-8'],
   '/og-image-v2-32.png': ['public/og-image-v2-32.png', 'image/png']
 };
 const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: " + SUPA_ORIGIN + "; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' " + SUPA_ORIGIN + "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
@@ -460,9 +462,9 @@ function readBody(req, limit) {
     req.on('error', reject);
   });
 }
-async function readJson(req, res) {
+async function readJson(req, res, limit) {
   try {
-    const buf = await readBody(req, MAX_JSON);
+    const buf = await readBody(req, Number(limit) || MAX_JSON);
     const v = JSON.parse(buf.toString('utf8') || '{}');
     if (!isObj(v)) { fail(res, 400, 'invalid_argument', 'Isi harus berupa objek JSON.'); return null; }
     return v;
@@ -1145,6 +1147,98 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/ping') return json(res, 200, { ok: true });
     if (pathname === '/api/public-config' && method === 'GET') return json(res, 200, publicConfig());
+    // Mentari Personal Grade Recap: all writes are admin-only and server-side.
+    if (pathname === '/api/mentari/grades/import/preview' && method === 'POST') {
+      const session = await getSession(req);
+      if (!session) return fail(res, 401, 'unauthenticated', 'Silakan masuk kembali.');
+      if (!session.admin) return fail(res, 403, 'forbidden', 'Hanya pengelola yang dapat mengimpor nilai.');
+      const payload = await readJson(req, res, 5 * 1024 * 1024); if (!payload) return;
+      const accountRows = must(await supabase.from('app_data').select('key,content').like('key', 'akun/%'));
+      const accountIndex = new Map();
+      for (const row of (accountRows.data || [])) {
+        const content = row.content || {};
+        const nim = String(content.nim || '').trim();
+        if (nim && !accountIndex.has(nim)) accountIndex.set(nim, { key: row.key });
+      }
+      const preview = mentariGradeImport.normalizeImport(payload, accountIndex);
+      if (!preview.ok) return json(res, 422, { ok:false, errors:preview.errors, warnings:preview.warnings, summary:preview.summary });
+      const sourceBatchId = String(payload.batch_id || '').trim();
+      const duplicateBatch = must(await supabase.from('quiz_import_batches').select('batch_id').eq('source_batch_id',sourceBatchId).maybeSingle());
+      if (duplicateBatch.data) return fail(res, 409, 'already_exists', 'Batch Collector ini sudah pernah diimpor.');
+      const batchId = crypto.randomUUID();
+      const normalized = preview.rows;
+      const stagedRows = normalized.map(row => Object.assign({}, row, { row_hash:crypto.createHash('sha256').update(JSON.stringify(row)).digest('hex') }));
+      const payloadHash = crypto.createHash('sha256').update(stagedRows.slice().sort((a,b)=>(a.external_activity_id<b.external_activity_id?-1:a.external_activity_id>b.external_activity_id?1:0)||(a.nim<b.nim?-1:a.nim>b.nim?1:0)).map(row=>row.row_hash).join('|')).digest('hex');
+      const summary = Object.assign({}, preview.summary, { semester:preview.semester, activities:preview.activities });
+      must(await supabase.from('quiz_import_batches').insert({
+        batch_id:batchId, source_batch_id:sourceBatchId, semester:preview.semester, status:'preview', payload_hash:payloadHash,
+        summary, created_by:session.no, expires_at:new Date(Date.now()+30*60*1000).toISOString()
+      }));
+      for (let offset=0; offset<stagedRows.length; offset+=500) {
+        const chunk = stagedRows.slice(offset, offset+500).map(row => ({
+          batch_id:batchId, account_key:row.account_key, nim:row.nim, course_code:row.course_code,
+          meeting_number:row.meeting_number, quiz_type:row.quiz_type,
+          external_activity_id:row.external_activity_id, title:row.title, grade:row.grade,
+          result_status:row.result_status, captured_at:row.captured_at, row_hash:row.row_hash
+        }));
+        const inserted = await supabase.from('quiz_import_staging').insert(chunk);
+        if (inserted.error) {
+          await supabase.from('quiz_import_batches').delete().eq('batch_id',batchId);
+          throw inserted.error;
+        }
+      }
+      return json(res, 200, { ok:true, batchId, expiresAt:new Date(Date.now()+30*60*1000).toISOString(),
+        warnings:preview.warnings, summary });
+    }
+
+    if (pathname === '/api/mentari/grades/import/confirm' && method === 'POST') {
+      const session = await getSession(req);
+      if (!session) return fail(res, 401, 'unauthenticated', 'Silakan masuk kembali.');
+      if (!session.admin) return fail(res, 403, 'forbidden', 'Hanya pengelola yang dapat mengonfirmasi impor.');
+      const body = await readJson(req, res); if (!body) return;
+      const batchId = String(body.batchId || '');
+      if (!/^[0-9a-f-]{36}$/i.test(batchId)) return fail(res, 400, 'invalid_argument', 'ID batch tidak valid.');
+      const result = must(await supabase.rpc('mentari_commit_grade_import', {
+        p_batch_id:batchId, p_actor_no:session.no
+      }));
+      return json(res, 200, { ok:true, result:result.data });
+    }
+
+    if (pathname === '/api/mentari/grades/mine' && method === 'GET') {
+      const session = await getSession(req);
+      if (!session) return fail(res, 401, 'unauthenticated', 'Silakan masuk kembali.');
+      const accountKey = 'akun/' + pad(session.no);
+      const result = must(await supabase.from('quiz_results')
+        .select('id,account_key,nim,grade,result_status,updated_at,activity_id')
+        .eq('account_key',accountKey));
+      const activityIds = Array.from(new Set((result.data || []).map(x=>x.activity_id)));
+      let activities = [];
+      if (activityIds.length) {
+        const a = must(await supabase.from('quiz_activities')
+          .select('id,semester,course_code,meeting_number,quiz_type,title')
+          .in('id',activityIds));
+        activities = a.data || [];
+      }
+      const byId = new Map(activities.map(x=>[x.id,x]));
+      return json(res, 200, { results:(result.data || []).map(x=>({
+        grade:x.grade, status:x.result_status, updatedAt:x.updated_at,
+        activity:byId.get(x.activity_id) || null
+      })).filter(x=>x.activity) });
+    }
+
+    if (pathname === '/api/mentari/grades/history' && method === 'GET') {
+      const session = await getSession(req);
+      if (!session) return fail(res, 401, 'unauthenticated', 'Silakan masuk kembali.');
+      if (!session.admin) return fail(res, 403, 'forbidden', 'Hanya pengelola yang dapat melihat riwayat impor.');
+      const batches = must(await supabase.from('quiz_import_batches')
+        .select('batch_id,semester,status,summary,created_by,created_at,committed_at')
+        .order('created_at',{ascending:false}).limit(50));
+      const logs = must(await supabase.from('quiz_sync_logs')
+        .select('batch_id,actor_no,action,details,created_at')
+        .order('created_at',{ascending:false}).limit(100));
+      return json(res, 200, { batches:batches.data || [], logs:logs.data || [] });
+    }
+
 
     if (pathname === '/api/events') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });

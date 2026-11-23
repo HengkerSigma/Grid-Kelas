@@ -1,0 +1,17 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {normalizeImport,courseCode,meeting} = require('../../src/features/mentari/grade-import.js');
+function sample() {
+  return {schema_version:'1.0',source:'mentari_unpam',semester:'20261',batch_id:'batch-001',
+    exported_at:'2026-11-23T01:00:00.000Z',courses:[{kode_course:'20261-01ELSE003-26FTK0011',
+      activities:[{quiz_uuid:'quiz-a',kode_section:'PERTEMUAN_1',quiz_type:'PRE_TEST',
+        data_complete:true,expected_participants:32,captured_at:'2026-11-23T01:00:00.000Z',
+        results:Array.from({length:32},(_,i)=>({nim:String(100000+i),grade:i===0?0:75,attempt_status:'graded'}))}]}]};
+}
+function index() { return new Map(Array.from({length:32},(_,i)=>[String(100000+i),{key:'akun/'+String(i+1).padStart(2,'0')} ])); }
+test('maps supported Mentari course and meeting codes',()=>{assert.equal(courseCode('20261-01ELSE003-26FTK0011'),'KAL');assert.equal(meeting('PERTEMUAN_16'),16);});
+test('accepts complete 32-person import and preserves grade zero',()=>{const r=normalizeImport(sample(),index());assert.equal(r.ok,true);assert.equal(r.rows.length,32);assert.equal(r.rows[0].grade,0);});
+test('rejects unknown NIM and invalid grade',()=>{const p=sample();p.courses[0].activities[0].results[0].nim='999999';p.courses[0].activities[0].results[1].grade=101;const r=normalizeImport(p,index());assert.equal(r.ok,false);assert.ok(r.errors.some(x=>x.code==='E_NIM_UNKNOWN'));assert.ok(r.errors.some(x=>x.code==='E_GRADE_INVALID'));});
+test('partial export is warning and never declares missing students as no_record',()=>{const p=sample();p.courses[0].activities[0].data_complete=false;p.courses[0].activities[0].results=p.courses[0].activities[0].results.slice(0,2);const r=normalizeImport(p,index());assert.equal(r.ok,true);assert.ok(r.warnings.some(x=>x.code==='W_PARTIAL_EXPORT'));assert.equal(r.rows.length,2);});
+test('rejects duplicate logical activity and duplicate NIM',()=>{const p=sample();p.courses[0].activities.push({...p.courses[0].activities[0],quiz_uuid:'quiz-b'});const r=normalizeImport(p,index());assert.ok(r.errors.some(x=>x.code==='E_BATCH_DUPLICATE'));});
