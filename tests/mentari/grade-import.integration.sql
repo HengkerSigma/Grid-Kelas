@@ -43,6 +43,59 @@ BEGIN
 END;
 $stage$;
 
+-- Course-specific meeting limits: FIS permits meeting 21; other courses stop at 16.
+DO $limits$
+DECLARE
+  v_batch UUID := gen_random_uuid();
+  v_hash TEXT := encode(digest('meeting-limit-test', 'sha256'), 'hex');
+  v_external TEXT := 'ci-fis-meeting-21-' || gen_random_uuid()::text;
+BEGIN
+  INSERT INTO public.quiz_activities(semester, course_code, meeting_number, quiz_type, title)
+  VALUES ('99999', 'FIS', 21, 'PRE_TEST', 'FIS meeting 21');
+
+  BEGIN
+    INSERT INTO public.quiz_activities(semester, course_code, meeting_number, quiz_type, title)
+    VALUES ('99999', 'KAL', 17, 'PRE_TEST', 'Invalid KAL meeting 17');
+    RAISE EXCEPTION 'non-FIS meeting 17 unexpectedly accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+
+  INSERT INTO public.quiz_import_batches(
+    batch_id, source_batch_id, semester, status, payload_hash, created_by
+  )
+  VALUES (
+    v_batch, 'ci-meeting-limit-' || v_batch::text, '99999', 'preview', v_hash, 4
+  );
+
+  INSERT INTO public.quiz_import_staging(
+    batch_id, account_key, nim, course_code, meeting_number, quiz_type,
+    external_activity_id, title, grade, result_status, row_hash
+  )
+  VALUES (
+    v_batch, 'akun/01', '12345678', 'FIS', 21, 'PRE_TEST',
+    v_external, 'FIS meeting 21', 80, 'graded', v_hash
+  );
+
+  BEGIN
+    INSERT INTO public.quiz_import_staging(
+      batch_id, account_key, nim, course_code, meeting_number, quiz_type,
+      external_activity_id, title, grade, result_status, row_hash
+    )
+    VALUES (
+      v_batch, 'akun/01', '12345678', 'KAL', 17, 'PRE_TEST',
+      'ci-invalid-kal-meeting-17-' || v_batch::text, 'Invalid KAL meeting 17',
+      80, 'graded', v_hash
+    );
+    RAISE EXCEPTION 'non-FIS staging meeting 17 unexpectedly accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+
+  DELETE FROM public.quiz_import_batches WHERE batch_id = v_batch;
+END;
+$limits$;
+
 DO $test$
 DECLARE
   v_batch UUID;

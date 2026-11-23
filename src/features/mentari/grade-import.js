@@ -13,9 +13,11 @@ function courseCode(v) {
   const m = /-(26(?:FTK|PAM|TEL)[0-9]{4})$/.exec(str(v));
   return m ? COURSE_MAP[m[1]] || null : null;
 }
-function meeting(v) {
-  const m = /^PERTEMUAN_(1[0-6]|[1-9])$/.exec(str(v));
-  return m ? Number(m[1]) : null;
+function meeting(v, mappedCourse) {
+  const m = /^PERTEMUAN_([1-9]|1[0-9]|2[01])$/.exec(str(v));
+  const n = m ? Number(m[1]) : null;
+  const max = mappedCourse === 'FIS' ? 21 : 16;
+  return n && n <= max ? n : null;
 }
 function normalizeImport(payload, accountIndex, now = Date.now()) {
   const errors = [], warnings = [], rows = [], activities = [];
@@ -34,7 +36,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
     if (!mappedCourse) { errors.push({code:'E_COURSE_UNKNOWN'}); continue; }
     for (const activity of (Array.isArray(course.activities) ? course.activities : [])) {
       if (!obj(activity)) { errors.push({code:'E_ACTIVITY_INVALID'}); continue; }
-      const uuid = str(activity.quiz_uuid), meet = meeting(activity.kode_section), type = str(activity.quiz_type).toUpperCase();
+      const uuid = str(activity.quiz_uuid), meet = meeting(activity.kode_section, mappedCourse), type = str(activity.quiz_type).toUpperCase();
       if (!uuid || uuid.length > 200 || !meet || !TYPES.has(type)) { errors.push({code:'E_ACTIVITY_INVALID'}); continue; }
       const akey = [mappedCourse,meet,type].join('|');
       if (seenActivity.has(akey)) { errors.push({code:'E_BATCH_DUPLICATE'}); continue; }
