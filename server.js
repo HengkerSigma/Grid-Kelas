@@ -28,6 +28,9 @@ const path = require('path');
 const crypto = require('crypto');
 
 const PORT = Number(process.env.PORT) || 3000;
+/* Global maintenance mode is ON by default. Set MAINTENANCE_MODE=0 in Vercel
+ * environment variables and redeploy to restore normal access. */
+const MAINTENANCE_MODE = process.env.MAINTENANCE_MODE !== '0';
 const ROOT = __dirname;
 const DATA = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'data');
 const DEFAULT_PW = process.env.DEFAULT_PASSWORD || '12345678';
@@ -59,7 +62,8 @@ const STATIC = {
   '/greeting-utils.js': ['src/core/greeting-utils.js', 'text/javascript; charset=utf-8'],
   '/activity-model.js': ['src/features/courses/activity-model.js', 'text/javascript; charset=utf-8'],
   '/grade-recap.js': ['public/grade-recap.js', 'text/javascript; charset=utf-8'],
-  '/og-image-v2-32.png': ['public/og-image-v2-32.png', 'image/png']
+  '/og-image-v2-32.png': ['public/og-image-v2-32.png', 'image/png'],
+  '/maintenance.html': ['public/maintenance.html', 'text/html; charset=utf-8']
 };
 const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: " + SUPA_ORIGIN + "; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' " + SUPA_ORIGIN + "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
@@ -1141,6 +1145,18 @@ const server = http.createServer(async (req, res) => {
   const pathname = url.pathname;
   const method = req.method;
   const mutating = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
+
+  /* During maintenance, do not expose application pages, static assets, or API responses.
+   * Only the standalone maintenance document remains reachable. */
+  if (MAINTENANCE_MODE && pathname !== '/maintenance.html') {
+    const maintenance = fs.readFileSync(path.join(ROOT, 'public/maintenance.html'));
+    res.writeHead(503, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Retry-After': '3600'
+    });
+    return res.end(method === 'HEAD' ? undefined : maintenance);
+  }
 
   try {
     if (pathname.startsWith('/api/') && mutating && req.headers['x-requested-with'] !== 'gk') {
