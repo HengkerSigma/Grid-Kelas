@@ -4,8 +4,14 @@
 // @version      2.0.0
 // @description  Tangkap snapshot nilai kuis Mentari yang dimuat browser ke IndexedDB lokal.
 // @match        https://mentari.unpam.ac.id/*
+// @match        https://www.1else3.my.id/*
 // @run-at       document-start
 // @grant        unsafeWindow
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_addValueChangeListener
+// @grant        GM_xmlhttpRequest
+// @connect      www.1else3.my.id
 // ==/UserScript==
 (function (root) {
 'use strict';
@@ -71,5 +77,46 @@ function ui(){const host=root.document.createElement('div');host.style.cssText='
  s.querySelector('.export').onclick=async()=>{try{const [a,r]=await Promise.all([read(ACT),read(RES)]);const blob=new Blob([JSON.stringify(buildExport(a,r),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=root.document.createElement('a');link.href=url;link.download='mentari-collector-'+SEMESTER+'-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1500);refresh('JSON diekspor');}catch(_){refresh('Ekspor gagal');}};
  s.querySelector('.clear').onclick=async()=>{if(root.confirm('Hapus seluruh data Collector lokal? File yang sudah diekspor tidak ikut terhapus.')){await clear();cache.clear();refresh('Data lokal dihapus');}};refresh('Siap; buka halaman mata kuliah');
 }
+const GRID_ORIGIN='https://www.1else3.my.id';
+const TICKET_KEY='gkMentariSyncTicketV1', RESULT_KEY='gkMentariSyncResultV1';
+function gridBridge(){
+  root.document.addEventListener('gk:mentari-sync-request',async()=>{
+    try{
+      const response=await page.fetch('/api/mentari/grades/sync/ticket',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'gk'}});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.ticket)throw new Error(data.message||'Tidak dapat membuat tiket sinkronisasi.');
+      GM_setValue(TICKET_KEY,{ticket:data.ticket,createdAt:Date.now()});
+    }catch(error){root.document.dispatchEvent(new CustomEvent('gk:mentari-sync-status',{detail:{ok:false,message:error.message||'Gagal membuat tiket.'}}));}
+  });
+  GM_addValueChangeListener(RESULT_KEY,(_key,_old,value)=>{
+    if(value)root.document.dispatchEvent(new CustomEvent('gk:mentari-sync-status',{detail:value}));
+  });
+}
+function mentariBridge(){
+  GM_addValueChangeListener(TICKET_KEY,async(_key,_old,value)=>{
+    if(!value||!value.ticket||Date.now()-Number(value.createdAt||0)>5*60*1000)return;
+    try{
+      const [activities,results]=await Promise.all([read(ACT),read(RES)]);
+      const payload=buildExport(activities,results);
+      GM_xmlhttpRequest({
+        method:'POST',url:GRID_ORIGIN+'/api/mentari/grades/sync/upload',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+value.ticket,'X-Requested-With':'gk'},
+        data:JSON.stringify(payload),timeout:60000,
+        onload(response){
+          let data={};try{data=JSON.parse(response.responseText||'{}');}catch(_){}
+          const result=response.status>=200&&response.status<300&&data.ok
+            ?{ok:true,batchId:data.batchId,summary:data.summary,warnings:data.warnings||[],expiresAt:data.expiresAt,message:'Preview siap: '+Number(data.summary&&data.summary.activities||0)+' aktivitas, '+Number(data.summary&&data.summary.rows||0)+' baris.'}
+            :{ok:false,message:data.message||((data.errors||[]).map(x=>x.code).join(', '))||'Server menolak snapshot ('+response.status+').'};
+          GM_setValue(RESULT_KEY,Object.assign({at:Date.now()},result));
+          GM_setValue(TICKET_KEY,null);
+        },
+        onerror(){GM_setValue(RESULT_KEY,{ok:false,at:Date.now(),message:'Koneksi ke Grid Kelas gagal.'});GM_setValue(TICKET_KEY,null);},
+        ontimeout(){GM_setValue(RESULT_KEY,{ok:false,at:Date.now(),message:'Pengiriman melewati batas waktu.'});GM_setValue(TICKET_KEY,null);}
+      });
+    }catch(error){GM_setValue(RESULT_KEY,{ok:false,at:Date.now(),message:error.message||'Gagal membaca Collector lokal.'});GM_setValue(TICKET_KEY,null);}
+  });
+}
+if(page.location.hostname==='www.1else3.my.id'){gridBridge();return;}
+mentariBridge();
 hooks();if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',ui,{once:true});else ui();
 })(typeof window!=='undefined'?window:null);
