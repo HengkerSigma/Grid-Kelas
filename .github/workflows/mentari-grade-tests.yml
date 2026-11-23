@@ -68,3 +68,9 @@ jobs:
         run: |
           psql -h localhost -U postgres -d gridkelas_test -v ON_ERROR_STOP=1 \
             -f supabase/migrations/20261123000100_mentari_personal_grade_recap.sql
+      - name: Exercise grade import RPC and history behavior
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d gridkelas_test -v ON_ERROR_STOP=1 \\
+            -f tests/mentari/grade-import.integration.sql
