@@ -14,6 +14,16 @@ Script tidak menyimpan cookie, token, authorization header, nama, email, nomor t
 
 ## Instalasi dan penggunaan
 
+Untuk versi sinkronisasi klik, pasang versi terbaru dari `tools/mentari/collector-v2.user.js` melalui Tampermonkey. Script berjalan pada dua origin yang diizinkan: Mentari dan `www.1else3.my.id`. Pastikan Tampermonkey aktif pada kedua situs. Buka Grid Kelas dan Mentari pada browser/profil yang sama, lalu login Mentari secara normal.
+
+1. Buka menu **Rekap Nilai** di Grid Kelas sebagai admin.
+2. Tekan **Sinkronkan Mentari**. Grid Kelas membuat tiket upload singkat yang hanya dapat membuat preview.
+3. Collector di tab Mentari mengirim data IndexedDB ke endpoint Grid Kelas melalui koneksi HTTPS. Tidak ada cookie atau token login Mentari yang dibaca atau dikirim.
+4. Setelah preview tampil, periksa jumlah aktivitas, baris, dan peringatan. Tekan **Konfirmasi & Simpan** hanya jika hasilnya benar.
+5. Tiket upload berlaku lima menit dan nonce tiket hanya dapat membuat satu batch preview. Konfirmasi tetap membutuhkan sesi admin Grid Kelas yang aktif.
+
+Sinkronisasi mengirim snapshot lengkap yang telah dikumpulkan sebelumnya. Kuis yang belum pernah dimuat belum otomatis dijelajahi; buka mata kuliah dan kuis melalui navigasi Mentari biasa, lalu ulangi sinkronisasi.
+
 1. Pasang Tampermonkey.
 2. Buat userscript baru dan salin seluruh isi `tools/mentari/collector-v2.user.js`.
 3. Aktifkan script lalu buka Mentari melalui login resmi.
@@ -41,7 +51,8 @@ IndexedDB tidak otomatis terenkripsi. Gunakan perangkat pribadi yang terkunci, b
 ## Batasan versi awal
 
 - Hanya sembilan mata kuliah yang telah dipetakan; PKKMB/kode lain diabaikan.
-- Tidak ada importer, sinkronisasi, penulisan database, atau perubahan aplikasi produksi.
+- Sinkronisasi klik mengirim snapshot lokal ke preview Grid Kelas; penulisan nilai ke database tetap memerlukan konfirmasi admin.
+- Collector tidak menavigasi atau membuka kuis yang belum pernah dimuat. Pengumpulan awal tetap melalui navigasi Mentari normal.
 - Hook fetch/XHR hanya memeriksa endpoint yang cocok dan tetap mengembalikan respons asli ke Mentari.
 - Pengujian browser pada akun berwenang tetap diperlukan sebelum pemakaian rutin.
 
