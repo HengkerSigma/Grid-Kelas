@@ -47,9 +47,36 @@ function renderAdminTools(){
     if(!box.isConnected)return;
     if(!result.ok){status.innerHTML='<p class="grade-error">'+esc(result.message||'Sinkronisasi gagal.')+'</p>';return;}
     pendingBatch=result.batchId;
-    status.innerHTML='<p>Preview sinkronisasi siap. '+esc(result.summary&&result.summary.activities||0)+' aktivitas · '+esc(result.summary&&result.summary.rows||0)+' baris nilai.</p>'+
-      (result.warnings||[]).map(w=>'<p class="grade-warning">'+esc(w.code)+'</p>').join('')+
-      '<p class="grade-muted">Periksa hasil preview. Batch berlaku selama 30 menit. Penyimpanan belum dilakukan.</p>';
+    const activityList = Array.isArray(result.summary && result.summary.activities) ? result.summary.activities : [];
+    const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+    const warningCounts = new Map();
+    warnings.forEach(w => {
+      const key = w && w.activity ? String(w.activity) : '';
+      const code = w && w.code ? String(w.code) : 'W_UNKNOWN';
+      const bucket = warningCounts.get(key) || {};
+      bucket[code] = (bucket[code] || 0) + 1;
+      warningCounts.set(key, bucket);
+    });
+    const warningLabel = code => ({
+      W_PARTIAL_EXPORT:'Ekspor parsial — data peserta belum lengkap',
+      W_NO_RECORD:'Ada peserta tanpa rekaman nilai',
+      W_OLD_CAPTURE:'Data ekspor berusia lebih dari 7 hari'
+    })[code] || code;
+    const activityMarkup = activityList.length ? activityList.map((a,index) => {
+      const id = String(a.external_activity_id || '');
+      const counts = warningCounts.get(id) || {};
+      const labels = Object.keys(counts).map(code => '<span class="grade-warning">'+esc(warningLabel(code))+' ('+esc(counts[code])+')</span>');
+      const type = a.quiz_type === 'PRE_TEST' ? 'Pre-test' : a.quiz_type === 'POST_TEST' ? 'Post-test' : String(a.quiz_type || 'Jenis kuis tidak diketahui');
+      return '<article class="grade-card"><h3>'+esc(a.course_code || 'Mata kuliah?')+' · Pertemuan '+esc(a.meeting_number || '?')+'</h3>'+
+        '<p>'+esc(type)+'</p><p>'+esc(a.accepted_rows || 0)+' baris diterima dari '+esc(a.total_rows || 0)+' hasil Mentari</p>'+
+        (labels.length ? '<div>'+labels.join('<br>')+'</div>' : '<p class="grade-muted">Tidak ada peringatan khusus</p>')+
+        '<details><summary>Detail ID aktivitas</summary><code>'+esc(id || 'Tidak tersedia')+'</code></details></article>';
+    }).join('') : '<p class="grade-warning">Rincian aktivitas tidak dikirim oleh server. Perlu pemeriksaan lebih lanjut.</p>';
+    const globalWarnings = warningCounts.get('') || {};
+    status.innerHTML='<p><b>Preview sinkronisasi siap.</b> '+esc(result.summary&&result.summary.activities||activityList.length)+' aktivitas · '+esc(result.summary&&result.summary.rows||0)+' baris nilai.</p>'+
+      (Object.keys(globalWarnings).length ? '<div class="grade-warning">'+Object.keys(globalWarnings).map(code=>esc(warningLabel(code))+' ('+esc(globalWarnings[code])+')').join(' · ')+'</div>' : '')+
+      '<h4>Daftar aktivitas</h4><div class="grade-grid">'+activityMarkup+'</div>'+
+      '<p class="grade-muted">Batch berlaku selama 30 menit. Periksa setiap aktivitas sebelum menyimpan. Penyimpanan belum dilakukan.</p>';
     actions.querySelectorAll('[data-confirm-import]').forEach(x=>x.remove());
     const confirmButton=button('Konfirmasi & Simpan',async()=>{
       if(!pendingBatch)return;
