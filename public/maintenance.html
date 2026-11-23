@@ -5,40 +5,28 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0B0D10">
   <meta name="robots" content="noindex,nofollow">
-  <title>System Maintenance | Formula 1 ELSE3</title>
+  <title>System Maintenance | Grid Kelas</title>
   <style>
     :root{color-scheme:dark;--bg:#0b0d10;--panel:#14171c;--line:#303740;--red:#e10600;--yellow:#ffd100;--teal:#00d2be;--white:#f4f6f8;--muted:#9aa4af}
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;color:var(--white);font-family:Arial,Helvetica,sans-serif;background:radial-gradient(ellipse at 50% 0,rgba(225,6,0,.14),transparent 42%),repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 1px,transparent 1px 4px),var(--bg)}
     main{width:min(100%,820px);text-align:center}
-    .brand{display:flex;justify-content:center;align-items:center;gap:12px;color:var(--muted);font:700 11px/1.4 Consolas,monospace;letter-spacing:.2em}
-    .mark{width:42px;height:32px;display:grid;place-items:center;border:1px solid var(--red);color:var(--red);font-weight:900;font-style:italic;font-size:18px;transform:skew(-9deg)}
-    .lights{width:max-content;max-width:100%;margin:30px auto 24px;padding:13px 20px;border:1px solid var(--line);background:rgba(20,23,28,.88)}
-    .lights-label{margin-bottom:11px;color:var(--muted);font:700 9px Consolas,monospace;letter-spacing:.18em}
-    .lamps{display:flex;justify-content:center;gap:13px}
-    .lamp{width:18px;height:18px;border-radius:50%;background:#252a31;border:2px solid #414852;animation:lights 4s infinite}
-    .lamp:nth-child(2){animation-delay:.25s}.lamp:nth-child(3){animation-delay:.5s}.lamp:nth-child(4){animation-delay:.75s}.lamp:nth-child(5){animation-delay:1s}
-    @keyframes lights{0%,12%,100%{background:#252a31;box-shadow:none}18%,75%{background:var(--red);border-color:#ff625d;box-shadow:0 0 18px rgba(225,6,0,.75)}}
+    .brand{display:flex;justify-content:center;align-items:center}
+    .brand-icon{display:block;width:74px;height:36px;object-fit:contain}
+    .flag-stage{width:min(100%,440px);margin:30px auto 26px;padding:20px 18px;border:1px solid rgba(225,6,0,.48);background:linear-gradient(135deg,rgba(225,6,0,.14),rgba(20,23,28,.94));}
+    .flag-label{margin-bottom:12px;color:#ff7772;font:700 10px Consolas,monospace;letter-spacing:.2em}
+    .digital-flag{position:relative;display:flex;align-items:center;justify-content:center;min-height:78px;overflow:hidden;background:repeating-linear-gradient(135deg,#e10600 0 18px,#b90000 18px 36px);border:1px solid #ff625d;box-shadow:0 0 28px rgba(225,6,0,.22);animation:flagPulse 1.8s ease-in-out infinite alternate}
+    .digital-flag:before,.digital-flag:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);transform:translateX(-100%);animation:flagScan 2.8s linear infinite}
+    .digital-flag:after{animation-delay:1.4s;opacity:.45}
+    .digital-flag strong{position:relative;z-index:1;color:#fff;font:900 clamp(25px,6vw,40px)/1 Arial,sans-serif;letter-spacing:.12em;text-shadow:0 2px 10px rgba(0,0,0,.35)}
+    @keyframes flagPulse{to{filter:brightness(1.22)}}
+    @keyframes flagScan{to{transform:translateX(100%)}}
     .status{display:inline-flex;align-items:center;gap:9px;padding:9px 13px;border:1px solid rgba(225,6,0,.5);background:rgba(225,6,0,.09);color:#ff7772;font:700 10px Consolas,monospace;letter-spacing:.12em}
     .dot{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 12px var(--red);animation:pulse 1s infinite}
     @keyframes pulse{50%{opacity:.25}}
     h1{margin:22px 0 12px;font-size:clamp(38px,8vw,76px);line-height:.98;font-weight:900;font-style:italic;letter-spacing:-.04em;text-transform:uppercase}
     h1 em{color:var(--red);font-style:inherit}
     .intro{max-width:610px;margin:0 auto;color:#b9c0c9;font-size:15px;line-height:1.75}
-    .garage{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:30px 0 0;text-align:left}
-    .panel{min-width:0;padding:18px;border:1px solid var(--line);background:linear-gradient(145deg,#181c22,#101318)}
-    .panel-title{margin:0 0 16px;color:var(--muted);font:700 10px Consolas,monospace;letter-spacing:.16em}
-    .wheel-stage{height:150px;display:grid;place-items:center}
-    .wheel{width:132px;height:132px;border:17px solid #252b32;border-radius:50%;outline:5px dashed #4c5661;outline-offset:-10px;box-shadow:inset 0 0 0 5px #080a0d,0 0 0 2px #050607;position:relative;animation:spin 9s linear infinite}
-    .wheel:before{content:"";position:absolute;inset:23px;border:7px solid #8d98a3;border-radius:50%;background:repeating-conic-gradient(#252b32 0 12deg,#7b858e 13deg 18deg,#252b32 19deg 45deg)}
-    .wheel:after{content:"";position:absolute;width:18px;height:18px;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;background:var(--red);border:4px solid #d6dce2}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .telemetry{height:132px;display:flex;align-items:flex-end;gap:6px;padding:10px 4px;border-bottom:1px solid #4b5560;background:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(255,255,255,.06) 32px)}
-    .bar{flex:1;height:var(--h);background:linear-gradient(to top,var(--red),#ff625d);transform-origin:bottom;animation:scan var(--speed) ease-in-out infinite alternate}
-    .bar:nth-child(3n){background:linear-gradient(to top,#007d75,var(--teal))}
-    @keyframes scan{to{transform:scaleY(.35);opacity:.55}}
-    .telemetry-meta{display:flex;justify-content:space-between;margin-top:12px;color:var(--muted);font:10px Consolas,monospace}
-    .telemetry-meta b{color:var(--teal)}
     .progress-panel{margin-top:14px;padding:17px;border:1px solid var(--line);background:var(--panel)}
     .progress-head{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font:700 10px Consolas,monospace;letter-spacing:.1em}
     .progress{height:7px;margin-top:13px;overflow:hidden;background:#292f37}
@@ -46,34 +34,20 @@
     @keyframes move{to{width:94%}}
     footer{margin-top:22px;color:#66717d;font:9px Consolas,monospace;letter-spacing:.12em}
     footer b{color:var(--teal)}
+    @media(max-width:580px){.flag-stage{margin:24px auto 22px;padding:16px 12px}.digital-flag{min-height:68px}}
     @media(max-width:580px){body{padding:20px 14px}.garage{grid-template-columns:1fr;gap:10px}.panel{padding:15px}.wheel-stage{height:125px}.wheel{width:110px;height:110px}.intro{font-size:13px}.progress-head{font-size:9px}}
     @media(prefers-reduced-motion:reduce){.lamp,.dot,.wheel,.bar,.progress span{animation-duration:8s!important}}
   </style>
 </head>
 <body>
   <main>
-    <header class="brand"><span class="mark">F1</span><span>FORMULA 1 ELSE3<br>RACE CONTROL // GARAGE SYSTEMS</span></header>
-    <section class="lights" aria-label="System status">
-      <div class="lights-label">SYSTEM STATUS // STARTING SEQUENCE</div>
-      <div class="lamps"><i class="lamp"></i><i class="lamp"></i><i class="lamp"></i><i class="lamp"></i><i class="lamp"></i></div>
+    <header class="brand" aria-label="Grid Kelas"><img class="brand-icon" alt="Logo F" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 30'%3E%3Cpath fill='%23e10600' d='M14 0H64L59 9H9Z'/%3E%3Cpath fill='%23e10600' d='M8 11H52L47 20H3Z'/%3E%3Cpath fill='%23e10600' d='M0 22H28L24 30H0Z'/%3E%3C/svg%3E"></header>
+    <section class="flag-stage" aria-label="Digital red flag status">
+      <div class="flag-label">RACE CONTROL // STATUS ALERT</div>
+      <div class="digital-flag"><strong>RED FLAG</strong></div>
     </section>
-    <div class="status"><span class="dot"></span> RED FLAG // SYSTEM MAINTENANCE</div>
     <h1>WE'RE IN THE <em>PIT LANE.</em></h1>
     <p class="intro">Grid Kelas sedang menjalani pit stop. Tim teknis melakukan pemeriksaan dan penyempurnaan sistem agar pengalaman akademik ELSE3 kembali optimal. Silakan kembali beberapa saat lagi.</p>
-    <section class="garage" aria-label="Pit stop telemetry">
-      <article class="panel">
-        <h2 class="panel-title">01 // TYRE SERVICE</h2>
-        <div class="wheel-stage"><div class="wheel" role="img" aria-label="Animasi ban mobil balap"></div></div>
-        <div class="telemetry-meta"><span>COMPOUND</span><b>MEDIUM // CHECK</b></div>
-      </article>
-      <article class="panel">
-        <h2 class="panel-title">02 // LIVE TELEMETRY</h2>
-        <div class="telemetry" aria-label="Animasi pemindaian telemetry">
-          <i class="bar" style="--h:38%;--speed:.7s"></i><i class="bar" style="--h:72%;--speed:.9s"></i><i class="bar" style="--h:52%;--speed:.6s"></i><i class="bar" style="--h:88%;--speed:1s"></i><i class="bar" style="--h:43%;--speed:.8s"></i><i class="bar" style="--h:66%;--speed:.65s"></i><i class="bar" style="--h:95%;--speed:.95s"></i><i class="bar" style="--h:57%;--speed:.72s"></i><i class="bar" style="--h:78%;--speed:.85s"></i><i class="bar" style="--h:47%;--speed:.62s"></i><i class="bar" style="--h:87%;--speed:.9s"></i><i class="bar" style="--h:61%;--speed:.75s"></i>
-        </div>
-        <div class="telemetry-meta"><span>SERVER STATUS</span><b>SCANNING</b></div>
-      </article>
-    </section>
     <section class="progress-panel">
       <div class="progress-head"><span>RACE CONTROL // SYSTEM CHECK</span><span>IN PROGRESS</span></div>
       <div class="progress"><span></span></div>
