@@ -32,8 +32,10 @@
     .progress{height:7px;margin-top:13px;overflow:hidden;background:#292f37}
     .progress span{display:block;width:38%;height:100%;background:linear-gradient(90deg,var(--red),var(--yellow),var(--teal));animation:move 2.2s ease-in-out infinite alternate}
     @keyframes move{to{width:94%}}
-    footer{margin-top:22px;color:#66717d;font:9px Consolas,monospace;letter-spacing:.12em}
-    footer b{color:var(--teal)}
+    footer{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px 22px;margin-top:22px;font:700 10px Consolas,monospace;letter-spacing:.1em}
+    footer a{color:#b9c0c9;text-decoration:none;border-bottom:1px solid rgba(225,6,0,.7);padding:8px 2px;transition:color .2s,border-color .2s}
+    footer a:hover,footer a:focus-visible{color:#fff;border-color:var(--red);outline:none}
+    footer .manager-link{color:var(--teal);border-color:rgba(0,210,190,.65)}
     @media(max-width:580px){.flag-stage{margin:24px auto 22px;padding:16px 12px}.digital-flag{min-height:68px}}
     @media(max-width:580px){body{padding:20px 14px}.garage{grid-template-columns:1fr;gap:10px}.panel{padding:15px}.wheel-stage{height:125px}.wheel{width:110px;height:110px}.intro{font-size:13px}.progress-head{font-size:9px}}
     @media(prefers-reduced-motion:reduce){.lamp,.dot,.wheel,.bar,.progress span{animation-duration:8s!important}}
@@ -47,12 +49,12 @@
       <div class="digital-flag"><strong>RED FLAG</strong></div>
     </section>
     <h1>WE'RE IN THE <em>PIT LANE.</em></h1>
-    <p class="intro">Grid Kelas sedang menjalani pit stop. Tim teknis melakukan pemeriksaan dan penyempurnaan sistem agar pengalaman akademik ELSE3 kembali optimal. Silakan kembali beberapa saat lagi.</p>
+    <p class="intro">Grid Kelas sedang menjalani pit stop. Pemeriksaan dan penyempurnaan sistem sedang dilakukan agar pengalaman akademik 1ELSE3 lebih optimal. Silakan kembali beberapa saat lagi.</p>
     <section class="progress-panel">
       <div class="progress-head"><span>RACE CONTROL // SYSTEM CHECK</span><span>IN PROGRESS</span></div>
       <div class="progress"><span></span></div>
     </section>
-    <footer>ENGINEERED FOR THE NEXT SESSION <b>///</b> THANK YOU FOR YOUR PATIENCE</footer>
+    <footer aria-label="Tautan penting"><a href="https://www.1else3.my.id/#superLicenseLanding">PENGUMPULAN ABSENSI MAKRAB</a><a class="manager-link" href="https://www.1else3.my.id/">MASUK KE WEBSITE · KHUSUS PENGELOLA</a></footer>
   </main>
 </body>
 </html>
