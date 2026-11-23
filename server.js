@@ -1163,18 +1163,19 @@ const server = http.createServer(async (req, res) => {
       if (!preview.ok) return json(res, 422, { ok:false, errors:preview.errors, warnings:preview.warnings, summary:preview.summary });
       const batchId = crypto.randomUUID();
       const normalized = preview.rows;
-      const payloadHash = crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+      const stagedRows = normalized.map(row => Object.assign({}, row, { row_hash:crypto.createHash('sha256').update(JSON.stringify(row)).digest('hex') }));
+      const payloadHash = crypto.createHash('sha256').update(stagedRows.slice().sort((a,b)=>a.external_activity_id.localeCompare(b.external_activity_id)||a.nim.localeCompare(b.nim)).map(row=>row.row_hash).join('|')).digest('hex');
       const summary = Object.assign({}, preview.summary, { semester:preview.semester, activities:preview.activities });
       must(await supabase.from('quiz_import_batches').insert({
         batch_id:batchId, semester:preview.semester, status:'preview', payload_hash:payloadHash,
         summary, created_by:session.no, expires_at:new Date(Date.now()+30*60*1000).toISOString()
       }));
-      for (let offset=0; offset<normalized.length; offset+=500) {
-        const chunk = normalized.slice(offset, offset+500).map(row => ({
+      for (let offset=0; offset<stagedRows.length; offset+=500) {
+        const chunk = stagedRows.slice(offset, offset+500).map(row => ({
           batch_id:batchId, account_key:row.account_key, nim:row.nim, course_code:row.course_code,
           meeting_number:row.meeting_number, quiz_type:row.quiz_type,
           external_activity_id:row.external_activity_id, title:row.title, grade:row.grade,
-          result_status:row.result_status, captured_at:row.captured_at
+          result_status:row.result_status, captured_at:row.captured_at, row_hash:row.row_hash
         }));
         const inserted = await supabase.from('quiz_import_staging').insert(chunk);
         if (inserted.error) {
