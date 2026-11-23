@@ -56,7 +56,7 @@ const STATIC = {
   '/export-utils.js': ['src/core/export-utils.js', 'text/javascript; charset=utf-8'],
   '/file-utils.js': ['src/core/file-utils.js', 'text/javascript; charset=utf-8'],
   '/greeting-utils.js': ['src/core/greeting-utils.js', 'text/javascript; charset=utf-8'],
-  '/activity-model.js': ['src/features/courses/activity-model.js', 'text/javascript; charset=utf-8'],
+  '/activity-model.js': ['src/features/courses/activity-model.js', 'text/javascript; charset=utf-8'],\n  '/grade-recap.js': ['public/grade-recap.js', 'text/javascript; charset=utf-8'],
   '/og-image-v2-32.png': ['public/og-image-v2-32.png', 'image/png']
 };
 const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: " + SUPA_ORIGIN + "; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' " + SUPA_ORIGIN + "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
