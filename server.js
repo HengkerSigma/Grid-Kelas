@@ -1192,7 +1192,7 @@ const server = http.createServer(async (req, res) => {
       const batchId = crypto.randomUUID();
       const stagedRows = preview.rows.map(row => Object.assign({}, row, { row_hash:crypto.createHash('sha256').update(JSON.stringify(row)).digest('hex') }));
       const payloadHash = crypto.createHash('sha256').update(stagedRows.slice().sort((a,b)=>(a.external_activity_id<b.external_activity_id?-1:a.external_activity_id>b.external_activity_id?1:0)||(a.nim<b.nim?-1:a.nim>b.nim?1:0)).map(row=>row.row_hash).join('|')).digest('hex');
-      const summary = Object.assign({}, preview.summary, { semester:preview.semester, activities:preview.activities });
+      const summary = Object.assign({}, preview.summary, { semester:preview.semester, activities:preview.activities, warnings:preview.warnings });
       must(await supabase.from('quiz_import_batches').insert({
         batch_id:batchId, source_batch_id:sourceBatchId, semester:preview.semester, status:'preview', payload_hash:payloadHash,
         summary, created_by:ticket.no, expires_at:new Date(Date.now()+30*60*1000).toISOString()
@@ -1236,7 +1236,7 @@ const server = http.createServer(async (req, res) => {
       const normalized = preview.rows;
       const stagedRows = normalized.map(row => Object.assign({}, row, { row_hash:crypto.createHash('sha256').update(JSON.stringify(row)).digest('hex') }));
       const payloadHash = crypto.createHash('sha256').update(stagedRows.slice().sort((a,b)=>(a.external_activity_id<b.external_activity_id?-1:a.external_activity_id>b.external_activity_id?1:0)||(a.nim<b.nim?-1:a.nim>b.nim?1:0)).map(row=>row.row_hash).join('|')).digest('hex');
-      const summary = Object.assign({}, preview.summary, { semester:preview.semester, activities:preview.activities });
+      const summary = Object.assign({}, preview.summary, { semester:preview.semester, activities:preview.activities, warnings:preview.warnings });
       must(await supabase.from('quiz_import_batches').insert({
         batch_id:batchId, source_batch_id:sourceBatchId, semester:preview.semester, status:'preview', payload_hash:payloadHash,
         summary, created_by:session.no, expires_at:new Date(Date.now()+30*60*1000).toISOString()
@@ -1304,6 +1304,37 @@ const server = http.createServer(async (req, res) => {
         .select('batch_id,actor_no,action,details,created_at')
         .order('created_at',{ascending:false}).limit(100));
       return json(res, 200, { batches:batches.data || [], logs:logs.data || [] });
+    }
+
+    if (pathname.startsWith('/api/mentari/grades/history/') && method === 'GET') {
+      const session = await getSession(req);
+      if (!session) return fail(res, 401, 'unauthenticated', 'Silakan masuk kembali.');
+      if (!session.admin) return fail(res, 403, 'forbidden', 'Hanya pengelola yang dapat melihat detail riwayat impor.');
+      const batchId = pathname.slice('/api/mentari/grades/history/'.length);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(batchId))
+        return fail(res, 400, 'invalid_batch_id', 'ID batch tidak valid.');
+      const batch = must(await supabase.from('quiz_import_batches')
+        .select('batch_id,semester,status,summary,created_by,created_at,committed_at,expires_at')
+        .eq('batch_id',batchId).maybeSingle());
+      if (!batch.data) return fail(res, 404, 'not_found', 'Riwayat impor tidak ditemukan.');
+      const staged = must(await supabase.from('quiz_import_staging')
+        .select('external_activity_id,result_status')
+        .eq('batch_id',batchId));
+      const counts = new Map();
+      for (const row of (staged.data || [])) {
+        const key = String(row.external_activity_id || '');
+        const value = counts.get(key) || { staged_rows:0, no_record_rows:0 };
+        value.staged_rows++;
+        if (row.result_status === 'no_record') value.no_record_rows++;
+        counts.set(key,value);
+      }
+      const activities = Array.isArray(batch.data.summary && batch.data.summary.activities)
+        ? batch.data.summary.activities.map(activity => Object.assign({},activity,counts.get(String(activity.external_activity_id || '')) || {staged_rows:0,no_record_rows:0}))
+        : [];
+      const warnings = Array.isArray(batch.data.summary && batch.data.summary.warnings)
+        ? batch.data.summary.warnings
+        : [];
+      return json(res,200,{batch:Object.assign({},batch.data,{summary:Object.assign({},batch.data.summary,{activities})}),activities,warnings});
     }
 
 
