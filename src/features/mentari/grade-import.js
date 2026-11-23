@@ -48,6 +48,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
       if (activity.data_complete === true && (results.length !== 32 || new Set(results.map(x=>str(x&&x.nim))).size !== 32))
         errors.push({code:'E_COUNT_MISMATCH'});
       const seenNim = new Set();
+      const activityStartRows = rows.length;
       for (const result of results) {
         if (!obj(result) || !NIM_RE.test(str(result.nim))) { errors.push({code:'E_NIM_UNKNOWN'}); continue; }
         const nim = str(result.nim);
@@ -62,13 +63,13 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
         }
         if (status === 'invalid_grade') { errors.push({code:'E_GRADE_INVALID'}); continue; }
         if (status === 'no_record' || status === 'not_submitted') {
-          warnings.push({code:'W_NO_RECORD'});
+          warnings.push({code:'W_NO_RECORD',activity:uuid});
           rows.push({account_key:account.key,nim,course_code:mappedCourse,meeting_number:meet,
             quiz_type:type,external_activity_id:uuid,title:str(activity.title),grade:null,result_status:'no_record',
             captured_at:activity.captured_at || null});
           continue;
         }
-        if (grade === null) { warnings.push({code:'W_NO_RECORD'}); continue; }
+        if (grade === null) { warnings.push({code:'W_NO_RECORD',activity:uuid}); continue; }
         const key = [uuid,nim].join('|');
         if (seenRows.has(key)) { errors.push({code:'E_BATCH_DUPLICATE'}); continue; }
         seenRows.add(key);
@@ -76,8 +77,8 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
           quiz_type:type,external_activity_id:uuid,title:str(activity.title),grade,result_status:'graded',
           captured_at:activity.captured_at || null});
       }
-      activities.push({external_activity_id:uuid,course_code:mappedCourse,meeting_number:meet,
-        quiz_type:type,total_rows:results.length,accepted_rows:rows.length});
+      activities.push({external_activity_id:uuid,title:str(activity.title),course_code:mappedCourse,meeting_number:meet,
+        quiz_type:type,total_rows:results.length,accepted_rows:rows.length-activityStartRows});
     }
   }
   if (payload.exported_at && Number.isFinite(Date.parse(payload.exported_at)) &&
