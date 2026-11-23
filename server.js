@@ -1146,9 +1146,14 @@ const server = http.createServer(async (req, res) => {
   const method = req.method;
   const mutating = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
 
-  /* During maintenance, do not expose application pages, static assets, or API responses.
-   * Only the standalone maintenance document remains reachable. */
-  if (MAINTENANCE_MODE && pathname !== '/maintenance.html') {
+  /* Maintenance keeps only the Makrab submission flow available. All other app routes stay blocked. */
+  const maintenanceApiAllowed =
+    (pathname === '/api/maintenance/makrab/login' && method === 'POST') ||
+    (pathname === '/api/me' && method === 'GET') ||
+    (pathname === '/api/upload' && method === 'POST') ||
+    (pathname.startsWith('/api/upload/') && method === 'DELETE') ||
+    (pathname === '/api/c/berkas' && (method === 'GET' || method === 'POST'));
+  if (MAINTENANCE_MODE && pathname !== '/maintenance.html' && !maintenanceApiAllowed) {
     const maintenance = fs.readFileSync(path.join(ROOT, 'public/maintenance.html'));
     res.writeHead(503, {
       'Content-Type': 'text/html; charset=utf-8',
@@ -1361,6 +1366,31 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/me' && method === 'GET') {
       const s = await getSession(req);
       return json(res, 200, s ? { no: s.no, admin: s.admin, mainAdmin: s.mainAdmin } : { no: null, admin: false, mainAdmin: false });
+    }
+
+    if (pathname === '/api/maintenance/makrab/login' && method === 'POST') {
+      const body = await readJson(req, res); if (!body) return;
+      const nim = String(body.nim || '').trim();
+      const password = body.password;
+      if (!nim || nim.length > 40 || typeof password !== 'string' || password.length > 200) {
+        return fail(res, 400, 'invalid_argument', 'NIM dan password wajib diisi.');
+      }
+      const accountRows = await listCol('akun');
+      const match = accountRows.find(row => row.data && String(row.data.nim || '').trim().toLowerCase() === nim.toLowerCase());
+      const no = match ? Number(String(match.key).split('/').pop()) : 0;
+      if (!Number.isInteger(no) || no < 1 || no > N) {
+        await rlFail('ip:' + ipKey(req), ...LIMITS.ip);
+        return fail(res, 401, 'bad_credentials', 'NIM atau password salah.');
+      }
+      const lk = loginKeys(req, no);
+      const wait = await rlWait([lk.pair, lk.acc, lk.ip]);
+      if (wait) { res.setHeader('Retry-After', String(wait)); return fail(res, 429, 'rate_limited', 'Terlalu banyak percobaan. Coba lagi dalam ' + Math.ceil(wait / 60) + ' menit.'); }
+      const acc = await getDoc('akun/' + pad(no));
+      const ok = !!(acc && acc.nim && String(acc.nim).trim().toLowerCase() === nim.toLowerCase() && await checkPw(acc, password));
+      if (!ok) { await recordFail(req, no); return fail(res, 401, 'bad_credentials', 'NIM atau password salah.'); }
+      await deleteDoc(RL(lk.pair));
+      setCookie(req, res, signToken(no, acc), Math.floor(SESSION_MS / 1000));
+      return json(res, 200, { no: no, admin: await isAdminNo(no), mainAdmin: adminRolePolicy.isMainAdmin(no) });
     }
 
     if (pathname === '/api/login' && method === 'POST') {
