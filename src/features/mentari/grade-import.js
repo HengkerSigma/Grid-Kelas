@@ -21,6 +21,7 @@ function meeting(v, mappedCourse) {
 }
 function normalizeImport(payload, accountIndex, now = Date.now()) {
   const errors = [], warnings = [], rows = [], activities = [];
+  let gradedRows = 0, noRecordRows = 0, unresolvedRows = 0;
   if (!obj(payload)) return {ok:false,errors:[{code:'E_FILE_INVALID'}],warnings,rows,activities};
   if (payload.schema_version !== '1.0' || payload.source !== 'mentari_unpam')
     errors.push({code:'E_SCHEMA_UNSUPPORTED'});
@@ -49,6 +50,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
         errors.push({code:'E_COUNT_MISMATCH'});
       const seenNim = new Set();
       const activityStartRows = rows.length;
+      let activityGradedRows = 0, activityNoRecordRows = 0, activityUnresolvedRows = 0;
       for (const result of results) {
         if (!obj(result) || !NIM_RE.test(str(result.nim))) { errors.push({code:'E_NIM_UNKNOWN'}); continue; }
         const nim = str(result.nim);
@@ -64,27 +66,31 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
         if (status === 'invalid_grade') { errors.push({code:'E_GRADE_INVALID'}); continue; }
         if (status === 'no_record' || status === 'not_submitted') {
           warnings.push({code:'W_NO_RECORD',activity:uuid});
+          noRecordRows++; activityNoRecordRows++;
           rows.push({account_key:account.key,nim,course_code:mappedCourse,meeting_number:meet,
             quiz_type:type,external_activity_id:uuid,title:str(activity.title),grade:null,result_status:'no_record',
             captured_at:activity.captured_at || null});
           continue;
         }
-        if (grade === null) { warnings.push({code:'W_NO_RECORD',activity:uuid}); continue; }
+        if (grade === null) { warnings.push({code:'W_GRADE_MISSING',activity:uuid}); unresolvedRows++; activityUnresolvedRows++; continue; }
         const key = [uuid,nim].join('|');
         if (seenRows.has(key)) { errors.push({code:'E_BATCH_DUPLICATE'}); continue; }
         seenRows.add(key);
         rows.push({account_key:account.key,nim,course_code:mappedCourse,meeting_number:meet,
           quiz_type:type,external_activity_id:uuid,title:str(activity.title),grade,result_status:'graded',
           captured_at:activity.captured_at || null});
+        gradedRows++; activityGradedRows++;
       }
       activities.push({external_activity_id:uuid,title:str(activity.title),course_code:mappedCourse,meeting_number:meet,
         quiz_type:type,total_rows:results.length,accepted_rows:rows.length-activityStartRows,
+        graded_rows:activityGradedRows,no_record_rows:activityNoRecordRows,unresolved_rows:activityUnresolvedRows,
         data_complete:activity.data_complete===true,captured_at:activity.captured_at||null});
     }
   }
   if (payload.exported_at && Number.isFinite(Date.parse(payload.exported_at)) &&
       now - Date.parse(payload.exported_at) > 7*86400000) warnings.push({code:'W_OLD_CAPTURE'});
   return {ok:errors.length===0, batchId, semester:payload.semester, errors, warnings, rows, activities,
-    summary:{activities:activities.length,rows:rows.length,errors:errors.length,warnings:warnings.length}};
+    summary:{activities:activities.length,rows:rows.length,graded_rows:gradedRows,no_record_rows:noRecordRows,
+      unresolved_rows:unresolvedRows,errors:errors.length,warnings:warnings.length}};
 }
 module.exports = Object.freeze({COURSE_MAP,courseCode,meeting,normalizeImport});
