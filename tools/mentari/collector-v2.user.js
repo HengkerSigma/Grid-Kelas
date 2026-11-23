@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.0.0
-// @description  Tangkap snapshot nilai kuis Mentari yang dimuat browser ke IndexedDB lokal.
+// @version      2.1.0
+// @description  Tangkap snapshot kuis Mentari dan sinkronkan ke preview Grid Kelas atas perintah admin.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
 // @run-at       document-start
