@@ -1161,13 +1161,16 @@ const server = http.createServer(async (req, res) => {
       }
       const preview = mentariGradeImport.normalizeImport(payload, accountIndex);
       if (!preview.ok) return json(res, 422, { ok:false, errors:preview.errors, warnings:preview.warnings, summary:preview.summary });
+      const sourceBatchId = String(payload.batch_id || '').trim();
+      const duplicateBatch = must(await supabase.from('quiz_import_batches').select('batch_id').eq('source_batch_id',sourceBatchId).maybeSingle());
+      if (duplicateBatch.data) return fail(res, 409, 'already_exists', 'Batch Collector ini sudah pernah diimpor.');
       const batchId = crypto.randomUUID();
       const normalized = preview.rows;
       const stagedRows = normalized.map(row => Object.assign({}, row, { row_hash:crypto.createHash('sha256').update(JSON.stringify(row)).digest('hex') }));
-      const payloadHash = crypto.createHash('sha256').update(stagedRows.slice().sort((a,b)=>a.external_activity_id.localeCompare(b.external_activity_id)||a.nim.localeCompare(b.nim)).map(row=>row.row_hash).join('|')).digest('hex');
+      const payloadHash = crypto.createHash('sha256').update(stagedRows.slice().sort((a,b)=>(a.external_activity_id<b.external_activity_id?-1:a.external_activity_id>b.external_activity_id?1:0)||(a.nim<b.nim?-1:a.nim>b.nim?1:0)).map(row=>row.row_hash).join('|')).digest('hex');
       const summary = Object.assign({}, preview.summary, { semester:preview.semester, activities:preview.activities });
       must(await supabase.from('quiz_import_batches').insert({
-        batch_id:batchId, semester:preview.semester, status:'preview', payload_hash:payloadHash,
+        batch_id:batchId, source_batch_id:sourceBatchId, semester:preview.semester, status:'preview', payload_hash:payloadHash,
         summary, created_by:session.no, expires_at:new Date(Date.now()+30*60*1000).toISOString()
       }));
       for (let offset=0; offset<stagedRows.length; offset+=500) {
