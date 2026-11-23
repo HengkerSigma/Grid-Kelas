@@ -37,7 +37,32 @@ function renderAdminTools(){
  const history=document.createElement('section');history.className='grade-tools';history.innerHTML='<h3>Riwayat impor</h3><div class="grade-history"><p class="grade-muted">Memuat riwayat…</p></div>';root.appendChild(history);
  request('/api/mentari/grades/history').then(data=>{const target=history.querySelector('.grade-history');const batches=data.batches||[];target.innerHTML=batches.length?batches.map(x=>'<p><b>'+esc(x.status)+'</b> · '+esc(x.semester)+' · '+esc(x.created_at)+' · '+esc((x.summary||{}).rows||0)+' baris</p>').join(''):'<p class="grade-muted">Belum ada riwayat impor.</p>';}).catch(e=>{history.querySelector('.grade-history').textContent=e.message;});
  const file=box.querySelector('#gradeImportFile'),actions=box.querySelector('#gradeImportActions'),status=box.querySelector('#gradeImportStatus');
- actions.appendChild(button('Validasi & Preview',async()=>{
+ actions.appendChild(button('Sinkronkan Mentari',()=>{
+    pendingBatch=null;
+    status.innerHTML='<p>Meminta tiket sinkronisasi. Pastikan Tampermonkey aktif di Grid Kelas dan tab Mentari sudah login.</p><p class="grade-muted">Collector mengirim snapshot lengkap yang sudah tersimpan lokal; kuis yang belum dimuat harus dibuka melalui navigasi Mentari.</p>';
+    document.dispatchEvent(new CustomEvent('gk:mentari-sync-request'));
+  }));
+  document.addEventListener('gk:mentari-sync-status',event=>{
+    const result=event.detail||{};
+    if(!box.isConnected)return;
+    if(!result.ok){status.innerHTML='<p class="grade-error">'+esc(result.message||'Sinkronisasi gagal.')+'</p>';return;}
+    pendingBatch=result.batchId;
+    status.innerHTML='<p>Preview sinkronisasi siap. '+esc(result.summary&&result.summary.activities||0)+' aktivitas · '+esc(result.summary&&result.summary.rows||0)+' baris nilai.</p>'+
+      (result.warnings||[]).map(w=>'<p class="grade-warning">'+esc(w.code)+'</p>').join('')+
+      '<p class="grade-muted">Periksa hasil preview. Batch berlaku selama 30 menit. Penyimpanan belum dilakukan.</p>';
+    actions.querySelectorAll('[data-confirm-import]').forEach(x=>x.remove());
+    const confirmButton=button('Konfirmasi & Simpan',async()=>{
+      if(!pendingBatch)return;
+      confirmButton.disabled=true;
+      try{
+        const saved=await request('/api/mentari/grades/import/confirm',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'gk'},body:JSON.stringify({batchId:pendingBatch})});
+        status.textContent='Sinkronisasi berhasil disimpan: '+JSON.stringify(saved.result);
+        pendingBatch=null;await load();
+      }catch(error){confirmButton.disabled=false;status.textContent=error.message;}
+    });
+    confirmButton.dataset.confirmImport='1';actions.appendChild(confirmButton);
+  });
+  actions.appendChild(button('Validasi & Preview',async()=>{
    if(!file.files||!file.files[0]){status.textContent='Pilih file JSON terlebih dahulu.';return;}
    try{
     const payload=JSON.parse(await file.files[0].text());
