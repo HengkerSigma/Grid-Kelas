@@ -29,7 +29,7 @@ Jika halaman kuis terbuka sebelum metadata aktivitas tertangkap, kembali ke hala
 - Database IndexedDB: `grid-kelas-mentari-collector`.
 - Data bertahan setelah refresh/browser ditutup, selama data situs tidak dibersihkan.
 - Kunci deduplikasi hasil: `quiz_uuid + NIM`.
-- Setiap snapshot baru menggantikan seluruh hasil sebelumnya untuk UUID kuis yang sama dalam satu transaksi IndexedDB; NIM yang tidak muncul lagi pada snapshot terbaru dihapus, sementara hasil kuis lain tetap dipertahankan.
+- Hanya snapshot lengkap (32 baris dan 32 NIM unik valid) yang menggantikan seluruh hasil sebelumnya untuk UUID kuis yang sama dalam satu transaksi IndexedDB. Snapshot tidak lengkap tidak disimpan dan tidak menghapus atau mengubah hasil sebelumnya; hasil kuis lain tetap dipertahankan.
 - Snapshot hanya ditandai lengkap bila tepat 32 baris dan 32 NIM unik valid terdeteksi. Ini pemeriksaan struktural, bukan jaminan roster sumber tidak terpotong.
 - Nilai 0 valid. Nilai numerik 0–100 termasuk desimal diterima; nilai di luar rentang diberi status `invalid_grade` dan diekspor sebagai null.
 - `no_record` hanya berarti respons saat itu tidak berisi objek percobaan, bukan bukti bahwa mahasiswa tidak pernah mengerjakan kuis.
