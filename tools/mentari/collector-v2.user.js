@@ -43,6 +43,25 @@ function normalizeCapture(payload,meta){
  }
  return {quiz_uuid:a.quiz_uuid,kode_course:a.kode_course,course_code:a.course_code,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:str(p.judul)||a.title,total_participants:results.length,expected_participants:CLASS_SIZE,data_complete:p.data.length===CLASS_SIZE&&results.length===CLASS_SIZE&&!duplicate,duplicate_nim_detected:duplicate,captured_at:new Date().toISOString(),results};
 }
+function resolveActivity(id,payload,activities){
+ const list=Array.isArray(activities)?activities:[];
+ const exact=list.find(item=>item&&item.quiz_uuid===id);if(exact)return {activity:exact,matchedBy:'uuid'};
+ const p=obj(payload),code=str(p&&p.kode_course),section=str(p&&p.kode_section),title=str(p&&p.judul);
+ if(!code||!section||!title)return {activity:null,matchedBy:null};
+ const normalized=title.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ const inferredType=/\bpre\s*test\b/.test(normalized)?'PRE_TEST':/\bpost\s*test\b/.test(normalized)?'POST_TEST':null;
+ if(!inferredType)return {activity:null,matchedBy:null};
+ const candidates=list.filter(item=>item&&str(item.kode_course)===code&&str(item.kode_section)===section&&item.quiz_type===inferredType);
+ return candidates.length===1?{activity:candidates[0],matchedBy:'course-section-type'}:{activity:null,matchedBy:null};
+}
+function captureMismatch(payload,meta){
+ const p=obj(payload),a=obj(meta);if(!p)return 'respons bukan objek JSON';
+ if(!Array.isArray(p.data))return 'field data bukan array';
+ if(!a)return 'metadata aktivitas tidak ditemukan';
+ if(str(p.kode_course)!==a.kode_course)return 'kode_course respons berbeda dari metadata';
+ if(meeting(p.kode_section)!==a.meeting_number)return 'kode_section respons berbeda dari metadata';
+ return 'respons tidak dapat dinormalisasi';
+}
 function mergeActivityMetadata(previous,activity){const p=obj(previous)||{};return {...activity,total_participants:p.total_participants??0,expected_participants:CLASS_SIZE,data_complete:p.data_complete===true,captured_at:p.captured_at||null};}
 function buildExport(activities,results){
  const map=new Map((activities||[]).map(a=>[a.quiz_uuid,{...a,results:[]}]));
@@ -53,7 +72,7 @@ function buildExport(activities,results){
  });
  return {schema_version:'1.0',source:'mentari_unpam',semester:SEMESTER,batch_id:root?.crypto?.randomUUID?.()||'batch-'+Date.now(),exported_at:new Date().toISOString(),courses:[...groups.values()].sort((a,b)=>a.course_code.localeCompare(b.course_code))};
 }
-const api={courseCode,meeting,extractActivities,normalizeCapture,buildExport,snapshotResultChanges,mergeActivityMetadata};
+const api={courseCode,meeting,extractActivities,normalizeCapture,resolveActivity,captureMismatch,buildExport,snapshotResultChanges,mergeActivityMetadata};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 if(!root||!root.document)return;
 const page=typeof unsafeWindow!=='undefined'?unsafeWindow:root;if(page[PATCH])return;page[PATCH]=true;
@@ -65,7 +84,7 @@ function read(name){return db().then(d=>new Promise((ok,no)=>{const q=d.transact
 function clear(){return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES],'readwrite');t.objectStore(ACT).clear();t.objectStore(RES).clear();t.oncomplete=ok;t.onerror=()=>no(t.error);}));}
 function kind(url){try{const u=new URL(url,page.location.href);if(u.origin!==page.location.origin)return null;if(/^\/api\/user-course\/[^/]+\/?$/.test(u.pathname))return 'course';if(/^\/api\/quiz\/peserta\/[^/]+\/?$/.test(u.pathname))return 'quiz';}catch(_){}return null;}
 async function handle(url,payload){try{const k=kind(url);if(k==='course'){const courseHint=decodeURIComponent(url.split('/').filter(Boolean).pop());for(const a of extractActivities(payload,courseHint)){cache.set(a.quiz_uuid,a);const d=await db();await new Promise((ok,no)=>{const t=d.transaction(ACT,'readwrite'),store=t.objectStore(ACT),request=store.get(a.quiz_uuid);request.onsuccess=()=>store.put(mergeActivityMetadata(request.result,a));request.onerror=()=>{try{t.abort();}catch(_){}};t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});}await refresh('Metadata kuis terdeteksi');}
- else if(k==='quiz'){const id=decodeURIComponent(url.split('/').filter(Boolean).pop());let a=cache.get(id);if(!a){const stored=await read(ACT);a=stored.find(item=>item.quiz_uuid===id)||null;if(a)cache.set(id,a);}if(!a){await refresh('Metadata kuis belum tersedia; buka mata kuliah terlebih dahulu');return;}const c=normalizeCapture(payload,a);if(c){if(!c.data_complete){await refresh('Snapshot tidak lengkap; data sebelumnya dipertahankan');return;}await writeCapture(c);await refresh('Snapshot lengkap tersimpan lokal');}}
+ else if(k==='quiz'){const id=decodeURIComponent(url.split('/').filter(Boolean).pop());let a=cache.get(id);const stored=await read(ACT);if(!a)a=stored.find(item=>item.quiz_uuid===id)||null;let matchedBy='uuid';if(!a){const resolved=resolveActivity(id,payload,stored);a=resolved.activity;matchedBy=resolved.matchedBy||'none';}if(!a){await refresh('Respons kuis diterima, tetapi metadata tidak cocok');return;}const c=normalizeCapture(payload,a);if(!c){await refresh('Respons kuis tidak cocok: '+captureMismatch(payload,a));return;}if(!c.data_complete){await refresh('Snapshot tidak lengkap ('+c.total_participants+'/'+CLASS_SIZE+'); data sebelumnya dipertahankan');return;}await writeCapture(c);if(matchedBy==='course-section-type')cache.set(id,a);await refresh('Snapshot lengkap tersimpan lokal ('+matchedBy+')');}
  }catch(_){await refresh('Gagal memproses; respons mentah tidak disimpan');}}
 async function refresh(message){if(!status)return;try{const [a,r]=await Promise.all([read(ACT),read(RES)]);const complete=a.filter(x=>x&&x.data_complete===true&&x.captured_at).length;status.textContent=message+' | Aktivitas '+a.length+' | Snapshot lengkap '+complete+'/'+a.length+' | Rekaman '+r.length;}catch(_){status.textContent=message+' | IndexedDB tidak tersedia';}}
 function hooks(){
