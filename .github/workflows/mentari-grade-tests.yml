@@ -30,6 +30,7 @@ jobs:
       - run: node --check public/app.js
       - run: node --check public/grade-recap.js
       - run: node --check src/features/mentari/grade-import.js
+      - run: node --check tools/mentari/collector-v2.user.js
       - run: node --test tests/mentari/*.test.js tests/security/*.test.js
 
   migration:
