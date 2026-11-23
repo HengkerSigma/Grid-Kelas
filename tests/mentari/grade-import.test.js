@@ -39,6 +39,9 @@ test('attaches no-record warnings to activity and counts accepted rows per activ
   assert.equal(r.activities[0].accepted_rows,32);
   assert.equal(r.activities[1].accepted_rows,3);
   assert.ok(r.warnings.some(x=>x.code==='W_NO_RECORD'&&x.activity==='quiz-a'));
+  assert.equal(r.summary.no_record_rows,1);
+  assert.equal(r.summary.graded_rows,31);
+  assert.equal(r.activities[0].no_record_rows,1);
 });
 
 
@@ -51,4 +54,16 @@ test('exposes capture metadata so history can distinguish complete snapshots fro
   assert.equal(r.activities[0].data_complete,false);
   assert.equal(r.activities[0].captured_at,null);
   assert.equal(r.activities[0].total_rows,0);
+});
+
+test('reports graded, no-record, and unresolved grade counts separately',()=>{
+  const p=sample();
+  p.courses[0].activities[0].results[0].attempt_status='no_record';
+  p.courses[0].activities[0].results[1].attempt_status='graded';
+  p.courses[0].activities[0].results[1].grade=null;
+  const r=normalizeImport(p,index());
+  assert.equal(r.summary.graded_rows,30);
+  assert.equal(r.summary.no_record_rows,1);
+  assert.equal(r.summary.unresolved_rows,1);
+  assert.ok(r.warnings.some(x=>x.code==='W_GRADE_MISSING'));
 });
