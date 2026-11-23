@@ -78,7 +78,8 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
           captured_at:activity.captured_at || null});
       }
       activities.push({external_activity_id:uuid,title:str(activity.title),course_code:mappedCourse,meeting_number:meet,
-        quiz_type:type,total_rows:results.length,accepted_rows:rows.length-activityStartRows});
+        quiz_type:type,total_rows:results.length,accepted_rows:rows.length-activityStartRows,
+        data_complete:activity.data_complete===true,captured_at:activity.captured_at||null});
     }
   }
   if (payload.exported_at && Number.isFinite(Date.parse(payload.exported_at)) &&
