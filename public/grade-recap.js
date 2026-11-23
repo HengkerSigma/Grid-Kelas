@@ -62,13 +62,13 @@ function renderAdminTools(){
       W_NO_RECORD:'Ada peserta tanpa rekaman nilai',
       W_OLD_CAPTURE:'Data ekspor berusia lebih dari 7 hari'
     })[code] || code;
-    const activityMarkup = activityList.length ? activityList.map((a,index) => {
+    const activityMarkup = activityList.length ? activityList.map(a => {
       const id = String(a.external_activity_id || '');
       const counts = warningCounts.get(id) || {};
       const labels = Object.keys(counts).map(code => '<span class="grade-warning">'+esc(warningLabel(code))+' ('+esc(counts[code])+')</span>');
       const type = a.quiz_type === 'PRE_TEST' ? 'Pre-test' : a.quiz_type === 'POST_TEST' ? 'Post-test' : String(a.quiz_type || 'Jenis kuis tidak diketahui');
       return '<article class="grade-card"><h3>'+esc(a.course_code || 'Mata kuliah?')+' · Pertemuan '+esc(a.meeting_number || '?')+'</h3>'+
-        '<p>'+esc(type)+'</p><p>'+esc(a.accepted_rows || 0)+' baris diterima dari '+esc(a.total_rows || 0)+' hasil Mentari</p>'+
+        '<p><b>'+esc(a.title || type)+'</b></p><p>'+esc(type)+'</p><p>'+esc(a.accepted_rows || 0)+' baris diterima dari '+esc(a.total_rows || 0)+' hasil Mentari</p>'+
         (labels.length ? '<div>'+labels.join('<br>')+'</div>' : '<p class="grade-muted">Tidak ada peringatan khusus</p>')+
         '<details><summary>Detail ID aktivitas</summary><code>'+esc(id || 'Tidak tersedia')+'</code></details></article>';
     }).join('') : '<p class="grade-warning">Rincian aktivitas tidak dikirim oleh server. Perlu pemeriksaan lebih lanjut.</p>';
