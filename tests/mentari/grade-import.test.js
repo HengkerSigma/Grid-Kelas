@@ -28,3 +28,15 @@ test('accepts complete 32-person import and preserves grade zero',()=>{const r=n
 test('rejects unknown NIM and invalid grade',()=>{const p=sample();p.courses[0].activities[0].results[0].nim='999999';p.courses[0].activities[0].results[1].grade=101;const r=normalizeImport(p,index());assert.equal(r.ok,false);assert.ok(r.errors.some(x=>x.code==='E_NIM_UNKNOWN'));assert.ok(r.errors.some(x=>x.code==='E_GRADE_INVALID'));});
 test('partial export is warning and never declares missing students as no_record',()=>{const p=sample();p.courses[0].activities[0].data_complete=false;p.courses[0].activities[0].results=p.courses[0].activities[0].results.slice(0,2);const r=normalizeImport(p,index());assert.equal(r.ok,true);assert.ok(r.warnings.some(x=>x.code==='W_PARTIAL_EXPORT'));assert.equal(r.rows.length,2);});
 test('rejects duplicate logical activity and duplicate NIM',()=>{const p=sample();p.courses[0].activities.push({...p.courses[0].activities[0],quiz_uuid:'quiz-b'});const r=normalizeImport(p,index());assert.ok(r.errors.some(x=>x.code==='E_BATCH_DUPLICATE'));});
+
+test('attaches no-record warnings to activity and counts accepted rows per activity',()=>{
+  const p=sample();
+  p.courses[0].activities[0].results[0].attempt_status='no_record';
+  p.courses[0].activities.push({...p.courses[0].activities[0],quiz_uuid:'quiz-b',kode_section:'PERTEMUAN_2',
+    results:p.courses[0].activities[0].results.slice(0,3)});
+  const r=normalizeImport(p,index());
+  assert.equal(r.ok,true);
+  assert.equal(r.activities[0].accepted_rows,32);
+  assert.equal(r.activities[1].accepted_rows,3);
+  assert.ok(r.warnings.some(x=>x.code==='W_NO_RECORD'&&x.activity==='quiz-a'));
+});
