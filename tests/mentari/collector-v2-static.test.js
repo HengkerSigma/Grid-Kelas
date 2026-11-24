@@ -23,7 +23,7 @@ test('captures activities with quiz null as metadata without treating them as im
   assert.equal(a[0].activity_id,'activity-p19');
   assert.equal(a[0].quiz_available,false);
   assert.equal(a[0].availability_status,'not_open');
-  assert.equal(a[1].quiz_uuid,'quiz-p18');
+  assert.equal(a[1].quiz_uuid,'quiz-p18-uuid');
   assert.equal(a[1].quiz_available,true);
 });
 test('exports not-open activities separately from grade-importable quizzes',()=>{
@@ -34,4 +34,35 @@ test('exports not-open activities separately from grade-importable quizzes',()=>
   assert.equal(x.courses[0].activities.length,1);
   assert.equal(x.courses[0].activity_metadata.length,1);
   assert.equal(x.courses[0].activity_metadata[0].availability_status,'not_open');
+});
+
+test('uses quiz UUID rather than activity ID when both identifiers exist',()=>{
+  const a=c.extractActivities({kode_course:'20261-01ELSE003-26FTK0021',data:[
+    {id:'activity-p18',kode_section:'PERTEMUAN_18',kode_template:'PRE_TEST',judul:'Pretest',quiz:{id:'quiz-p18-uuid'}}
+  ]});
+  assert.equal(a[0].quiz_uuid,'quiz-p18-uuid');
+  assert.equal(a[0].activity_id,'activity-p18');
+});
+test('treats omitted quiz field as unknown and preserves a previous complete snapshot',()=>{
+  const a=c.extractActivities({kode_course:'20261-01ELSE003-26FTK0021',data:[
+    {id:'activity-p18',kode_section:'PERTEMUAN_18',kode_template:'PRE_TEST',judul:'Pretest'}
+  ]})[0];
+  assert.equal(a.quiz_available,null);
+  assert.equal(a.availability_status,'unknown');
+  const previous={quiz_uuid:'quiz-p18-uuid',quiz_available:true,availability_status:'available',data_complete:true,total_participants:32,captured_at:'2026-11-23T01:00:00.000Z'};
+  const merged=c.mergeActivityMetadata(previous,a);
+  assert.equal(merged.quiz_uuid,'quiz-p18-uuid');
+  assert.equal(merged.quiz_available,true);
+  assert.equal(merged.data_complete,true);
+  assert.equal(merged.captured_at,previous.captured_at);
+});
+test('exports unknown metadata separately only when no complete snapshot exists',()=>{
+  const incomplete=c.buildExport([{quiz_uuid:'q1',quiz_available:null,availability_status:'unknown',kode_course:'c',course_code:'FIS',kode_section:'PERTEMUAN_18',meeting_number:18,quiz_type:'PRE_TEST',title:'Pretest',data_complete:false}],[]);
+  assert.equal(incomplete.courses[0].activities.length,0);
+  assert.equal(incomplete.courses[0].activity_metadata[0].availability_status,'unknown');
+  const complete=c.buildExport([{quiz_uuid:'q1',quiz_available:true,availability_status:'available',kode_course:'c',course_code:'FIS',kode_section:'PERTEMUAN_18',meeting_number:18,quiz_type:'PRE_TEST',title:'Pretest',data_complete:true}],[
+    {quiz_uuid:'q1',nim:'1234567890',grade:90,attempt_status:'graded'}
+  ]);
+  assert.equal(complete.courses[0].activities.length,1);
+  assert.equal(complete.courses[0].activities[0].results.length,1);
 });
