@@ -52,13 +52,15 @@ function renderAdminTools(){
       const id=String(a.external_activity_id||''),counts=warningCounts.get(id)||{};
       if(Number(a.no_record_rows)>0)counts.W_NO_RECORD=counts.W_NO_RECORD||Number(a.no_record_rows);
       const warningHtml=Object.keys(counts).length?'<div class="grade-warning">'+Object.keys(counts).map(code=>esc(labels[code]||code)+' ('+esc(counts[code])+')').join(' · ')+'</div>':'<p class="grade-muted">Peringatan historis tidak tersedia pada batch ini.</p>';
-      const captureHtml=Object.prototype.hasOwnProperty.call(a,'data_complete')
+      const notOpen=a.quiz_available===false&&a.availability_status==='not_open';
+      const availabilityHtml=notOpen?'<p class="grade-warning"><b>Status aktivitas:</b> Belum dibuka di Mentari</p>':'';
+      const captureHtml=notOpen?'':Object.prototype.hasOwnProperty.call(a,'data_complete')
         ? (a.data_complete===true?'<p class="grade-muted">Snapshot lengkap tersimpan · '+esc(a.captured_at||'waktu tidak tersedia')+'</p>':'<p class="grade-warning">Belum ada snapshot lengkap tersimpan dari Collector.</p>')
         : '<p class="grade-muted">Status pengambilan tidak tercatat pada batch lama.</p>';
-      const statusCounts = ['graded_rows','no_record_rows','attempted_ungraded_rows','unresolved_rows'].every(key=>Number.isFinite(Number(a[key])))
+      const statusCounts = notOpen?'':(['graded_rows','no_record_rows','attempted_ungraded_rows','unresolved_rows'].every(key=>Number.isFinite(Number(a[key])))
         ? '<p><b>Status nilai:</b> '+esc(a.graded_rows)+' graded · '+esc(a.no_record_rows)+' no_record · '+esc(a.attempted_ungraded_rows)+' sudah mencoba, nilai kosong · '+esc(a.unresolved_rows)+' belum teridentifikasi</p>'
-        : '<p class="grade-muted">Rincian status nilai tidak tercatat pada batch lama.</p>';
-      return '<article class="grade-card"><h3>'+esc(a.course_code||'?')+' · Pertemuan '+esc(a.meeting_number||'?')+'</h3><p><b>'+esc(a.title||a.quiz_type||'Aktivitas kuis')+'</b></p><p>'+esc(a.quiz_type||'')+'</p><p>'+esc(a.staged_rows||0)+' baris staging · '+esc(a.total_rows||0)+' hasil ekspor</p>'+statusCounts+captureHtml+warningHtml+'</article>';
+        : '<p class="grade-muted">Rincian status nilai tidak tercatat pada batch lama.</p>');
+      return '<article class="grade-card"><h3>'+esc(a.course_code||'?')+' · Pertemuan '+esc(a.meeting_number||'?')+'</h3><p><b>'+esc(a.title||a.quiz_type||'Aktivitas kuis')+'</b></p><p>'+esc(a.quiz_type||'')+'</p>'+availabilityHtml+'<p>'+esc(a.staged_rows||0)+' baris staging · '+esc(a.total_rows||0)+' hasil ekspor</p>'+statusCounts+captureHtml+warningHtml+'</article>';
     }).join('');
     const summary=batch.summary||{};
     const hasStatusSummary=['graded_rows','no_record_rows','attempted_ungraded_rows','unresolved_rows'].every(key=>Number.isFinite(Number(summary[key])));
