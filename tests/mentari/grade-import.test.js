@@ -88,9 +88,11 @@ test('keeps attempted-but-ungraded participants distinct from no-record and unre
 
 test('includes not-open activity metadata in preview without creating grade rows',()=>{
   const payload=sample();
+  payload.courses[0].kode_course='20261-01ELSE003-26FTK0021';
   payload.courses[0].activity_metadata=[{activity_id:'activity-p19',kode_section:'PERTEMUAN_19',quiz_type:'PRE_TEST',title:'Pretest',availability_status:'not_open'}];
-  const result=normalizeImport(payload,new Map());
+  const result=normalizeImport(payload,index());
   assert.equal(result.ok,true);
-  assert.equal(result.rows.length,0);
-  assert.equal(result.activities.some(a=>a.external_activity_id==='activity-p19'&&a.availability_status==='not_open'),true);
+  assert.equal(result.rows.length,32);
+  assert.equal(result.activities.length,2);
+  assert.equal(result.activities.some(a=>a.external_activity_id==='activity-p19'&&a.availability_status==='not_open'&&a.accepted_rows===0),true);
 });
