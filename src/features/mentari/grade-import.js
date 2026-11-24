@@ -90,6 +90,16 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
         graded_rows:activityGradedRows,no_record_rows:activityNoRecordRows,attempted_ungraded_rows:activityAttemptedUngradedRows,unresolved_rows:activityUnresolvedRows,
         data_complete:activity.data_complete===true,captured_at:activity.captured_at||null});
     }
+    for (const metadata of (Array.isArray(course.activity_metadata) ? course.activity_metadata : [])) {
+      if (!obj(metadata)) continue;
+      const meet = meeting(metadata.kode_section, mappedCourse), type = str(metadata.quiz_type).toUpperCase();
+      const status = str(metadata.availability_status);
+      if (!meet || !TYPES.has(type) || !['not_open','unknown'].includes(status)) continue;
+      activities.push({external_activity_id:str(metadata.activity_id),title:str(metadata.title),course_code:mappedCourse,
+        meeting_number:meet,quiz_type:type,total_rows:0,accepted_rows:0,graded_rows:0,no_record_rows:0,
+        attempted_ungraded_rows:0,unresolved_rows:0,data_complete:false,captured_at:null,
+        availability_status:status,quiz_available:false});
+    }
   }
   if (payload.exported_at && Number.isFinite(Date.parse(payload.exported_at)) &&
       now - Date.parse(payload.exported_at) > 7*86400000) warnings.push({code:'W_OLD_CAPTURE'});

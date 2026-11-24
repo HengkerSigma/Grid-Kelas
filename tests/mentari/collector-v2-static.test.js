@@ -13,3 +13,25 @@ test('does not replace stored results when a snapshot is incomplete',()=>{const 
 test('preserves last complete activity metadata when course metadata is refreshed',()=>{const previous={total_participants:32,expected_participants:32,data_complete:true,captured_at:'2026-11-23T01:00:00.000Z'};const next=c.mergeActivityMetadata(previous,{quiz_uuid:'q1',title:'Post-test'});assert.equal(next.data_complete,true);assert.equal(next.total_participants,32);assert.equal(next.captured_at,previous.captured_at);assert.equal(next.title,'Post-test');});
 
 test('declares the two-origin Grid Kelas sync bridge without sharing Mentari credentials',()=>{const fs=require('node:fs');const source=fs.readFileSync(require.resolve('../../tools/mentari/collector-v2.user.js'),'utf8');assert.ok(source.includes('@match        https://www.1else3.my.id/*'));assert.ok(source.includes('GM_addValueChangeListener'));assert.ok(source.includes('/api/mentari/grades/sync/upload'));assert.ok(source.includes("'Authorization':'Bearer '"));});
+
+test('captures activities with quiz null as metadata without treating them as importable quizzes',()=>{
+  const a=c.extractActivities({kode_course:'20261-01ELSE003-26FTK0021',data:[
+    {id:'activity-p19',kode_section:'PERTEMUAN_19',kode_template:'PRE_TEST',judul:'Pretest',quiz:null},
+    {id:'quiz-p18',kode_section:'PERTEMUAN_18',kode_template:'PRE_TEST',judul:'Pretest',quiz:{id:'quiz-p18-uuid'}}
+  ]});
+  assert.equal(a.length,2);
+  assert.equal(a[0].activity_id,'activity-p19');
+  assert.equal(a[0].quiz_available,false);
+  assert.equal(a[0].availability_status,'not_open');
+  assert.equal(a[1].quiz_uuid,'quiz-p18');
+  assert.equal(a[1].quiz_available,true);
+});
+test('exports not-open activities separately from grade-importable quizzes',()=>{
+  const x=c.buildExport([
+    {quiz_uuid:'activity-p19',activity_id:'activity-p19',quiz_available:false,availability_status:'not_open',kode_course:'c',course_code:'FIS',kode_section:'PERTEMUAN_19',meeting_number:19,quiz_type:'PRE_TEST',title:'Pretest'},
+    {quiz_uuid:'quiz-p18',quiz_available:true,kode_course:'c',course_code:'FIS',kode_section:'PERTEMUAN_18',meeting_number:18,quiz_type:'PRE_TEST',title:'Pretest'}
+  ],[]);
+  assert.equal(x.courses[0].activities.length,1);
+  assert.equal(x.courses[0].activity_metadata.length,1);
+  assert.equal(x.courses[0].activity_metadata[0].availability_status,'not_open');
+});

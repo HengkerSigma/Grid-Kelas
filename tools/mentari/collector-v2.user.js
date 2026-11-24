@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.1.0
+// @version      2.2.0
 // @description  Tangkap snapshot kuis Mentari dan sinkronkan ke preview Grid Kelas atas perintah admin.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
@@ -29,7 +29,9 @@ function extractActivities(payload,courseCodeHint){
  const out=[],seen=new Set();
  function walk(v,section){if(Array.isArray(v)){v.forEach(x=>walk(x,section));return;}
   const x=obj(v);if(!x)return;const sec=str(x.kode_section)||section||'',type=str(x.kode_template).toUpperCase(),id=str(x.id);
-  if(id&&TYPES.has(type)&&!seen.has(id)){const m=meeting(sec);if(m){seen.add(id);out.push({quiz_uuid:id,kode_course:externalCode,course_code:code,kode_section:sec,meeting_number:m,quiz_type:type,title:str(x.judul||x.title||x.nama)||(type==='PRE_TEST'?'Pre-test':'Post-test')});}}
+  const quiz=obj(x.quiz),quizId=quiz?str(quiz.id):'',activityId=id;
+  const identity=activityId||quizId;
+  if(identity&&TYPES.has(type)&&!seen.has(identity)){const m=meeting(sec);if(m){seen.add(identity);out.push({quiz_uuid:identity,activity_id:activityId,quiz_available:!!quiz,availability_status:quiz?'available':x.quiz===null?'not_open':'unknown',kode_course:externalCode,course_code:code,kode_section:sec,meeting_number:m,quiz_type:type,title:str(x.judul||x.title||x.nama)||(type==='PRE_TEST'?'Pre-test':'Post-test')});}}
   Object.values(x).forEach(y=>{if(Array.isArray(y)||obj(y))walk(y,sec);});
  }
  walk(p.data,'');return out;
@@ -62,12 +64,13 @@ function captureMismatch(payload,meta){
  if(meeting(p.kode_section)!==a.meeting_number)return 'kode_section respons berbeda dari metadata';
  return 'respons tidak dapat dinormalisasi';
 }
-function mergeActivityMetadata(previous,activity){const p=obj(previous)||{};return {...activity,total_participants:p.total_participants??0,expected_participants:CLASS_SIZE,data_complete:p.data_complete===true,captured_at:p.captured_at||null};}
+function mergeActivityMetadata(previous,activity){const p=obj(previous)||{};return {...p,...activity,total_participants:p.total_participants??0,expected_participants:CLASS_SIZE,data_complete:p.data_complete===true,captured_at:p.captured_at||null};}
 function buildExport(activities,results){
  const map=new Map((activities||[]).map(a=>[a.quiz_uuid,{...a,results:[]}]));
  (results||[]).forEach(r=>{const a=map.get(r.quiz_uuid);if(a)a.results.push({nim:r.nim,grade:r.grade,attempt_status:r.attempt_status,start_at:r.start_at,end_at:r.end_at});});
  const groups=new Map();
- map.forEach(a=>{if(!groups.has(a.course_code))groups.set(a.course_code,{kode_course:a.kode_course,course_code:a.course_code,nama:a.course_code,activities:[]});
+ map.forEach(a=>{if(!groups.has(a.course_code))groups.set(a.course_code,{kode_course:a.kode_course,course_code:a.course_code,nama:a.course_code,activities:[],activity_metadata:[]});
+  if(a.quiz_available===false){groups.get(a.course_code).activity_metadata.push({activity_id:a.activity_id||a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,availability_status:a.availability_status||'not_open'});return;}
   groups.get(a.course_code).activities.push({quiz_uuid:a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,total_participants:a.total_participants||0,expected_participants:CLASS_SIZE,data_complete:a.data_complete===true,captured_at:a.captured_at||null,results:a.results.sort((x,y)=>x.nim.localeCompare(y.nim))});
  });
  return {schema_version:'1.0',source:'mentari_unpam',semester:SEMESTER,batch_id:root?.crypto?.randomUUID?.()||'batch-'+Date.now(),exported_at:new Date().toISOString(),courses:[...groups.values()].sort((a,b)=>a.course_code.localeCompare(b.course_code))};
