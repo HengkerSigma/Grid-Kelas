@@ -95,6 +95,6 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
       now - Date.parse(payload.exported_at) > 7*86400000) warnings.push({code:'W_OLD_CAPTURE'});
   return {ok:errors.length===0, batchId, semester:payload.semester, errors, warnings, rows, activities,
     summary:{activities:activities.length,rows:rows.length,graded_rows:gradedRows,no_record_rows:noRecordRows,
-      unresolved_rows:unresolvedRows,errors:errors.length,warnings:warnings.length}};
+      attempted_ungraded_rows:attemptedUngradedRows,unresolved_rows:unresolvedRows,errors:errors.length,warnings:warnings.length}};
 }
 module.exports = Object.freeze({COURSE_MAP,courseCode,meeting,normalizeImport});
