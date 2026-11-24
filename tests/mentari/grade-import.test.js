@@ -67,3 +67,6 @@ test('reports graded, no-record, and unresolved grade counts separately',()=>{
   assert.equal(r.summary.unresolved_rows,1);
   assert.ok(r.warnings.some(x=>x.code==='W_GRADE_MISSING'));
 });
+
+
+test('keeps attempted-but-ungraded participants distinct from no-record and unresolved',()=>{\n  const p=sample();\n  p.courses[0].activities[0].results[0].attempt_status='attempt_ungraded';\n  p.courses[0].activities[0].results[0].grade=null;\n  p.courses[0].activities[0].results[1].attempt_status='no_record';\n  p.courses[0].activities[0].results[2].attempt_status='unknown';\n  p.courses[0].activities[0].results[2].grade=null;\n  const r=normalizeImport(p,index());\n  assert.equal(r.ok,true);\n  assert.equal(r.summary.graded_rows,29);\n  assert.equal(r.summary.no_record_rows,1);\n  assert.equal(r.summary.attempted_ungraded_rows,1);\n  assert.equal(r.summary.unresolved_rows,1);\n  assert.equal(r.activities[0].attempted_ungraded_rows,1);\n  assert.ok(r.warnings.some(x=>x.code==='W_ATTEMPT_UNGRADED'&&x.activity==='quiz-a'));\n});

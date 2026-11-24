@@ -47,7 +47,7 @@ function renderAdminTools(){
     const batch=result.batch||{},activities=result.activities||[],warnings=result.warnings||[];
     const warningCounts=new Map();
     warnings.forEach(w=>{const key=String(w.activity||''),code=String(w.code||'W_UNKNOWN'),bucket=warningCounts.get(key)||{};bucket[code]=(bucket[code]||0)+1;warningCounts.set(key,bucket);});
-    const labels={W_PARTIAL_EXPORT:'Ekspor parsial',W_NO_RECORD:'Peserta tanpa rekaman nilai',W_OLD_CAPTURE:'Ekspor berusia lebih dari 7 hari'};
+    const labels={W_PARTIAL_EXPORT:'Ekspor parsial',W_NO_RECORD:'Peserta tanpa rekaman nilai',W_ATTEMPT_UNGRADED:'Sudah mencoba, nilai belum tersedia',W_OLD_CAPTURE:'Ekspor berusia lebih dari 7 hari'};
     const cards=activities.map(a=>{
       const id=String(a.external_activity_id||''),counts=warningCounts.get(id)||{};
       if(Number(a.no_record_rows)>0)counts.W_NO_RECORD=counts.W_NO_RECORD||Number(a.no_record_rows);
@@ -55,15 +55,15 @@ function renderAdminTools(){
       const captureHtml=Object.prototype.hasOwnProperty.call(a,'data_complete')
         ? (a.data_complete===true?'<p class="grade-muted">Snapshot lengkap tersimpan · '+esc(a.captured_at||'waktu tidak tersedia')+'</p>':'<p class="grade-warning">Belum ada snapshot lengkap tersimpan dari Collector.</p>')
         : '<p class="grade-muted">Status pengambilan tidak tercatat pada batch lama.</p>';
-      const statusCounts = ['graded_rows','no_record_rows','unresolved_rows'].every(key=>Number.isFinite(Number(a[key])))
-        ? '<p><b>Status nilai:</b> '+esc(a.graded_rows)+' graded · '+esc(a.no_record_rows)+' no_record · '+esc(a.unresolved_rows)+' unresolved</p>'
+      const statusCounts = ['graded_rows','no_record_rows','attempted_ungraded_rows','unresolved_rows'].every(key=>Number.isFinite(Number(a[key])))
+        ? '<p><b>Status nilai:</b> '+esc(a.graded_rows)+' graded · '+esc(a.no_record_rows)+' no_record · '+esc(a.attempted_ungraded_rows)+' sudah mencoba, nilai kosong · '+esc(a.unresolved_rows)+' belum teridentifikasi</p>'
         : '<p class="grade-muted">Rincian status nilai tidak tercatat pada batch lama.</p>';
       return '<article class="grade-card"><h3>'+esc(a.course_code||'?')+' · Pertemuan '+esc(a.meeting_number||'?')+'</h3><p><b>'+esc(a.title||a.quiz_type||'Aktivitas kuis')+'</b></p><p>'+esc(a.quiz_type||'')+'</p><p>'+esc(a.staged_rows||0)+' baris staging · '+esc(a.total_rows||0)+' hasil ekspor</p>'+statusCounts+captureHtml+warningHtml+'</article>';
     }).join('');
     const summary=batch.summary||{};
-    const hasStatusSummary=['graded_rows','no_record_rows','unresolved_rows'].every(key=>Number.isFinite(Number(summary[key])));
+    const hasStatusSummary=['graded_rows','no_record_rows','attempted_ungraded_rows','unresolved_rows'].every(key=>Number.isFinite(Number(summary[key])));
     const statusSummary=hasStatusSummary
-      ? '<p><b>Rincian status:</b> '+esc(summary.graded_rows)+' graded · '+esc(summary.no_record_rows)+' no_record · '+esc(summary.unresolved_rows)+' unresolved</p>'
+      ? '<p><b>Rincian status:</b> '+esc(summary.graded_rows)+' graded · '+esc(summary.no_record_rows)+' no_record · '+esc(summary.attempted_ungraded_rows)+' sudah mencoba, nilai kosong · '+esc(summary.unresolved_rows)+' belum teridentifikasi</p>'
       : '<p class="grade-muted">Rincian status nilai tidak tercatat pada batch lama.</p>';
     detail.innerHTML='<p><b>Status:</b> '+esc(batch.status)+' · <b>Semester:</b> '+esc(batch.semester)+'</p><p><b>Dibuat:</b> '+esc(batch.created_at)+'</p><p><b>Baris:</b> '+esc(summary.rows||0)+' · <b>Aktivitas:</b> '+esc(summary.activities_count||activities.length)+'</p>'+statusSummary+(batch.committed_at?'<p><b>Disimpan:</b> '+esc(batch.committed_at)+'</p>':'')+'<h4>Rincian aktivitas</h4>'+(cards?'<div class="grade-grid">'+cards+'</div>':'<p class="grade-muted">Rincian aktivitas tidak tersedia pada batch ini.</p>');
    }catch(error){detail.innerHTML='<p class="grade-error">'+esc(error.message)+'</p>';}
@@ -103,14 +103,14 @@ function renderAdminTools(){
       const type = a.quiz_type === 'PRE_TEST' ? 'Pre-test' : a.quiz_type === 'POST_TEST' ? 'Post-test' : String(a.quiz_type || 'Jenis kuis tidak diketahui');
       return '<article class="grade-card"><h3>'+esc(a.course_code || 'Mata kuliah?')+' · Pertemuan '+esc(a.meeting_number || '?')+'</h3>'+
         '<p><b>'+esc(a.title || type)+'</b></p><p>'+esc(type)+'</p><p>'+esc(a.accepted_rows || 0)+' baris diterima dari '+esc(a.total_rows || 0)+' hasil Mentari</p>'+
-        '<p>'+esc(a.graded_rows||0)+' graded · '+esc(a.no_record_rows||0)+' no_record · '+esc(a.unresolved_rows||0)+' nilai belum terpetakan</p>'+
+        '<p>'+esc(a.graded_rows||0)+' graded · '+esc(a.no_record_rows||0)+' no_record · '+esc(a.attempted_ungraded_rows||0)+' sudah mencoba, nilai kosong · '+esc(a.unresolved_rows||0)+' belum teridentifikasi</p>'+
         (labels.length ? '<div>'+labels.join('<br>')+'</div>' : '<p class="grade-muted">Tidak ada peringatan khusus</p>')+
         '<details><summary>Detail ID aktivitas</summary><code>'+esc(id || 'Tidak tersedia')+'</code></details></article>';
     }).join('') : '<p class="grade-warning">Rincian aktivitas tidak dikirim oleh server. Perlu pemeriksaan lebih lanjut.</p>';
     const globalWarnings = warningCounts.get('') || {};
     const syncSummary=result.summary||{};
     status.innerHTML='<p><b>Preview sinkronisasi siap.</b> '+esc(Number(syncSummary.activities)||activityList.length)+' aktivitas · '+esc(syncSummary.rows||0)+' baris diterima.</p>'+
-      '<p><b>Rincian status:</b> '+esc(syncSummary.graded_rows||0)+' graded · '+esc(syncSummary.no_record_rows||0)+' no_record · '+esc(syncSummary.unresolved_rows||0)+' nilai belum terpetakan.</p>'+
+      '<p><b>Rincian status:</b> '+esc(syncSummary.graded_rows||0)+' graded · '+esc(syncSummary.no_record_rows||0)+' no_record · '+esc(syncSummary.attempted_ungraded_rows||0)+' sudah mencoba, nilai kosong · '+esc(syncSummary.unresolved_rows||0)+' belum teridentifikasi.</p>'+
       (Object.keys(globalWarnings).length ? '<div class="grade-warning">'+Object.keys(globalWarnings).map(code=>esc(warningLabel(code))+' ('+esc(globalWarnings[code])+')').join(' · ')+'</div>' : '')+
       '<h4>Daftar aktivitas</h4><div class="grade-grid">'+activityMarkup+'</div>'+
       '<p class="grade-muted">Batch berlaku selama 30 menit. Periksa setiap aktivitas sebelum menyimpan. Penyimpanan belum dilakukan.</p>';

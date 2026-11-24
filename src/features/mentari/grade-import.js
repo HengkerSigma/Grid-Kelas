@@ -21,7 +21,7 @@ function meeting(v, mappedCourse) {
 }
 function normalizeImport(payload, accountIndex, now = Date.now()) {
   const errors = [], warnings = [], rows = [], activities = [];
-  let gradedRows = 0, noRecordRows = 0, unresolvedRows = 0;
+  let gradedRows = 0, noRecordRows = 0, attemptedUngradedRows = 0, unresolvedRows = 0;
   if (!obj(payload)) return {ok:false,errors:[{code:'E_FILE_INVALID'}],warnings,rows,activities};
   if (payload.schema_version !== '1.0' || payload.source !== 'mentari_unpam')
     errors.push({code:'E_SCHEMA_UNSUPPORTED'});
@@ -50,7 +50,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
         errors.push({code:'E_COUNT_MISMATCH'});
       const seenNim = new Set();
       const activityStartRows = rows.length;
-      let activityGradedRows = 0, activityNoRecordRows = 0, activityUnresolvedRows = 0;
+      let activityGradedRows = 0, activityNoRecordRows = 0, activityAttemptedUngradedRows = 0, activityUnresolvedRows = 0;
       for (const result of results) {
         if (!obj(result) || !NIM_RE.test(str(result.nim))) { errors.push({code:'E_NIM_UNKNOWN'}); continue; }
         const nim = str(result.nim);
@@ -72,7 +72,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
             captured_at:activity.captured_at || null});
           continue;
         }
-        if (grade === null) { warnings.push({code:'W_GRADE_MISSING',activity:uuid}); unresolvedRows++; activityUnresolvedRows++; continue; }
+        if (status === 'attempt_ungraded' && grade === null) {\n          warnings.push({code:'W_ATTEMPT_UNGRADED',activity:uuid});\n          attemptedUngradedRows++; activityAttemptedUngradedRows++; continue;\n        }\n        if (grade === null) { warnings.push({code:'W_GRADE_MISSING',activity:uuid}); unresolvedRows++; activityUnresolvedRows++; continue; }
         const key = [uuid,nim].join('|');
         if (seenRows.has(key)) { errors.push({code:'E_BATCH_DUPLICATE'}); continue; }
         seenRows.add(key);
@@ -83,7 +83,7 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
       }
       activities.push({external_activity_id:uuid,title:str(activity.title),course_code:mappedCourse,meeting_number:meet,
         quiz_type:type,total_rows:results.length,accepted_rows:rows.length-activityStartRows,
-        graded_rows:activityGradedRows,no_record_rows:activityNoRecordRows,unresolved_rows:activityUnresolvedRows,
+        graded_rows:activityGradedRows,no_record_rows:activityNoRecordRows,attempted_ungraded_rows:activityAttemptedUngradedRows,unresolved_rows:activityUnresolvedRows,
         data_complete:activity.data_complete===true,captured_at:activity.captured_at||null});
     }
   }
