@@ -27,8 +27,8 @@ function classify(item) {
   if (template === 'QUESIONER' || template === 'QUESTIONNAIRE') return TYPES.QUESTIONNAIRE;
   if (template !== 'QUIZ') return null;
   const title = text(source.judul || source.title || source.nama).toLowerCase();
-  if (/pre[\\s-]*test/.test(title)) return TYPES.PRE_TEST;
-  if (/post[\\s-]*test/.test(title)) return TYPES.POST_TEST;
+  if (/pre[\s-]*test/.test(title)) return TYPES.PRE_TEST;
+  if (/post[\s-]*test/.test(title)) return TYPES.POST_TEST;
   return null;
 }
 function collectActivities(coursePayload) {
@@ -38,7 +38,7 @@ function collectActivities(coursePayload) {
   const seen = new Set();
   for (const [sectionCode, sectionValue] of Object.entries(course.data)) {
     const section = record(sectionValue);
-    const meetingMatch = /^PERTEMUAN_(\\d+)$/.exec(sectionCode);
+    const meetingMatch = /^PERTEMUAN_(\d+)$/.exec(sectionCode);
     if (!section || !meetingMatch || !Array.isArray(section.sub_section)) continue;
     for (const raw of section.sub_section) {
       const item = record(raw);
