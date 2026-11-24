@@ -45,3 +45,28 @@ test('forum preview marks absent roster students unknown, never not started',()=
  assert.equal(forum.unknownCount,1);
  assert.equal(forum.notStartedCount,0);
 });
+
+
+test('unwraps nested user-course envelopes and persists course metadata shape',()=>{
+ const wrapped={data:{kode_course:course.kode_course,peserta:course.peserta,data:course.data}};
+ const meta=collector.collectCourseMetadata(wrapped);
+ assert.equal(meta.kode_course,course.kode_course);
+ assert.equal(meta.rosterNims.length,2);
+ assert.equal(meta.activities.length,2);
+});
+
+test('export includes course metadata and matching forum aggregates in activity_sync',()=>{
+ const meta=collector.collectCourseMetadata(course);
+ const snapshot=collector.normalizeForumCapture(Object.assign({},topic,{data:[
+  post('p1','261090100001',1,'forum-topic'),
+  post('p2','261090100001',1,'forum-topic')
+ ]}));
+ const exported=collector.buildExport([],[],[meta],[snapshot]);
+ assert.equal(exported.activity_sync.courses.length,1);
+ const forum=exported.activity_sync.courses[0].activities.find(item=>item.type==='FORUM');
+ assert.equal(forum.activityId,'forum-section');
+ assert.equal(forum.forumId,'forum-topic');
+ assert.equal(forum.participatedCount,1);
+ assert.equal(forum.participants.find(item=>item.nim==='261090100001').directReplyCount,2);
+ assert.equal(exported.activity_sync.courses[0].kode_course,course.kode_course);
+});
