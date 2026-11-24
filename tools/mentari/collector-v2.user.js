@@ -134,10 +134,43 @@ function snapshotResultChanges(existing,capture){const quizUuid=str(capture&&cap
 function writeCapture(c){if(!c||c.data_complete!==true)return Promise.resolve(false);return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES],'readwrite'),a={...c};delete a.results;const store=t.objectStore(RES),request=store.getAll();t.objectStore(ACT).put(a);request.onsuccess=()=>{const changes=snapshotResultChanges(request.result,c);changes.deleteKeys.forEach(key=>store.delete(key));changes.putRows.forEach(row=>store.put(row));};request.onerror=()=>{try{t.abort();}catch(_){}};t.oncomplete=()=>ok(true);t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);}));}
 function read(name){return db().then(d=>new Promise((ok,no)=>{const q=d.transaction(name).objectStore(name).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error);}));}
 function clear(){return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES,COURSES,FORUMS],'readwrite');t.objectStore(ACT).clear();t.objectStore(RES).clear();t.objectStore(COURSES).clear();t.objectStore(FORUMS).clear();t.oncomplete=ok;t.onerror=()=>no(t.error);}));}
-function kind(url){try{const u=new URL(url,page.location.href);if(u.origin!==page.location.origin)return null;if(/^\/api\/user-course\/[^/]+\/?$/.test(u.pathname))return 'course';if(/^\/api\/quiz\/peserta\/[^/]+\/?$/.test(u.pathname))return 'quiz';}catch(_){}return null;}
-async function handle(url,payload){try{const k=kind(url);if(k==='course'){const courseHint=decodeURIComponent(url.split('/').filter(Boolean).pop());for(const a of extractActivities(payload,courseHint)){const stored=await read(ACT);let previous=stored.find(item=>item&&item.quiz_uuid===a.quiz_uuid)||null;if(!previous&&a.quiz_available===null){const matches=stored.filter(item=>item&&item.kode_course===a.kode_course&&item.kode_section===a.kode_section&&item.quiz_type===a.quiz_type);if(matches.length===1)previous=matches[0];}const merged=mergeActivityMetadata(previous,a);cache.set(merged.quiz_uuid,merged);const d=await db();await new Promise((ok,no)=>{const t=d.transaction(ACT,'readwrite'),store=t.objectStore(ACT);store.put(merged);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});}await refresh('Metadata kuis terdeteksi');}
- else if(k==='quiz'){const id=decodeURIComponent(url.split('/').filter(Boolean).pop());let a=cache.get(id);const stored=await read(ACT);if(!a)a=stored.find(item=>item.quiz_uuid===id)||null;let matchedBy='uuid';if(!a){const resolved=resolveActivity(id,payload,stored);a=resolved.activity;matchedBy=resolved.matchedBy||'none';}if(!a){await refresh('Respons kuis diterima, tetapi metadata tidak cocok');return;}const c=normalizeCapture(payload,a);if(!c){await refresh('Respons kuis tidak cocok: '+captureMismatch(payload,a));return;}if(!c.data_complete){await refresh('Snapshot tidak lengkap ('+c.total_participants+'/'+CLASS_SIZE+'); data sebelumnya dipertahankan');return;}await writeCapture(c);if(matchedBy==='course-section-type')cache.set(id,a);await refresh('Snapshot lengkap tersimpan lokal ('+matchedBy+')');}
- }catch(_){await refresh('Gagal memproses; respons mentah tidak disimpan');}}
+function kind(url){try{const u=new URL(url,page.location.href);if(u.origin!==page.location.origin)return null;if(/^\/api\/user-course\/[^/]+\/?$/.test(u.pathname))return 'course';if(/^\/api\/quiz\/peserta\/[^/]+\/?$/.test(u.pathname))return 'quiz';if(/^\/api\/forum\/reply\/[^/]+\/?$/.test(u.pathname))return 'forum';}catch(_){}return null;}
+async function handle(url,payload){
+ try{
+  const k=kind(url);
+  if(k==='course'){
+   const courseHint=decodeURIComponent(url.split('/').filter(Boolean).pop());
+   for(const a of extractActivities(payload,courseHint)){
+    const stored=await read(ACT);
+    let previous=stored.find(item=>item&&item.quiz_uuid===a.quiz_uuid)||null;
+    if(!previous&&a.quiz_available===null){
+     const matches=stored.filter(item=>item&&item.kode_course===a.kode_course&&item.kode_section===a.kode_section&&item.quiz_type===a.quiz_type);
+     if(matches.length===1)previous=matches[0];
+    }
+    const merged=mergeActivityMetadata(previous,a);cache.set(merged.quiz_uuid,merged);
+    const d=await db();await new Promise((ok,no)=>{const t=d.transaction(ACT,'readwrite');t.objectStore(ACT).put(merged);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});
+   }
+   const meta=collectCourseMetadata(payload,courseHint);
+   if(meta){const d=await db();await new Promise((ok,no)=>{const t=d.transaction(COURSES,'readwrite');t.objectStore(COURSES).put(meta);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});}
+   await refresh('Metadata aktivitas terdeteksi');
+  }else if(k==='forum'){
+   const snapshot=normalizeForumCapture(payload);
+   if(!snapshot){await refresh('Respons forum tidak cocok');return;}
+   const d=await db();await new Promise((ok,no)=>{const t=d.transaction(FORUMS,'readwrite');t.objectStore(FORUMS).put(snapshot);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});
+   await refresh('Rekap Forum Diskusi diperbarui');
+  }else if(k==='quiz'){
+   const id=decodeURIComponent(url.split('/').filter(Boolean).pop());let a=cache.get(id);
+   const stored=await read(ACT);if(!a)a=stored.find(item=>item.quiz_uuid===id)||null;
+   let matchedBy='uuid';if(!a){const resolved=resolveActivity(id,payload,stored);a=resolved.activity;matchedBy=resolved.matchedBy||'none';}
+   if(!a){await refresh('Respons kuis diterima, tetapi metadata tidak cocok');return;}
+   const capture=normalizeCapture(payload,a);
+   if(!capture){await refresh('Respons kuis tidak cocok: '+captureMismatch(payload,a));return;}
+   if(!capture.data_complete){await refresh('Snapshot tidak lengkap ('+capture.total_participants+'/'+CLASS_SIZE+'); data sebelumnya dipertahankan');return;}
+   await writeCapture(capture);if(matchedBy==='course-section-type')cache.set(id,a);
+   await refresh('Snapshot lengkap tersimpan lokal ('+matchedBy+')');
+  }
+ }catch(_){await refresh('Gagal memproses; respons mentah tidak disimpan');}
+}
 async function refresh(message){if(!status)return;try{const [a,r,f]=await Promise.all([read(ACT),read(RES),read(FORUMS)]);const complete=a.filter(x=>x&&x.data_complete===true&&x.captured_at).length;status.textContent=message+' | Kuis '+a.length+' | Snapshot lengkap '+complete+'/'+a.length+' | Forum '+f.length+' | Rekaman '+r.length;}catch(_){status.textContent=message+' | IndexedDB tidak tersedia';}}
 function hooks(){
  const f=page.fetch;if(typeof f==='function')page.fetch=function(){const args=arguments,p=f.apply(this,args);return p.then(res=>{try{const u=typeof args[0]==='string'?args[0]:args[0]?.url||'';if(kind(u))res.clone().json().then(x=>handle(u,x)).catch(()=>{});}catch(_){}return res;});};
