@@ -72,7 +72,11 @@ function normalizeImport(payload, accountIndex, now = Date.now()) {
             captured_at:activity.captured_at || null});
           continue;
         }
-        if (status === 'attempt_ungraded' && grade === null) {\n          warnings.push({code:'W_ATTEMPT_UNGRADED',activity:uuid});\n          attemptedUngradedRows++; activityAttemptedUngradedRows++; continue;\n        }\n        if (grade === null) { warnings.push({code:'W_GRADE_MISSING',activity:uuid}); unresolvedRows++; activityUnresolvedRows++; continue; }
+        if (status === 'attempt_ungraded' && grade === null) {
+          warnings.push({code:'W_ATTEMPT_UNGRADED',activity:uuid});
+          attemptedUngradedRows++; activityAttemptedUngradedRows++; continue;
+        }
+        if (grade === null) { warnings.push({code:'W_GRADE_MISSING',activity:uuid}); unresolvedRows++; activityUnresolvedRows++; continue; }
         const key = [uuid,nim].join('|');
         if (seenRows.has(key)) { errors.push({code:'E_BATCH_DUPLICATE'}); continue; }
         seenRows.add(key);
