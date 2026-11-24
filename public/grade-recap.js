@@ -135,13 +135,41 @@ function renderAdminTools(){
     const result=await request('/api/mentari/grades/import/preview',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'gk'},body:JSON.stringify(payload)});
     pendingBatch=result.batchId;
     actions.querySelectorAll('[data-confirm-import]').forEach(x=>x.remove());
-    const summary=result.summary||{},activities=Array.isArray(result.activities)?result.activities:[];
-    const activityCount=Number.isFinite(Number(summary.activities))?Number(summary.activities):activities.length;
-    const graded=Number(summary.graded_rows)||0,noRecord=Number(summary.no_record_rows)||0,unresolved=Number(summary.unresolved_rows)||0;
-    const warnings=Array.isArray(result.warnings)?result.warnings:[];
+    const summary=result.summary||{};
+    const activities=Array.isArray(result.activities)?result.activities:
+      (Array.isArray(summary.activities)?summary.activities:[]);
+    const activityCount=activities.length || (Number.isFinite(Number(summary.activities_count))
+      ? Number(summary.activities_count) : (typeof summary.activities==='number'?summary.activities:0));
+    const graded=Number(summary.graded_rows)||0,noRecord=Number(summary.no_record_rows)||0;
+    const attempted=Number(summary.attempted_ungraded_rows)||0,unresolved=Number(summary.unresolved_rows)||0;
+    const warnings=Array.isArray(result.warnings)?result.warnings:
+      (Array.isArray(summary.warnings)?summary.warnings:[]);
+    const warningCounts=new Map();
+    warnings.forEach(w=>{
+      const key=String(w&&w.activity||''),code=String(w&&w.code||'W_UNKNOWN');
+      const bucket=warningCounts.get(key)||{};bucket[code]=(bucket[code]||0)+1;warningCounts.set(key,bucket);
+    });
+    const warningLabels={W_PARTIAL_EXPORT:'Ekspor parsial',W_NO_RECORD:'Peserta tanpa rekaman nilai',
+      W_ATTEMPT_UNGRADED:'Sudah mencoba, nilai kosong',W_GRADE_MISSING:'Nilai belum tersedia',
+      W_OLD_CAPTURE:'Ekspor berusia lebih dari 7 hari'};
+    const activityMarkup=activities.length?activities.map(a=>{
+      const id=String(a.external_activity_id||''),counts=warningCounts.get(id)||{};
+      const warningHtml=Object.keys(counts).length
+        ?'<div class="grade-warning">'+Object.keys(counts).map(code=>esc(warningLabels[code]||code)+' ('+esc(counts[code])+')').join(' · ')+'</div>'
+        :'<p class="grade-muted">Tidak ada peringatan khusus.</p>';
+      return '<article class="grade-card"><h3>'+esc(a.course_code||'?')+' · Pertemuan '+esc(a.meeting_number||'?')+'</h3>'+
+        '<p><b>'+esc(a.title||a.quiz_type||'Aktivitas kuis')+'</b></p><p>'+esc(a.quiz_type||'')+'</p>'+
+        '<p>'+esc(a.accepted_rows||0)+' baris diterima dari '+esc(a.total_rows||0)+' hasil Mentari</p>'+
+        '<p>'+esc(a.graded_rows||0)+' graded · '+esc(a.no_record_rows||0)+' no_record · '+
+        esc(a.attempted_ungraded_rows||0)+' sudah mencoba, nilai kosong · '+esc(a.unresolved_rows||0)+' belum teridentifikasi</p>'+
+        '<details><summary>Detail ID aktivitas</summary><code>'+esc(id||'Tidak tersedia')+'</code></details>'+
+        warningHtml+'</article>';
+    }).join(''):'<p class="grade-warning">Rincian aktivitas tidak tersedia pada respons server.</p>';
     status.innerHTML='<p><b>Preview siap.</b> '+esc(activityCount)+' aktivitas · '+esc(summary.rows||0)+' baris diterima.</p>'+
-      '<p><b>Rincian status:</b> '+esc(graded)+' graded · '+esc(noRecord)+' no_record · '+esc(unresolved)+' nilai belum terpetakan.</p>'+
-      (warnings.length?'<div>'+warnings.map(w=>'<p class="grade-warning">'+esc(w.code)+(w.activity?' · aktivitas '+esc(w.activity):'')+'</p>').join('')+'</div>':'<p class="grade-muted">Tidak ada peringatan.</p>')+
+      '<p><b>Rincian status:</b> '+esc(graded)+' graded · '+esc(noRecord)+' no_record · '+
+      esc(attempted)+' sudah mencoba, nilai kosong · '+esc(unresolved)+' nilai belum terpetakan.</p>'+
+      '<h4>Daftar aktivitas</h4><div class="grade-grid">'+activityMarkup+'</div>'+
+      (warnings.length?'<p class="grade-muted">Total peringatan: '+esc(warnings.length)+'. Rinciannya dikelompokkan pada aktivitas terkait.</p>':'<p class="grade-muted">Tidak ada peringatan.</p>')+
       '<p class="grade-muted">Batch berlaku selama 30 menit. Periksa rincian sebelum konfirmasi.</p>';
     const confirmButton=button('Konfirmasi & Simpan',async()=>{
       if(!pendingBatch)return;
