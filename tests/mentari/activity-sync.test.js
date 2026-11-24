@@ -69,3 +69,14 @@ test('preview never copies student names, contact fields, or raw discussion cont
   assert.equal(serialized.includes('private'), false);
   assert.equal(preview.privacy.rawPostsStored, false);
 });
+
+test('aggregated forum snapshots can be previewed without retaining raw posts', () => {
+  const preview = sync.buildActivityPreview(course, [{
+    topic, directReplyCounts: [{ nim: roster[0].nim, count: 3 }], dataComplete: false
+  }]);
+  const forum = preview.activities.find(item => item.type === sync.TYPES.FORUM);
+  assert.equal(forum.participatedCount, 1);
+  assert.equal(forum.unknownCount, 2);
+  assert.equal(forum.notStartedCount, 0);
+  assert.equal(forum.participants[0].directReplyCount, 3);
+});

@@ -100,9 +100,16 @@ function buildActivityPreview(coursePayload, forumSnapshots) {
     const topic = record(root.topic);
     const posts = Array.isArray(root.data) ? root.data : [];
     const complete = root.dataComplete === true;
-    const direct = forumParser.collectDirectStudentReplies(topic, posts);
     const counts = new Map();
-    for (const reply of direct) counts.set(reply.nim, (counts.get(reply.nim) || 0) + 1);
+    if (Array.isArray(root.directReplyCounts)) {
+      for (const item of root.directReplyCounts) {
+        const row = record(item), nim = text(row && row.nim), count = Number(row && row.count);
+        if (/^[0-9]{6,20}$/.test(nim) && Number.isInteger(count) && count > 0) counts.set(nim, count);
+      }
+    } else {
+      const direct = forumParser.collectDirectStudentReplies(topic, posts);
+      for (const reply of direct) counts.set(reply.nim, (counts.get(reply.nim) || 0) + 1);
+    }
     const participants = roster.map(nim => {
       const count = counts.get(nim) || 0;
       return {
