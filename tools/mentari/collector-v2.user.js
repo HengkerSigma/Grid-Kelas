@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.2.0
+// @version      2.2.1
 // @description  Tangkap snapshot kuis Mentari dan sinkronkan ke preview Grid Kelas atas perintah admin.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
@@ -30,8 +30,8 @@ function extractActivities(payload,courseCodeHint){
  function walk(v,section){if(Array.isArray(v)){v.forEach(x=>walk(x,section));return;}
   const x=obj(v);if(!x)return;const sec=str(x.kode_section)||section||'',type=str(x.kode_template).toUpperCase(),id=str(x.id);
   const quiz=obj(x.quiz),quizId=quiz?str(quiz.id):'',activityId=id;
-  const identity=activityId||quizId;
-  if(identity&&TYPES.has(type)&&!seen.has(identity)){const m=meeting(sec);if(m){seen.add(identity);out.push({quiz_uuid:identity,activity_id:activityId,quiz_available:!!quiz,availability_status:quiz?'available':x.quiz===null?'not_open':'unknown',kode_course:externalCode,course_code:code,kode_section:sec,meeting_number:m,quiz_type:type,title:str(x.judul||x.title||x.nama)||(type==='PRE_TEST'?'Pre-test':'Post-test')});}}
+  const identity=quizId||activityId,quizAvailable=quiz?true:x.quiz===null?false:null;
+  if(identity&&TYPES.has(type)&&!seen.has(identity)){const m=meeting(sec);if(m){seen.add(identity);out.push({quiz_uuid:identity,activity_id:activityId,quiz_available:quizAvailable,availability_status:quiz?'available':x.quiz===null?'not_open':'unknown',kode_course:externalCode,course_code:code,kode_section:sec,meeting_number:m,quiz_type:type,title:str(x.judul||x.title||x.nama)||(type==='PRE_TEST'?'Pre-test':'Post-test')});}}
   Object.values(x).forEach(y=>{if(Array.isArray(y)||obj(y))walk(y,sec);});
  }
  walk(p.data,'');return out;
@@ -64,13 +64,13 @@ function captureMismatch(payload,meta){
  if(meeting(p.kode_section)!==a.meeting_number)return 'kode_section respons berbeda dari metadata';
  return 'respons tidak dapat dinormalisasi';
 }
-function mergeActivityMetadata(previous,activity){const p=obj(previous)||{};return {...p,...activity,total_participants:p.total_participants??0,expected_participants:CLASS_SIZE,data_complete:p.data_complete===true,captured_at:p.captured_at||null};}
+function mergeActivityMetadata(previous,activity){const p=obj(previous)||{},unknownAvailability=activity.quiz_available==null;return {...p,...activity,quiz_uuid:unknownAvailability&&p.quiz_uuid?p.quiz_uuid:activity.quiz_uuid,quiz_available:unknownAvailability?(typeof p.quiz_available==='boolean'?p.quiz_available:null):activity.quiz_available,availability_status:activity.availability_status==='unknown'&&p.availability_status==='available'?'available':activity.availability_status,total_participants:p.total_participants??0,expected_participants:CLASS_SIZE,data_complete:p.data_complete===true,captured_at:p.captured_at||null};}
 function buildExport(activities,results){
  const map=new Map((activities||[]).map(a=>[a.quiz_uuid,{...a,results:[]}]));
  (results||[]).forEach(r=>{const a=map.get(r.quiz_uuid);if(a)a.results.push({nim:r.nim,grade:r.grade,attempt_status:r.attempt_status,start_at:r.start_at,end_at:r.end_at});});
  const groups=new Map();
  map.forEach(a=>{if(!groups.has(a.course_code))groups.set(a.course_code,{kode_course:a.kode_course,course_code:a.course_code,nama:a.course_code,activities:[],activity_metadata:[]});
-  if(a.quiz_available===false){groups.get(a.course_code).activity_metadata.push({activity_id:a.activity_id||a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,availability_status:a.availability_status||'not_open'});return;}
+  if(a.quiz_available===false||(a.quiz_available==null&&a.data_complete!==true)){groups.get(a.course_code).activity_metadata.push({activity_id:a.activity_id||a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,availability_status:a.availability_status||'not_open'});return;}
   groups.get(a.course_code).activities.push({quiz_uuid:a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,total_participants:a.total_participants||0,expected_participants:CLASS_SIZE,data_complete:a.data_complete===true,captured_at:a.captured_at||null,results:a.results.sort((x,y)=>x.nim.localeCompare(y.nim))});
  });
  return {schema_version:'1.0',source:'mentari_unpam',semester:SEMESTER,batch_id:root?.crypto?.randomUUID?.()||'batch-'+Date.now(),exported_at:new Date().toISOString(),courses:[...groups.values()].sort((a,b)=>a.course_code.localeCompare(b.course_code))};
@@ -86,7 +86,7 @@ function writeCapture(c){if(!c||c.data_complete!==true)return Promise.resolve(fa
 function read(name){return db().then(d=>new Promise((ok,no)=>{const q=d.transaction(name).objectStore(name).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error);}));}
 function clear(){return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES],'readwrite');t.objectStore(ACT).clear();t.objectStore(RES).clear();t.oncomplete=ok;t.onerror=()=>no(t.error);}));}
 function kind(url){try{const u=new URL(url,page.location.href);if(u.origin!==page.location.origin)return null;if(/^\/api\/user-course\/[^/]+\/?$/.test(u.pathname))return 'course';if(/^\/api\/quiz\/peserta\/[^/]+\/?$/.test(u.pathname))return 'quiz';}catch(_){}return null;}
-async function handle(url,payload){try{const k=kind(url);if(k==='course'){const courseHint=decodeURIComponent(url.split('/').filter(Boolean).pop());for(const a of extractActivities(payload,courseHint)){cache.set(a.quiz_uuid,a);const d=await db();await new Promise((ok,no)=>{const t=d.transaction(ACT,'readwrite'),store=t.objectStore(ACT),request=store.get(a.quiz_uuid);request.onsuccess=()=>store.put(mergeActivityMetadata(request.result,a));request.onerror=()=>{try{t.abort();}catch(_){}};t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});}await refresh('Metadata kuis terdeteksi');}
+async function handle(url,payload){try{const k=kind(url);if(k==='course'){const courseHint=decodeURIComponent(url.split('/').filter(Boolean).pop());for(const a of extractActivities(payload,courseHint)){const stored=await read(ACT);let previous=stored.find(item=>item&&item.quiz_uuid===a.quiz_uuid)||null;if(!previous&&a.quiz_available===null){const matches=stored.filter(item=>item&&item.kode_course===a.kode_course&&item.kode_section===a.kode_section&&item.quiz_type===a.quiz_type);if(matches.length===1)previous=matches[0];}const merged=mergeActivityMetadata(previous,a);cache.set(merged.quiz_uuid,merged);const d=await db();await new Promise((ok,no)=>{const t=d.transaction(ACT,'readwrite'),store=t.objectStore(ACT);store.put(merged);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});}await refresh('Metadata kuis terdeteksi');}
  else if(k==='quiz'){const id=decodeURIComponent(url.split('/').filter(Boolean).pop());let a=cache.get(id);const stored=await read(ACT);if(!a)a=stored.find(item=>item.quiz_uuid===id)||null;let matchedBy='uuid';if(!a){const resolved=resolveActivity(id,payload,stored);a=resolved.activity;matchedBy=resolved.matchedBy||'none';}if(!a){await refresh('Respons kuis diterima, tetapi metadata tidak cocok');return;}const c=normalizeCapture(payload,a);if(!c){await refresh('Respons kuis tidak cocok: '+captureMismatch(payload,a));return;}if(!c.data_complete){await refresh('Snapshot tidak lengkap ('+c.total_participants+'/'+CLASS_SIZE+'); data sebelumnya dipertahankan');return;}await writeCapture(c);if(matchedBy==='course-section-type')cache.set(id,a);await refresh('Snapshot lengkap tersimpan lokal ('+matchedBy+')');}
  }catch(_){await refresh('Gagal memproses; respons mentah tidak disimpan');}}
 async function refresh(message){if(!status)return;try{const [a,r]=await Promise.all([read(ACT),read(RES)]);const complete=a.filter(x=>x&&x.data_complete===true&&x.captured_at).length;status.textContent=message+' | Aktivitas '+a.length+' | Snapshot lengkap '+complete+'/'+a.length+' | Rekaman '+r.length;}catch(_){status.textContent=message+' | IndexedDB tidak tersedia';}}
