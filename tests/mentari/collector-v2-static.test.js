@@ -23,7 +23,7 @@ test('captures activities with quiz null as metadata without treating them as im
   assert.equal(a[0].activity_id,'activity-p19');
   assert.equal(a[0].quiz_available,false);
   assert.equal(a[0].availability_status,'not_open');
-  assert.equal(a[1].quiz_uuid,'quiz-p18-uuid');
+  assert.equal(a[1].quiz_uuid,'quiz-p18');
   assert.equal(a[1].quiz_available,true);
 });
 test('exports not-open activities separately from grade-importable quizzes',()=>{
