@@ -32,3 +32,17 @@ Run:
 ```sh
 node --test tests/mentari/activity-sync.test.js
 ```
+
+## Collector forum capture (v2.3.0)
+
+The userscript observes the normal browser response for `GET /api/forum/reply/{forum_id}`.
+It computes direct level-1 student reply counts immediately and stores only:
+- course and activity identifiers,
+- roster NIMs,
+- per-NIM direct reply counts,
+- capture timestamp and received row count.
+
+It does not store raw posts, post bodies, names, email, or phone numbers. The response
+has no verified pagination/completeness indicator, so forum snapshots always remain
+`dataComplete: false`; absent roster members remain `unknown`, never `not_started`.
+The IndexedDB upgrade adds stores without clearing existing quiz snapshots or grade rows.

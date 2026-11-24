@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.2.1
-// @description  Tangkap snapshot kuis Mentari dan sinkronkan ke preview Grid Kelas atas perintah admin.
+// @version      2.3.0
+// @description  Tangkap metadata aktivitas, rekap forum, dan snapshot kuis Mentari.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
 // @run-at       document-start
@@ -15,8 +15,8 @@
 // ==/UserScript==
 (function (root) {
 'use strict';
-const DB='grid-kelas-mentari-collector', VERSION=1, CLASS_SIZE=32, SEMESTER='20261';
-const PATCH='__gkMentariCollectorV2', ACT='activities', RES='results';
+const DB='grid-kelas-mentari-collector', VERSION=2, CLASS_SIZE=32, SEMESTER='20261';
+const PATCH='__gkMentariCollectorV2', ACT='activities', RES='results', COURSES='course_meta', FORUMS='forum_activity';
 const MAP={'26TEL0004':'KIM','26PAM0007':'WRG','26PAM0008':'IND','26PAM0010':'ENG','26FTK0021':'FIS','26FTK0011':'KAL','26TEL0003':'ELE','26TEL0002':'ALJ','26TEL0001':'PRG'};
 const TYPES=new Set(['PRE_TEST','POST_TEST']);
 const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:null;
@@ -35,6 +35,55 @@ function extractActivities(payload,courseCodeHint){
   Object.values(x).forEach(y=>{if(Array.isArray(y)||obj(y))walk(y,sec);});
  }
  walk(p.data,'');return out;
+}
+function collectCourseMetadata(payload,courseCodeHint){
+ const p=obj(payload),externalCode=str(p&&p.kode_course)||str(courseCodeHint);
+ if(!p||!Array.isArray(p.peserta)||!obj(p.data)||!externalCode)return null;
+ const rosterNims=Array.from(new Set(p.peserta.map(x=>str(obj(x)&&x.nim)).filter(n=>/^[0-9]{6,20}$/.test(n)))).sort();
+ const activities=[];
+ for(const [sectionCode,sectionValue] of Object.entries(p.data)){
+  const section=obj(sectionValue),m=meeting(sectionCode);if(!section||!m||!Array.isArray(section.sub_section))continue;
+  for(const raw of section.sub_section){
+   const item=obj(raw);if(!item)continue;
+   const template=str(item.kode_template).toUpperCase(),title=str(item.judul||item.title||item.nama),normalized=title.toLowerCase();
+   let type=null;
+   if(template==='FORUM')type='FORUM';
+   else if(template==='QUESIONER'||template==='QUESTIONNAIRE')type='QUESTIONNAIRE';
+   else if(template==='QUIZ'&&/pre[\\s-]*test/.test(normalized))type='PRE_TEST';
+   else if(template==='QUIZ'&&/post[\\s-]*test/.test(normalized))type='POST_TEST';
+   const activityId=str(item.id);if(!type||!activityId)continue;
+   activities.push({activityId,sectionCode,meetingNumber:m,title:title||type,type});
+  }
+ }
+ return {kode_course:externalCode,course_code:courseCode(externalCode)||externalCode,rosterNims,activities,updatedAt:new Date().toISOString()};
+}
+function normalizeForumCapture(payload){
+ const p=obj(payload),sectionId=str(p&&p.id_trx_course_sub_section),forumId=str(p&&p.id),course=str(p&&p.kode_course);
+ if(!p||!sectionId||!forumId||!course||!Array.isArray(p.data))return null;
+ const counts=new Map(),seen=new Set();
+ for(const raw of p.data){
+  const post=obj(raw);if(!post)continue;
+  const id=str(post.id),nim=str(post.nim)||str(obj(post.mahasiswa)&&post.mahasiswa.nim);
+  if(!id||seen.has(id)||!/^[0-9]{6,20}$/.test(nim))continue;
+  if(str(post.post_type).toUpperCase()!=='REPLY'||Number(post.reply_level)!==1||str(post.id_parent)!==forumId)continue;
+  const postSection=str(post.id_trx_course_sub_section);
+  if(postSection&&postSection!==sectionId)continue;
+  seen.add(id);counts.set(nim,(counts.get(nim)||0)+1);
+ }
+ return {sectionId,courseCode:course,forumId,directReplyCounts:Array.from(counts,([nim,count])=>({nim,count})).sort((a,b)=>a.nim.localeCompare(b.nim)),receivedPostCount:p.data.length,dataComplete:false,capturedAt:new Date().toISOString()};
+}
+function buildActivitySyncPreview(courseMetas,forumSnapshots){
+ const snapshots=Array.isArray(forumSnapshots)?forumSnapshots:[];
+ return {schemaVersion:'1.0',capturedAt:new Date().toISOString(),courses:(Array.isArray(courseMetas)?courseMetas:[]).map(meta=>{
+  const roster=Array.isArray(meta.rosterNims)?meta.rosterNims:[],activities=(Array.isArray(meta.activities)?meta.activities:[]).map(activity=>{
+   if(activity.type!=='FORUM')return {...activity,participationStatus:'not_supported',dataComplete:false,rosterCount:roster.length,participatedCount:0,notStartedCount:0,unknownCount:roster.length,participants:[]};
+   const snapshot=snapshots.find(item=>item&&item.sectionId===activity.activityId&&item.courseCode===meta.kode_course);
+   const countMap=new Map((snapshot&&Array.isArray(snapshot.directReplyCounts)?snapshot.directReplyCounts:[]).map(item=>[item.nim,Number(item.count)||0]));
+   const participants=roster.map(nim=>{const directReplyCount=countMap.get(nim)||0;return {nim,directReplyCount,status:directReplyCount>0?'participated':'unknown'};});
+   return {...activity,forumId:snapshot&&snapshot.forumId||null,dataComplete:false,participationStatus:'partial_or_unverified',rosterCount:roster.length,participatedCount:participants.filter(x=>x.status==='participated').length,notStartedCount:0,unknownCount:participants.filter(x=>x.status==='unknown').length,participants};
+  });
+  return {kode_course:meta.kode_course,course_code:meta.course_code,rosterCount:roster.length,activityCount:activities.length,activities};
+ })};
 }
 function normalizeCapture(payload,meta){
  const p=obj(payload),a=obj(meta);if(!p||!Array.isArray(p.data)||!a||str(p.kode_course)!==a.kode_course||meeting(p.kode_section)!==a.meeting_number)return null;
@@ -73,30 +122,63 @@ function buildExport(activities,results){
   if(a.quiz_available===false||(a.quiz_available==null&&a.data_complete!==true)){groups.get(a.course_code).activity_metadata.push({activity_id:a.activity_id||a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,availability_status:a.availability_status||'not_open'});return;}
   groups.get(a.course_code).activities.push({quiz_uuid:a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,total_participants:a.total_participants||0,expected_participants:CLASS_SIZE,data_complete:a.data_complete===true,captured_at:a.captured_at||null,results:a.results.sort((x,y)=>x.nim.localeCompare(y.nim))});
  });
- return {schema_version:'1.0',source:'mentari_unpam',semester:SEMESTER,batch_id:root?.crypto?.randomUUID?.()||'batch-'+Date.now(),exported_at:new Date().toISOString(),courses:[...groups.values()].sort((a,b)=>a.course_code.localeCompare(b.course_code))};
+ return {schema_version:'1.0',source:'mentari_unpam',semester:SEMESTER,batch_id:root?.crypto?.randomUUID?.()||'batch-'+Date.now(),exported_at:new Date().toISOString(),courses:[...groups.values()].sort((a,b)=>a.course_code.localeCompare(b.course_code)),activity_sync:buildActivitySyncPreview(arguments[2],arguments[3])};
 }
-const api={courseCode,meeting,extractActivities,normalizeCapture,resolveActivity,captureMismatch,buildExport,snapshotResultChanges,mergeActivityMetadata};
+const api={courseCode,meeting,extractActivities,collectCourseMetadata,normalizeForumCapture,buildActivitySyncPreview,normalizeCapture,resolveActivity,captureMismatch,buildExport,snapshotResultChanges,mergeActivityMetadata};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 if(!root||!root.document)return;
 const page=typeof unsafeWindow!=='undefined'?unsafeWindow:root;if(page[PATCH])return;page[PATCH]=true;
 let dbp,cache=new Map(),status;
-function db(){if(dbp)return dbp;dbp=new Promise((ok,no)=>{const q=page.indexedDB.open(DB,VERSION);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains(ACT))d.createObjectStore(ACT,{keyPath:'quiz_uuid'});if(!d.objectStoreNames.contains(RES))d.createObjectStore(RES,{keyPath:'key'});};q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error);});return dbp;}
+function db(){if(dbp)return dbp;dbp=new Promise((ok,no)=>{const q=page.indexedDB.open(DB,VERSION);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains(ACT))d.createObjectStore(ACT,{keyPath:'quiz_uuid'});if(!d.objectStoreNames.contains(RES))d.createObjectStore(RES,{keyPath:'key'});if(!d.objectStoreNames.contains(COURSES))d.createObjectStore(COURSES,{keyPath:'kode_course'});if(!d.objectStoreNames.contains(FORUMS))d.createObjectStore(FORUMS,{keyPath:'sectionId'});};q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error);});return dbp;}
 function snapshotResultChanges(existing,capture){const quizUuid=str(capture&&capture.quiz_uuid),results=Array.isArray(capture&&capture.results)?capture.results:[];if(!quizUuid||!capture||capture.data_complete!==true)return {deleteKeys:[],putRows:[],skipped:true};const putRows=results.filter(r=>obj(r)&&/^[0-9]{6,20}$/.test(str(r.nim))).map(r=>({key:quizUuid+'::'+str(r.nim),quiz_uuid:quizUuid,nim:str(r.nim),grade:r.grade,attempt_status:r.attempt_status,start_at:r.start_at,end_at:r.end_at}));const currentKeys=new Set(putRows.map(r=>r.key));const deleteKeys=(existing||[]).filter(r=>r&&r.quiz_uuid===quizUuid&&!currentKeys.has(r.key)).map(r=>r.key);return {deleteKeys,putRows};}
 function writeCapture(c){if(!c||c.data_complete!==true)return Promise.resolve(false);return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES],'readwrite'),a={...c};delete a.results;const store=t.objectStore(RES),request=store.getAll();t.objectStore(ACT).put(a);request.onsuccess=()=>{const changes=snapshotResultChanges(request.result,c);changes.deleteKeys.forEach(key=>store.delete(key));changes.putRows.forEach(row=>store.put(row));};request.onerror=()=>{try{t.abort();}catch(_){}};t.oncomplete=()=>ok(true);t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);}));}
 function read(name){return db().then(d=>new Promise((ok,no)=>{const q=d.transaction(name).objectStore(name).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error);}));}
-function clear(){return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES],'readwrite');t.objectStore(ACT).clear();t.objectStore(RES).clear();t.oncomplete=ok;t.onerror=()=>no(t.error);}));}
-function kind(url){try{const u=new URL(url,page.location.href);if(u.origin!==page.location.origin)return null;if(/^\/api\/user-course\/[^/]+\/?$/.test(u.pathname))return 'course';if(/^\/api\/quiz\/peserta\/[^/]+\/?$/.test(u.pathname))return 'quiz';}catch(_){}return null;}
-async function handle(url,payload){try{const k=kind(url);if(k==='course'){const courseHint=decodeURIComponent(url.split('/').filter(Boolean).pop());for(const a of extractActivities(payload,courseHint)){const stored=await read(ACT);let previous=stored.find(item=>item&&item.quiz_uuid===a.quiz_uuid)||null;if(!previous&&a.quiz_available===null){const matches=stored.filter(item=>item&&item.kode_course===a.kode_course&&item.kode_section===a.kode_section&&item.quiz_type===a.quiz_type);if(matches.length===1)previous=matches[0];}const merged=mergeActivityMetadata(previous,a);cache.set(merged.quiz_uuid,merged);const d=await db();await new Promise((ok,no)=>{const t=d.transaction(ACT,'readwrite'),store=t.objectStore(ACT);store.put(merged);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});}await refresh('Metadata kuis terdeteksi');}
- else if(k==='quiz'){const id=decodeURIComponent(url.split('/').filter(Boolean).pop());let a=cache.get(id);const stored=await read(ACT);if(!a)a=stored.find(item=>item.quiz_uuid===id)||null;let matchedBy='uuid';if(!a){const resolved=resolveActivity(id,payload,stored);a=resolved.activity;matchedBy=resolved.matchedBy||'none';}if(!a){await refresh('Respons kuis diterima, tetapi metadata tidak cocok');return;}const c=normalizeCapture(payload,a);if(!c){await refresh('Respons kuis tidak cocok: '+captureMismatch(payload,a));return;}if(!c.data_complete){await refresh('Snapshot tidak lengkap ('+c.total_participants+'/'+CLASS_SIZE+'); data sebelumnya dipertahankan');return;}await writeCapture(c);if(matchedBy==='course-section-type')cache.set(id,a);await refresh('Snapshot lengkap tersimpan lokal ('+matchedBy+')');}
- }catch(_){await refresh('Gagal memproses; respons mentah tidak disimpan');}}
-async function refresh(message){if(!status)return;try{const [a,r]=await Promise.all([read(ACT),read(RES)]);const complete=a.filter(x=>x&&x.data_complete===true&&x.captured_at).length;status.textContent=message+' | Aktivitas '+a.length+' | Snapshot lengkap '+complete+'/'+a.length+' | Rekaman '+r.length;}catch(_){status.textContent=message+' | IndexedDB tidak tersedia';}}
+function clear(){return db().then(d=>new Promise((ok,no)=>{const t=d.transaction([ACT,RES,COURSES,FORUMS],'readwrite');t.objectStore(ACT).clear();t.objectStore(RES).clear();t.objectStore(COURSES).clear();t.objectStore(FORUMS).clear();t.oncomplete=ok;t.onerror=()=>no(t.error);}));}
+function kind(url){try{const u=new URL(url,page.location.href);if(u.origin!==page.location.origin)return null;if(/^\/api\/user-course\/[^/]+\/?$/.test(u.pathname))return 'course';if(/^\/api\/quiz\/peserta\/[^/]+\/?$/.test(u.pathname))return 'quiz';if(/^\/api\/forum\/reply\/[^/]+\/?$/.test(u.pathname))return 'forum';}catch(_){}return null;}
+async function handle(url,payload){
+ try{
+  const k=kind(url);
+  if(k==='course'){
+   const courseHint=decodeURIComponent(url.split('/').filter(Boolean).pop());
+   for(const a of extractActivities(payload,courseHint)){
+    const stored=await read(ACT);
+    let previous=stored.find(item=>item&&item.quiz_uuid===a.quiz_uuid)||null;
+    if(!previous&&a.quiz_available===null){
+     const matches=stored.filter(item=>item&&item.kode_course===a.kode_course&&item.kode_section===a.kode_section&&item.quiz_type===a.quiz_type);
+     if(matches.length===1)previous=matches[0];
+    }
+    const merged=mergeActivityMetadata(previous,a);cache.set(merged.quiz_uuid,merged);
+    const d=await db();await new Promise((ok,no)=>{const t=d.transaction(ACT,'readwrite');t.objectStore(ACT).put(merged);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});
+   }
+   const meta=collectCourseMetadata(payload,courseHint);
+   if(meta){const d=await db();await new Promise((ok,no)=>{const t=d.transaction(COURSES,'readwrite');t.objectStore(COURSES).put(meta);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});}
+   await refresh('Metadata aktivitas terdeteksi');
+  }else if(k==='forum'){
+   const snapshot=normalizeForumCapture(payload);
+   if(!snapshot){await refresh('Respons forum tidak cocok');return;}
+   const d=await db();await new Promise((ok,no)=>{const t=d.transaction(FORUMS,'readwrite');t.objectStore(FORUMS).put(snapshot);t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error);});
+   await refresh('Rekap Forum Diskusi diperbarui');
+  }else if(k==='quiz'){
+   const id=decodeURIComponent(url.split('/').filter(Boolean).pop());let a=cache.get(id);
+   const stored=await read(ACT);if(!a)a=stored.find(item=>item.quiz_uuid===id)||null;
+   let matchedBy='uuid';if(!a){const resolved=resolveActivity(id,payload,stored);a=resolved.activity;matchedBy=resolved.matchedBy||'none';}
+   if(!a){await refresh('Respons kuis diterima, tetapi metadata tidak cocok');return;}
+   const capture=normalizeCapture(payload,a);
+   if(!capture){await refresh('Respons kuis tidak cocok: '+captureMismatch(payload,a));return;}
+   if(!capture.data_complete){await refresh('Snapshot tidak lengkap ('+capture.total_participants+'/'+CLASS_SIZE+'); data sebelumnya dipertahankan');return;}
+   await writeCapture(capture);if(matchedBy==='course-section-type')cache.set(id,a);
+   await refresh('Snapshot lengkap tersimpan lokal ('+matchedBy+')');
+  }
+ }catch(_){await refresh('Gagal memproses; respons mentah tidak disimpan');}
+}
+async function refresh(message){if(!status)return;try{const [a,r,f]=await Promise.all([read(ACT),read(RES),read(FORUMS)]);const complete=a.filter(x=>x&&x.data_complete===true&&x.captured_at).length;status.textContent=message+' | Kuis '+a.length+' | Snapshot lengkap '+complete+'/'+a.length+' | Forum '+f.length+' | Rekaman '+r.length;}catch(_){status.textContent=message+' | IndexedDB tidak tersedia';}}
 function hooks(){
  const f=page.fetch;if(typeof f==='function')page.fetch=function(){const args=arguments,p=f.apply(this,args);return p.then(res=>{try{const u=typeof args[0]==='string'?args[0]:args[0]?.url||'';if(kind(u))res.clone().json().then(x=>handle(u,x)).catch(()=>{});}catch(_){}return res;});};
  const X=page.XMLHttpRequest;if(X){const p=X.prototype,open=p.open,send=p.send;p.open=function(m,u){this.__gkCollectorUrl=String(u||'');return open.apply(this,arguments);};p.send=function(){this.addEventListener('load',function(){const u=this.__gkCollectorUrl;if(!kind(u))return;try{handle(u,this.responseType==='json'?this.response:JSON.parse(this.responseText));}catch(_){}},{once:true});return send.apply(this,arguments);};}
 }
-function ui(){const host=root.document.createElement('div');host.style.cssText='position:fixed;right:16px;bottom:16px;z-index:2147483647';const s=host.attachShadow({mode:'open'});s.innerHTML='<style>.p{font:13px Arial;color:#172033;background:white;border:1px solid #ccd3dc;border-radius:12px;padding:12px;width:290px;box-shadow:0 5px 24px #0003;display:none}.p.open{display:block}button{border:0;border-radius:7px;padding:8px;margin:3px;background:#17324d;color:white;cursor:pointer}.toggle{background:#176b54}.status{background:#f1f5f9;padding:8px;border-radius:7px;overflow-wrap:anywhere}.muted{font:12px Arial;color:#566}</style><div class="p"><b>Mentari Collector v2</b><p class="muted">Hanya respons normal browser. Tidak ada request tambahan atau unggahan data.</p><div class="status">Memuat IndexedDB…</div><button class="export">Ekspor JSON</button><button class="refresh">Perbarui</button><button class="clear">Hapus data lokal</button><button class="close">Tutup</button><p class="muted">File berisi NIM dan nilai satu kelas. Simpan secara aman.</p></div><button class="toggle">Mentari Collector</button>';
+function ui(){const host=root.document.createElement('div');host.style.cssText='position:fixed;right:16px;bottom:16px;z-index:2147483647';const s=host.attachShadow({mode:'open'});s.innerHTML='<style>.p{font:13px Arial;color:#172033;background:white;border:1px solid #ccd3dc;border-radius:12px;padding:12px;width:290px;box-shadow:0 5px 24px #0003;display:none}.p.open{display:block}button{border:0;border-radius:7px;padding:8px;margin:3px;background:#17324d;color:white;cursor:pointer}.toggle{background:#176b54}.status{background:#f1f5f9;padding:8px;border-radius:7px;overflow-wrap:anywhere}.muted{font:12px Arial;color:#566}</style><div class="p"><b>Mentari Collector v2</b><p class="muted">Hanya respons normal browser. Rekap forum disimpan tanpa isi postingan atau nama.</p><div class="status">Memuat IndexedDB…</div><button class="export">Ekspor JSON</button><button class="refresh">Perbarui</button><button class="clear">Hapus data lokal</button><button class="close">Tutup</button><p class="muted">File berisi NIM, nilai, dan hitungan balasan forum. Simpan secara aman.</p></div><button class="toggle">Mentari Collector</button>';
  root.document.documentElement.appendChild(host);const p=s.querySelector('.p');status=s.querySelector('.status');s.querySelector('.toggle').onclick=()=>p.classList.toggle('open');s.querySelector('.close').onclick=()=>p.classList.remove('open');s.querySelector('.refresh').onclick=()=>refresh('Status diperbarui');
- s.querySelector('.export').onclick=async()=>{try{const [a,r]=await Promise.all([read(ACT),read(RES)]);const blob=new Blob([JSON.stringify(buildExport(a,r),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=root.document.createElement('a');link.href=url;link.download='mentari-collector-'+SEMESTER+'-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1500);refresh('JSON diekspor');}catch(_){refresh('Ekspor gagal');}};
+ s.querySelector('.export').onclick=async()=>{try{const [a,r,cm,fs]=await Promise.all([read(ACT),read(RES),read(COURSES),read(FORUMS)]);const blob=new Blob([JSON.stringify(buildExport(a,r,cm,fs),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=root.document.createElement('a');link.href=url;link.download='mentari-collector-'+SEMESTER+'-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1500);refresh('JSON diekspor');}catch(_){refresh('Ekspor gagal');}};
  s.querySelector('.clear').onclick=async()=>{if(root.confirm('Hapus seluruh data Collector lokal? File yang sudah diekspor tidak ikut terhapus.')){await clear();cache.clear();refresh('Data lokal dihapus');}};refresh('Siap; buka halaman mata kuliah');
 }
 const GRID_ORIGIN='https://www.1else3.my.id';
