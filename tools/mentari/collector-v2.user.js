@@ -30,7 +30,7 @@ function extractActivities(payload,courseCodeHint){
  function walk(v,section){if(Array.isArray(v)){v.forEach(x=>walk(x,section));return;}
   const x=obj(v);if(!x)return;const sec=str(x.kode_section)||section||'',type=str(x.kode_template).toUpperCase(),id=str(x.id);
   const quiz=obj(x.quiz),quizId=quiz?str(quiz.id):'',activityId=id;
-  const identity=quizId||activityId;
+  const identity=activityId||quizId;
   if(identity&&TYPES.has(type)&&!seen.has(identity)){const m=meeting(sec);if(m){seen.add(identity);out.push({quiz_uuid:identity,activity_id:activityId,quiz_available:!!quiz,availability_status:quiz?'available':x.quiz===null?'not_open':'unknown',kode_course:externalCode,course_code:code,kode_section:sec,meeting_number:m,quiz_type:type,title:str(x.judul||x.title||x.nama)||(type==='PRE_TEST'?'Pre-test':'Post-test')});}}
   Object.values(x).forEach(y=>{if(Array.isArray(y)||obj(y))walk(y,sec);});
  }
