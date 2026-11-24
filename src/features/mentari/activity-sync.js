@@ -74,68 +74,38 @@ function rosterNims(coursePayload) {
  * A missing or incomplete forum snapshot never labels absent students as not started.
  * Only a verified complete snapshot (dataComplete === true) permits that label.
  */
-function buildActivityPreview(coursePayload, forumSnapshots) {
-  const activities = collectActivities(coursePayload);
-  const roster = rosterNims(coursePayload);
-  const snapshots = Array.isArray(forumSnapshots) ? forumSnapshots : [];
+function buildActivityPreview(coursePayload, forumSnapshots, quizSnapshots) {
+  const activities = collectActivities(coursePayload), roster = rosterNims(coursePayload);
+  const forums = Array.isArray(forumSnapshots) ? forumSnapshots : [];
+  const quizzes = Array.isArray(quizSnapshots) ? quizSnapshots : [];
   const previews = activities.map(activity => {
-    if (activity.type !== TYPES.FORUM) {
-      return {
-        ...activity,
-        dataComplete: false,
-        participationStatus: STATUS.NOT_SUPPORTED,
-        rosterCount: roster.length,
-        participatedCount: 0,
-        notStartedCount: 0,
-        unknownCount: roster.length,
-        participants: []
-      };
+    if (activity.type === TYPES.FORUM) {
+      const snapshot = forums.find(value => { const root = record(value), topic = record(root && root.topic); return text(topic && topic.id_trx_course_sub_section) === activity.activityId; });
+      const root = record(snapshot) || {}, topic = record(root.topic), posts = Array.isArray(root.data) ? root.data : [];
+      const complete = root.dataComplete === true, direct = forumParser.collectDirectStudentReplies(topic, posts), counts = new Map();
+      for (const reply of direct) counts.set(reply.nim, (counts.get(reply.nim) || 0) + 1);
+      const participants = roster.map(nim => { const count = counts.get(nim) || 0; return { nim, directReplyCount: count, status: count ? STATUS.PARTICIPATED : complete ? STATUS.NOT_STARTED : STATUS.UNKNOWN }; });
+      return { ...activity, forumId: text(topic && topic.id) || null, dataComplete: complete,
+        participationStatus: complete ? 'complete_snapshot' : 'partial_or_unverified', rosterCount: roster.length,
+        participatedCount: participants.filter(x => x.status === STATUS.PARTICIPATED).length,
+        notStartedCount: participants.filter(x => x.status === STATUS.NOT_STARTED).length,
+        unknownCount: participants.filter(x => x.status === STATUS.UNKNOWN).length, participants };
     }
-    const snapshot = snapshots.find(value => {
-      const root = record(value);
-      const topic = record(root && root.topic);
-      return text(topic && topic.id_trx_course_sub_section) === activity.activityId;
-    });
-    const root = record(snapshot) || {};
-    const topic = record(root.topic);
-    const posts = Array.isArray(root.data) ? root.data : [];
-    const complete = root.dataComplete === true;
-    const direct = forumParser.collectDirectStudentReplies(topic, posts);
-    const counts = new Map();
-    for (const reply of direct) counts.set(reply.nim, (counts.get(reply.nim) || 0) + 1);
-    const participants = roster.map(nim => {
-      const count = counts.get(nim) || 0;
-      return {
-        nim,
-        directReplyCount: count,
-        status: count > 0 ? STATUS.PARTICIPATED : complete ? STATUS.NOT_STARTED : STATUS.UNKNOWN
-      };
-    });
-    return {
-      ...activity,
-      forumId: text(topic && topic.id) || null,
-      dataComplete: complete,
-      participationStatus: complete ? 'complete_snapshot' : 'partial_or_unverified',
-      rosterCount: roster.length,
-      participatedCount: participants.filter(student => student.status === STATUS.PARTICIPATED).length,
-      notStartedCount: participants.filter(student => student.status === STATUS.NOT_STARTED).length,
-      unknownCount: participants.filter(student => student.status === STATUS.UNKNOWN).length,
-      participants
-    };
+    if (activity.type === TYPES.PRE_TEST || activity.type === TYPES.POST_TEST) {
+      const snapshot = quizzes.find(value => { const item = record(value) || {}; return text(item.activity_id) === activity.activityId || text(item.quiz_uuid) === activity.activityId; });
+      const item = record(snapshot) || {}, complete = item.data_complete === true, results = Array.isArray(item.results) ? item.results : [], byNim = new Map();
+      for (const row of results) { const result = record(row), nim = text(result && result.nim); if (/^[0-9]{6,20}$/.test(nim) && !byNim.has(nim)) byNim.set(nim, result); }
+      const participants = roster.map(nim => { const result = byNim.get(nim), attempt = text(result && result.attempt_status), participated = attempt === 'graded' || attempt === 'attempt_ungraded';
+        return { nim, attemptStatus: attempt || null, status: participated ? STATUS.PARTICIPATED : complete && attempt === 'no_record' ? STATUS.NOT_STARTED : STATUS.UNKNOWN }; });
+      return { ...activity, dataComplete: complete, participationStatus: complete ? 'complete_snapshot' : 'partial_or_unverified', rosterCount: roster.length,
+        participatedCount: participants.filter(x => x.status === STATUS.PARTICIPATED).length,
+        notStartedCount: participants.filter(x => x.status === STATUS.NOT_STARTED).length,
+        unknownCount: participants.filter(x => x.status === STATUS.UNKNOWN).length, participants };
+    }
+    return { ...activity, dataComplete: false, participationStatus: STATUS.NOT_SUPPORTED, rosterCount: roster.length,
+      participatedCount: 0, notStartedCount: 0, unknownCount: roster.length, participants: [] };
   });
-  return {
-    schemaVersion: '1.0',
-    courseCode: text(record(coursePayload) && record(coursePayload).kode_course),
-    rosterCount: roster.length,
-    activityCount: previews.length,
-    activities: previews,
-    privacy: {
-      rawPostsStored: false,
-      studentNamesStored: false,
-      contactDetailsStored: false,
-      contentEvaluated: false
-    }
-  };
+  return { schemaVersion: '1.0', courseCode: text(record(coursePayload) && record(coursePayload).kode_course), rosterCount: roster.length,
+    activityCount: previews.length, activities: previews, privacy: { rawPostsStored: false, studentNamesStored: false, contactDetailsStored: false, contentEvaluated: false } };
 }
-
 module.exports = Object.freeze({ TYPES, STATUS, classify, collectActivities, rosterNims, buildActivityPreview });

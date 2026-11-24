@@ -69,3 +69,19 @@ test('preview never copies student names, contact fields, or raw discussion cont
   assert.equal(serialized.includes('private'), false);
   assert.equal(preview.privacy.rawPostsStored, false);
 });
+
+test('complete quiz snapshot separates participants from confirmed no-record rows', () => {
+  const quiz = { activity_id: 'quiz-pre', data_complete: true, results: [
+    { nim: roster[0].nim, attempt_status: 'graded' }, { nim: roster[1].nim, attempt_status: 'no_record' },
+    { nim: roster[2].nim, attempt_status: 'attempt_ungraded' }
+  ] };
+  const preview = sync.buildActivityPreview(course, [], [quiz]);
+  const pre = preview.activities.find(item => item.type === sync.TYPES.PRE_TEST);
+  assert.equal(pre.participatedCount, 2); assert.equal(pre.notStartedCount, 1); assert.equal(pre.unknownCount, 0);
+});
+test('incomplete quiz snapshot never labels missing participants not started', () => {
+  const quiz = { activity_id: 'quiz-pre', data_complete: false, results: [{ nim: roster[0].nim, attempt_status: 'graded' }] };
+  const preview = sync.buildActivityPreview(course, [], [quiz]);
+  const pre = preview.activities.find(item => item.type === sync.TYPES.PRE_TEST);
+  assert.equal(pre.participatedCount, 1); assert.equal(pre.notStartedCount, 0); assert.equal(pre.unknownCount, 2);
+});
