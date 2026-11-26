@@ -26,8 +26,8 @@ function classify(item) {
   if (template === 'FORUM' || text(source.tipe).toUpperCase() === 'FORUM') return TYPES.FORUM;
   if (template === 'QUESIONER' || template === 'QUESTIONNAIRE' || ['QUESIONER', 'QUESTIONNAIRE'].includes(text(source.tipe).toUpperCase())) return TYPES.QUESTIONNAIRE;
   const kind = text(source.tipe).toUpperCase();
-  if (template === 'PRE_TEST' || (kind === 'QUIZ' && /pre[\\s-]*test/.test(text(source.judul || source.title || source.nama).toLowerCase()))) return TYPES.PRE_TEST;
-  if (template === 'POST_TEST' || (kind === 'QUIZ' && /post[\\s-]*test/.test(text(source.judul || source.title || source.nama).toLowerCase()))) return TYPES.POST_TEST;
+  if (template === 'PRE_TEST' || (kind === 'QUIZ' && /pre[\s-]*test/.test(text(source.judul || source.title || source.nama).toLowerCase()))) return TYPES.PRE_TEST;
+  if (template === 'POST_TEST' || (kind === 'QUIZ' && /post[\s-]*test/.test(text(source.judul || source.title || source.nama).toLowerCase()))) return TYPES.POST_TEST;
   if (template !== 'QUIZ' && kind !== 'QUIZ') return null;
   const title = text(source.judul || source.title || source.nama).toLowerCase();
   if (/pre[\s-]*test/.test(title)) return TYPES.PRE_TEST;

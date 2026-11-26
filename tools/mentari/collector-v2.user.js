@@ -62,8 +62,8 @@ function collectCourseMetadata(payload,courseCodeHint){
    let type=null;
    if(template==='FORUM'||kind==='FORUM')type='FORUM';
    else if(template==='QUESIONER'||template==='QUESTIONNAIRE'||kind==='QUESIONER'||kind==='QUESTIONNAIRE')type='QUESTIONNAIRE';
-   else if(template==='PRE_TEST'||(kind==='QUIZ'&&/pre[\\s-]*test/.test(normalized)))type='PRE_TEST';
-   else if(template==='POST_TEST'||(kind==='QUIZ'&&/post[\\s-]*test/.test(normalized)))type='POST_TEST';
+   else if(template==='PRE_TEST'||(kind==='QUIZ'&&/pre[\s-]*test/.test(normalized)))type='PRE_TEST';
+   else if(template==='POST_TEST'||(kind==='QUIZ'&&/post[\s-]*test/.test(normalized)))type='POST_TEST';
    const activityId=str(item.id);if(!type||!activityId)continue;
    activities.push({activityId,sectionCode,meetingNumber:m,title:title||type,type});
   }
