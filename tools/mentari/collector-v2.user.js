@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.3.3
+// @version      2.3.4
 // @description  Tangkap metadata aktivitas, rekap forum, dan snapshot kuis Mentari.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
@@ -42,9 +42,14 @@ function extractActivities(payload,courseCodeHint){
  const out=[],seen=new Set();
  function walk(v,section){if(Array.isArray(v)){v.forEach(x=>walk(x,section));return;}
   const x=obj(v);if(!x)return;const sec=str(x.kode_section)||section||'',type=str(x.kode_template).toUpperCase(),id=str(x.id);
-  const quiz=obj(x.quiz),quizId=quiz?str(quiz.id):'',activityId=id;
+  const quiz=obj(x.quiz),quizId=quiz?str(quiz.id):'',activityId=id,title=str(x.judul||x.title||x.nama),normalizedTitle=title.toLowerCase();
+  let normalizedType=TYPES.has(type)?type:null;
+  if(!normalizedType&&(type==='QUIZ'||str(x.tipe).toUpperCase()==='QUIZ')){
+   if(/pre[\s-]*test/.test(normalizedTitle))normalizedType='PRE_TEST';
+   else if(/post[\s-]*test/.test(normalizedTitle))normalizedType='POST_TEST';
+  }
   const identity=quizId||activityId,quizAvailable=quiz?true:x.quiz===null?false:null;
-  if(identity&&TYPES.has(type)&&!seen.has(identity)){const m=meeting(sec);if(m){seen.add(identity);out.push({quiz_uuid:identity,activity_id:activityId,quiz_available:quizAvailable,availability_status:quiz?'available':x.quiz===null?'not_open':'unknown',kode_course:externalCode,course_code:code,kode_section:sec,meeting_number:m,quiz_type:type,title:str(x.judul||x.title||x.nama)||(type==='PRE_TEST'?'Pre-test':'Post-test')});}}
+  if(identity&&normalizedType&&!seen.has(identity)){const m=meeting(sec);if(m){seen.add(identity);out.push({quiz_uuid:identity,activity_id:activityId,quiz_available:quizAvailable,availability_status:quiz?'available':x.quiz===null?'not_open':'unknown',kode_course:externalCode,course_code:code,kode_section:sec,meeting_number:m,quiz_type:normalizedType,title:title||(normalizedType==='PRE_TEST'?'Pre-test':'Post-test')});}}
   Object.values(x).forEach(y=>{if(Array.isArray(y)||obj(y))walk(y,sec);});
  }
  walk(p.data,'');return out;

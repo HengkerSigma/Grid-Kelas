@@ -88,3 +88,24 @@ test('collects course metadata from the real Mentari array-shaped user-course re
   assert.equal(exported.activity_sync.courses.length,1);
   assert.equal(exported.activity_sync.courses[0].activityCount,4);
 });
+
+test('recognizes legacy QUIZ metadata titled Pretest/Posttest and matches participant response IDs to activity metadata',()=>{
+  const course={kode_course:'20261-01ELSE003-26FTK0011',data:[{kode_section:'PERTEMUAN_1',sub_section:[
+    {id:'74de0714-7b7b-4259-b588-3c0e840d1a94',tipe:'QUIZ',kode_template:'QUIZ',judul:'Pretest'},
+    {id:'post-activity',tipe:'QUIZ',kode_template:'QUIZ',judul:'Posttest'}
+  ]}]};
+  const activities=c.extractActivities(course);
+  assert.equal(activities.length,2);
+  assert.equal(activities[0].quiz_uuid,'74de0714-7b7b-4259-b588-3c0e840d1a94');
+  assert.equal(activities[0].quiz_type,'PRE_TEST');
+  assert.equal(activities[1].quiz_type,'POST_TEST');
+  const response={kode_course:course.kode_course,kode_section:'PERTEMUAN_1',judul:'Pretest',quiz:{id:'38b78d3c-6951-46fb-9f79-2ed349931909'},data:Array.from({length:32},(_,i)=>({nim:String(261090100200+i),quiz:i<30?{id:'attempt-'+i,grade:80,start_at:'2026-09-01T22:44:43.601Z',end_at:'2026-09-01T22:49:11.700Z'}:null}))};
+  const resolved=c.resolveActivity(response.quiz.id,response,activities);
+  assert.equal(resolved.matchedBy,'course-section-type');
+  assert.equal(resolved.activity.activity_id,'74de0714-7b7b-4259-b588-3c0e840d1a94');
+  const capture=c.normalizeCapture(response,resolved.activity);
+  assert.equal(capture.data_complete,true);
+  assert.equal(capture.quiz_uuid,'74de0714-7b7b-4259-b588-3c0e840d1a94');
+  assert.equal(capture.results.length,32);
+  assert.equal(capture.results.filter(row=>row.attempt_status==='no_record').length,2);
+});
