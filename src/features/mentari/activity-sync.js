@@ -23,9 +23,12 @@ function text(value) {
 function classify(item) {
   const source = record(item) || {};
   const template = text(source.kode_template).toUpperCase();
-  if (template === 'FORUM') return TYPES.FORUM;
-  if (template === 'QUESIONER' || template === 'QUESTIONNAIRE') return TYPES.QUESTIONNAIRE;
-  if (template !== 'QUIZ') return null;
+  if (template === 'FORUM' || text(source.tipe).toUpperCase() === 'FORUM') return TYPES.FORUM;
+  if (template === 'QUESIONER' || template === 'QUESTIONNAIRE' || ['QUESIONER', 'QUESTIONNAIRE'].includes(text(source.tipe).toUpperCase())) return TYPES.QUESTIONNAIRE;
+  const kind = text(source.tipe).toUpperCase();
+  if (template === 'PRE_TEST' || (kind === 'QUIZ' && /pre[\s-]*test/.test(text(source.judul || source.title || source.nama).toLowerCase()))) return TYPES.PRE_TEST;
+  if (template === 'POST_TEST' || (kind === 'QUIZ' && /post[\s-]*test/.test(text(source.judul || source.title || source.nama).toLowerCase()))) return TYPES.POST_TEST;
+  if (template !== 'QUIZ' && kind !== 'QUIZ') return null;
   const title = text(source.judul || source.title || source.nama).toLowerCase();
   if (/pre[\s-]*test/.test(title)) return TYPES.PRE_TEST;
   if (/post[\s-]*test/.test(title)) return TYPES.POST_TEST;
@@ -33,11 +36,13 @@ function classify(item) {
 }
 function collectActivities(coursePayload) {
   const course = record(coursePayload);
-  if (!course || !Array.isArray(course.peserta) || !record(course.data)) return [];
+  if (!course || !Array.isArray(course.peserta) || !(Array.isArray(course.data) || record(course.data))) return [];
   const activities = [];
   const seen = new Set();
-  for (const [sectionCode, sectionValue] of Object.entries(course.data)) {
+  const sections = Array.isArray(course.data) ? course.data : Object.entries(course.data).map(([kode_section, value]) => ({ ...record(value), kode_section }));
+  for (const sectionValue of sections) {
     const section = record(sectionValue);
+    const sectionCode = text(section && section.kode_section);
     const meetingMatch = /^PERTEMUAN_(\d+)$/.exec(sectionCode);
     if (!section || !meetingMatch || !Array.isArray(section.sub_section)) continue;
     for (const raw of section.sub_section) {

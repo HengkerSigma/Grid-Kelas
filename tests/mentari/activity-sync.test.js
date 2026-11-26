@@ -80,3 +80,25 @@ test('aggregated forum snapshots can be previewed without retaining raw posts', 
   assert.equal(forum.notStartedCount, 0);
   assert.equal(forum.participants[0].directReplyCount, 3);
 });
+
+test('discovers activities from the array-shaped Mentari user-course payload', () => {
+  const payload = {
+    kode_course: course.kode_course,
+    peserta: roster,
+    data: [{
+      kode_section: 'PERTEMUAN_1',
+      sub_section: [
+        { id: 'real-pre', tipe: 'QUIZ', kode_template: 'PRE_TEST', judul: 'Pretest' },
+        { id: 'real-forum', tipe: 'FORUM', kode_template: 'FORUM', judul: 'Forum Diskusi' },
+        { id: 'real-post', tipe: 'QUIZ', kode_template: 'POST_TEST', judul: 'Posttest' },
+        { id: 'real-survey', tipe: 'QUESIONER', kode_template: 'QUESIONER', judul: 'Kuesioner Akhir' },
+        { id: 'real-assignment', tipe: 'ASSIGNMENT', kode_template: 'ASSIGNMENT', judul: 'Assignment' }
+      ]
+    }]
+  };
+  const activities = sync.collectActivities(payload);
+  assert.deepEqual(activities.map(item => item.type), [
+    sync.TYPES.PRE_TEST, sync.TYPES.FORUM, sync.TYPES.POST_TEST, sync.TYPES.QUESTIONNAIRE
+  ]);
+  assert.equal(activities.every(item => item.sectionCode === 'PERTEMUAN_1'), true);
+});

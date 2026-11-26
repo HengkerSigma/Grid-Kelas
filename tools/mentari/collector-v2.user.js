@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.3.1
+// @version      2.3.3
 // @description  Tangkap metadata aktivitas, rekap forum, dan snapshot kuis Mentari.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
@@ -27,7 +27,7 @@ function unwrapCoursePayload(payload,courseCodeHint){
  while(queue.length){
   const current=queue.shift(),value=obj(current.value);
   if(!value||seen.has(value)||current.depth>5)continue;seen.add(value);
-  if(Array.isArray(value.peserta)&&obj(value.data)&&(str(value.kode_course)||str(courseCodeHint)))return value;
+  if(Array.isArray(value.peserta)&&(Array.isArray(value.data)||obj(value.data))&&(str(value.kode_course)||str(courseCodeHint)))return value;
   for(const key of ['data','result','payload','response','course']){
    const nested=value[key];if(obj(nested))queue.push({value:nested,depth:current.depth+1});
   }
@@ -51,19 +51,20 @@ function extractActivities(payload,courseCodeHint){
 }
 function collectCourseMetadata(payload,courseCodeHint){
  const p=unwrapCoursePayload(payload,courseCodeHint)||obj(payload),externalCode=str(p&&p.kode_course)||str(courseCodeHint);
- if(!p||!Array.isArray(p.peserta)||!obj(p.data)||!externalCode)return null;
+ if(!p||!Array.isArray(p.peserta)||!(Array.isArray(p.data)||obj(p.data))||!externalCode)return null;
  const rosterNims=Array.from(new Set(p.peserta.map(x=>str(obj(x)&&x.nim)).filter(n=>/^[0-9]{6,20}$/.test(n)))).sort();
  const activities=[];
- for(const [sectionCode,sectionValue] of Object.entries(p.data)){
-  const section=obj(sectionValue),m=meeting(sectionCode);if(!section||!m||!Array.isArray(section.sub_section))continue;
+ const sections=Array.isArray(p.data)?p.data:Object.entries(p.data).map(([kode_section,value])=>Object.assign({kode_section},obj(value)||{}));
+ for(const sectionValue of sections){
+  const section=obj(sectionValue),sectionCode=str(section&&section.kode_section),m=meeting(sectionCode);if(!section||!m||!Array.isArray(section.sub_section))continue;
   for(const raw of section.sub_section){
    const item=obj(raw);if(!item)continue;
-   const template=str(item.kode_template).toUpperCase(),title=str(item.judul||item.title||item.nama),normalized=title.toLowerCase();
+   const template=str(item.kode_template).toUpperCase(),kind=str(item.tipe).toUpperCase(),title=str(item.judul||item.title||item.nama),normalized=title.toLowerCase();
    let type=null;
-   if(template==='FORUM')type='FORUM';
-   else if(template==='QUESIONER'||template==='QUESTIONNAIRE')type='QUESTIONNAIRE';
-   else if(template==='QUIZ'&&/pre[\\s-]*test/.test(normalized))type='PRE_TEST';
-   else if(template==='QUIZ'&&/post[\\s-]*test/.test(normalized))type='POST_TEST';
+   if(template==='FORUM'||kind==='FORUM')type='FORUM';
+   else if(template==='QUESIONER'||template==='QUESTIONNAIRE'||kind==='QUESIONER'||kind==='QUESTIONNAIRE')type='QUESTIONNAIRE';
+   else if(template==='PRE_TEST'||((template==='QUIZ'||kind==='QUIZ')&&/pre[\s-]*test/.test(normalized)))type='PRE_TEST';
+   else if(template==='POST_TEST'||((template==='QUIZ'||kind==='QUIZ')&&/post[\s-]*test/.test(normalized)))type='POST_TEST';
    const activityId=str(item.id);if(!type||!activityId)continue;
    activities.push({activityId,sectionCode,meetingNumber:m,title:title||type,type});
   }

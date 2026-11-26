@@ -66,3 +66,25 @@ test('exports unknown metadata separately only when no complete snapshot exists'
   assert.equal(complete.courses[0].activities.length,1);
   assert.equal(complete.courses[0].activities[0].results.length,1);
 });
+
+test('collects course metadata from the real Mentari array-shaped user-course response',()=>{
+  const payload={kode_course:'20261-01ELSE003-26FTK0021',peserta:[{nim:'261090100226',nama_mahasiswa:'Private',alamat_email:'private@example.test'}],data:[
+    {kode_section:'GENERAL',sub_section:[]},
+    {kode_section:'PERTEMUAN_1',sub_section:[
+      {id:'pre-1',tipe:'QUIZ',kode_template:'PRE_TEST',judul:'Pretest'},
+      {id:'forum-1',tipe:'FORUM',kode_template:'FORUM',judul:'Forum Diskusi'},
+      {id:'post-1',tipe:'QUIZ',kode_template:'POST_TEST',judul:'Posttest'},
+      {id:'survey-1',tipe:'QUESIONER',kode_template:'QUESIONER',judul:'Kuesioner Akhir'},
+      {id:'assignment-1',tipe:'ASSIGNMENT',kode_template:'ASSIGNMENT',judul:'Assignment'}
+    ]}
+  ]};
+  const meta=c.collectCourseMetadata(payload);
+  assert.equal(meta.kode_course,payload.kode_course);
+  assert.deepEqual(meta.rosterNims,['261090100226']);
+  assert.deepEqual(meta.activities.map(x=>x.type),['PRE_TEST','FORUM','POST_TEST','QUESTIONNAIRE']);
+  assert.equal(JSON.stringify(meta).includes('Private'),false);
+  assert.equal(JSON.stringify(meta).includes('private@example.test'),false);
+  const exported=c.buildExport([],[],[meta],[]);
+  assert.equal(exported.activity_sync.courses.length,1);
+  assert.equal(exported.activity_sync.courses[0].activityCount,4);
+});
