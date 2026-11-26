@@ -36,10 +36,11 @@ function classify(item) {
 }
 function collectActivities(coursePayload) {
   const course = record(coursePayload);
-  if (!course || !Array.isArray(course.peserta) || !Array.isArray(course.data)) return [];
+  if (!course || !Array.isArray(course.peserta) || !(Array.isArray(course.data) || record(course.data))) return [];
   const activities = [];
   const seen = new Set();
-  for (const sectionValue of course.data) {
+  const sections = Array.isArray(course.data) ? course.data : Object.entries(course.data).map(([kode_section, value]) => ({ ...record(value), kode_section }));
+  for (const sectionValue of sections) {
     const section = record(sectionValue);
     const sectionCode = text(section && section.kode_section);
     const meetingMatch = /^PERTEMUAN_(\d+)$/.exec(sectionCode);

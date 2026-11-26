@@ -27,7 +27,7 @@ function unwrapCoursePayload(payload,courseCodeHint){
  while(queue.length){
   const current=queue.shift(),value=obj(current.value);
   if(!value||seen.has(value)||current.depth>5)continue;seen.add(value);
-  if(Array.isArray(value.peserta)&&Array.isArray(value.data)&&(str(value.kode_course)||str(courseCodeHint)))return value;
+  if(Array.isArray(value.peserta)&&(Array.isArray(value.data)||obj(value.data))&&(str(value.kode_course)||str(courseCodeHint)))return value;
   for(const key of ['data','result','payload','response','course']){
    const nested=value[key];if(obj(nested))queue.push({value:nested,depth:current.depth+1});
   }
@@ -51,10 +51,11 @@ function extractActivities(payload,courseCodeHint){
 }
 function collectCourseMetadata(payload,courseCodeHint){
  const p=unwrapCoursePayload(payload,courseCodeHint)||obj(payload),externalCode=str(p&&p.kode_course)||str(courseCodeHint);
- if(!p||!Array.isArray(p.peserta)||!Array.isArray(p.data)||!externalCode)return null;
+ if(!p||!Array.isArray(p.peserta)||!(Array.isArray(p.data)||obj(p.data))||!externalCode)return null;
  const rosterNims=Array.from(new Set(p.peserta.map(x=>str(obj(x)&&x.nim)).filter(n=>/^[0-9]{6,20}$/.test(n)))).sort();
  const activities=[];
- for(const sectionValue of p.data){
+ const sections=Array.isArray(p.data)?p.data:Object.entries(p.data).map(([kode_section,value])=>Object.assign({kode_section},obj(value)||{}));
+ for(const sectionValue of sections){
   const section=obj(sectionValue),sectionCode=str(section&&section.kode_section),m=meeting(sectionCode);if(!section||!m||!Array.isArray(section.sub_section))continue;
   for(const raw of section.sub_section){
    const item=obj(raw);if(!item)continue;
