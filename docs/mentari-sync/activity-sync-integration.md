@@ -1,0 +1,1 @@
+See the integration workflow documented in the PR description. The import is admin-only, previewed for 30 minutes, and confirmed atomically. Students can read only their own status; administrators can read the class roster. The database migration must be applied and tested in staging before production. No course_updates task or attendance record is modified.

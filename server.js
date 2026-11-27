@@ -47,6 +47,7 @@ const FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'appli
 const activityModel = require('./src/features/courses/activity-model.js');
 const mentariGradeImport = require('./src/features/mentari/grade-import.js');
 const mentariGradeHistory = require('./src/features/mentari/grade-history.js');
+const mentariActivityImport = require('./src/features/mentari/activity-import.js');
 const adminRolePolicy = require('./src/security/admin-role-policy.js');
 const MAIN_ADMIN_NO = adminRolePolicy.MAIN_ADMIN_NO;
 const STATIC = {
@@ -62,6 +63,7 @@ const STATIC = {
   '/greeting-utils.js': ['src/core/greeting-utils.js', 'text/javascript; charset=utf-8'],
   '/activity-model.js': ['src/features/courses/activity-model.js', 'text/javascript; charset=utf-8'],
   '/grade-recap.js': ['public/grade-recap.js', 'text/javascript; charset=utf-8'],
+  '/activity-recap.js': ['public/activity-recap.js', 'text/javascript; charset=utf-8'],
   '/og-image-v2-32.png': ['public/og-image-v2-32.png', 'image/png'],
   '/maintenance.html': ['public/maintenance.html', 'text/html; charset=utf-8']
 };
@@ -1298,6 +1300,40 @@ const server = http.createServer(async (req, res) => {
         p_batch_id:batchId, p_actor_no:session.no
       }));
       return json(res, 200, { ok:true, result:result.data });
+    }
+
+
+    if (pathname === '/api/mentari/activities/import/preview' && method === 'POST') {
+      const session=await getSession(req); if(!session)return fail(res,401,'unauthenticated','Silakan masuk kembali.');
+      if(!session.admin)return fail(res,403,'forbidden','Hanya pengelola yang dapat menyinkronkan aktivitas Mentari.');
+      const payload=await readJson(req,res,5*1024*1024); if(!payload)return;
+      const accountRows=must(await supabase.from('app_data').select('key,content').like('key','akun/%')),accountIndex=new Map();
+      for(const row of(accountRows.data||[])){const nim=String((row.content||{}).nim||'').trim();if(nim&&!accountIndex.has(nim))accountIndex.set(nim,{key:row.key});}
+      const preview=mentariActivityImport.normalizeImport(payload,accountIndex);
+      if(!preview.ok)return json(res,422,{ok:false,errors:preview.errors,warnings:preview.warnings,summary:preview.summary});
+      const duplicate=must(await supabase.from('mentari_activity_import_batches').select('batch_id').eq('source_batch_id',preview.batchId).maybeSingle());
+      if(duplicate.data)return fail(res,409,'already_exists','Batch Collector ini sudah pernah diimpor.');
+      const batchId=crypto.randomUUID();
+      must(await supabase.from('mentari_activity_import_batches').insert({batch_id:batchId,source_batch_id:preview.batchId,semester:preview.semester,status:'preview',payload:{activities:preview.activities},summary:preview.summary,warnings:preview.warnings,created_by:session.no,expires_at:new Date(Date.now()+30*60*1000).toISOString()}));
+      return json(res,200,{ok:true,batchId,expiresAt:new Date(Date.now()+30*60*1000).toISOString(),summary:preview.summary,warnings:preview.warnings});
+    }
+    if (pathname === '/api/mentari/activities/import/confirm' && method === 'POST') {
+      const session=await getSession(req);if(!session)return fail(res,401,'unauthenticated','Silakan masuk kembali.');
+      if(!session.admin)return fail(res,403,'forbidden','Hanya pengelola yang dapat mengonfirmasi sinkronisasi.');
+      const body=await readJson(req,res);if(!body)return;const batchId=String(body.batchId||'');
+      if(!/^[0-9a-f-]{36}$/i.test(batchId))return fail(res,400,'invalid_argument','ID batch tidak valid.');
+      const result=must(await supabase.rpc('mentari_commit_activity_import',{p_batch_id:batchId,p_actor_no:session.no}));
+      return json(res,200,{ok:true,result:result.data});
+    }
+    if (pathname === '/api/mentari/activities' && method === 'GET') {
+      const session=await getSession(req);if(!session)return fail(res,401,'unauthenticated','Silakan masuk kembali.');
+      const base=must(await supabase.from('mentari_activities').select('id,course_code,meeting_number,section_code,activity_type,title,forum_id,data_complete,captured_at,roster_count,participated_count,not_started_count,unknown_count,updated_at').eq('semester','20261').order('course_code').order('meeting_number'));
+      const ids=(base.data||[]).map(x=>x.id);if(!ids.length)return json(res,200,{activities:[]});
+      let query=supabase.from('mentari_activity_participants').select('activity_id,account_key,nim,status,reply_count,attempt_status');
+      query=session.admin?query.in('activity_id',ids):query.eq('account_key','akun/'+pad(session.no)).in('activity_id',ids);
+      const rows=must(await query),byActivity=new Map();
+      for(const row of(rows.data||[])){const list=byActivity.get(row.activity_id)||[];list.push({account_no:Number(String(row.account_key).slice(5)),nim:session.admin?row.nim:undefined,status:row.status,reply_count:row.reply_count,attempt_status:row.attempt_status});byActivity.set(row.activity_id,list);}
+      return json(res,200,{activities:(base.data||[]).map(x=>Object.assign({},x,{participants:byActivity.get(x.id)||[]}))});
     }
 
     if (pathname === '/api/mentari/grades/mine' && method === 'GET') {
