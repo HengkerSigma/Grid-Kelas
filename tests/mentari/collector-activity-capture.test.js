@@ -39,7 +39,10 @@ test('forum capture counts unique student replies across direct and nested level
 
 test('forum preview marks absent roster students unknown, never not started',()=>{
  const meta=collector.collectCourseMetadata(course);
- const snapshot=collector.normalizeForumCapture(Object.assign({},topic,{data:[post('p1','261090100001',1,'forum-topic')]}));
+ const snapshot=collector.normalizeForumCapture(Object.assign({},topic,{data:[
+  post('p1','261090100001',1,'forum-topic'),
+  post('p2','261090100001',1,'forum-topic')
+ ]}));
  const preview=collector.buildActivitySyncPreview([meta],[snapshot]);
  const forum=preview.courses[0].activities.find(x=>x.type==='FORUM');
  assert.equal(forum.participatedCount,1);
