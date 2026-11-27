@@ -20,16 +20,16 @@ INSERT INTO public.mentari_activity_import_batches(
  ))),jsonb_build_object('activities',1),1,NOW()+INTERVAL '30 minutes'
 );
 DO $$
-DECLARE result JSONB; activity_id UUID; participant_count INTEGER;
+DECLARE result JSONB; v_activity_id UUID; participant_count INTEGER;
 BEGIN
  result:=public.mentari_commit_activity_import('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',1);
  IF result->>'status'<>'committed' OR (result->>'participant_rows')::INTEGER<>32 THEN
   RAISE EXCEPTION 'unexpected activity import result: %',result;
  END IF;
- SELECT id INTO activity_id FROM public.mentari_activities WHERE semester='20261' AND course_code='KIM' AND external_activity_id='forum-test';
- SELECT COUNT(*) INTO participant_count FROM public.mentari_activity_participants WHERE activity_id=activity_id;
+ SELECT id INTO v_activity_id FROM public.mentari_activities WHERE semester='20261' AND course_code='KIM' AND external_activity_id='forum-test';
+ SELECT COUNT(*) INTO participant_count FROM public.mentari_activity_participants WHERE activity_id=v_activity_id;
  IF participant_count<>32 THEN RAISE EXCEPTION 'expected 32 participants, got %',participant_count; END IF;
- IF (SELECT COUNT(*) FROM public.mentari_activity_participants WHERE activity_id=activity_id AND status='participated')<>2 THEN
+ IF (SELECT COUNT(*) FROM public.mentari_activity_participants WHERE activity_id=v_activity_id AND status='participated')<>2 THEN
   RAISE EXCEPTION 'participated status count mismatch';
  END IF;
 END $$;
