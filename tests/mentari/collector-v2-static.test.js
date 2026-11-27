@@ -109,3 +109,36 @@ test('recognizes legacy QUIZ metadata titled Pretest/Posttest and matches partic
   assert.equal(capture.results.length,32);
   assert.equal(capture.results.filter(row=>row.attempt_status==='no_record').length,2);
 });
+
+test('builds complete KAL quiz participation from saved snapshot and preserves no-record rows',()=>{
+  const course={kode_course:'20261-01ELSE003-26FTK0011',course_code:'KAL',rosterNims:Array.from({length:32},(_,i)=>String(261090100200+i)),activities:[{activityId:'74de0714-7b7b-4259-b588-3c0e840d1a94',sectionCode:'PERTEMUAN_1',meetingNumber:1,title:'Pretest',type:'PRE_TEST'}]};
+  const saved={quiz_uuid:'74de0714-7b7b-4259-b588-3c0e840d1a94',activity_id:'74de0714-7b7b-4259-b588-3c0e840d1a94',kode_course:course.kode_course,kode_section:'PERTEMUAN_1',quiz_type:'PRE_TEST',data_complete:true,total_participants:32};
+  const rows=course.rosterNims.map((nim,i)=>({quiz_uuid:saved.quiz_uuid,nim,attempt_status:i<30?'graded':'no_record'}));
+  const preview=c.buildActivitySyncPreview([course],[],[saved],rows).courses[0].activities[0];
+  assert.equal(preview.participationStatus,'complete');
+  assert.equal(preview.dataComplete,true);
+  assert.equal(preview.participatedCount,30);
+  assert.equal(preview.notStartedCount,2);
+  assert.equal(preview.unknownCount,0);
+  assert.equal(preview.participants.length,32);
+  assert.equal(preview.participants[30].attemptStatus,'no_record');
+});
+test('does not classify no-record quiz rows as not-started when snapshot is incomplete',()=>{
+  const course={kode_course:'c',course_code:'KAL',rosterNims:['1234567890','1234567891'],activities:[{activityId:'q',sectionCode:'PERTEMUAN_1',meetingNumber:1,title:'Pretest',type:'PRE_TEST'}]};
+  const saved={quiz_uuid:'q',activity_id:'q',kode_course:'c',kode_section:'PERTEMUAN_1',quiz_type:'PRE_TEST',data_complete:false,total_participants:1};
+  const preview=c.buildActivitySyncPreview([course],[],[saved],[{quiz_uuid:'q',nim:'1234567890',attempt_status:'no_record'}]).courses[0].activities[0];
+  assert.equal(preview.dataComplete,false);
+  assert.equal(preview.notStartedCount,0);
+  assert.equal(preview.unknownCount,2);
+  assert.equal(preview.participationStatus,'not_captured');
+});
+test('includes quiz and course activity sync data in the exported JSON',()=>{
+  const course={kode_course:'c',course_code:'KAL',rosterNims:['1234567890'],activities:[{activityId:'q',sectionCode:'PERTEMUAN_1',meetingNumber:1,title:'Pretest',type:'PRE_TEST'}]};
+  const saved={quiz_uuid:'q',activity_id:'q',kode_course:'c',course_code:'KAL',kode_section:'PERTEMUAN_1',meeting_number:1,quiz_type:'PRE_TEST',title:'Pretest',data_complete:true,total_participants:1};
+  const row={quiz_uuid:'q',nim:'1234567890',grade:100,attempt_status:'graded'};
+  const exported=c.buildExport([saved],[row],[course],[]);
+  const preview=exported.activity_sync.courses[0].activities[0];
+  assert.equal(preview.participationStatus,'complete');
+  assert.equal(preview.participatedCount,1);
+  assert.equal(preview.participants[0].attemptStatus,'graded');
+});

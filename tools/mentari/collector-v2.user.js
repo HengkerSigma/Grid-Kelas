@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.3.4
+// @version      2.3.5
 // @description  Tangkap metadata aktivitas, rekap forum, dan snapshot kuis Mentari.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
@@ -91,10 +91,23 @@ function normalizeForumCapture(payload){
  }
  return {sectionId,courseCode:course,forumId,directReplyCounts:Array.from(counts,([nim,count])=>({nim,count})).sort((a,b)=>a.nim.localeCompare(b.nim)),receivedPostCount:p.data.length,dataComplete:false,capturedAt:new Date().toISOString()};
 }
-function buildActivitySyncPreview(courseMetas,forumSnapshots){
- const snapshots=Array.isArray(forumSnapshots)?forumSnapshots:[];
+function buildActivitySyncPreview(courseMetas,forumSnapshots,quizActivities,quizResults){
+ const snapshots=Array.isArray(forumSnapshots)?forumSnapshots:[],quizMeta=Array.isArray(quizActivities)?quizActivities:[],quizRows=Array.isArray(quizResults)?quizResults:[];
  return {schemaVersion:'1.0',capturedAt:new Date().toISOString(),courses:(Array.isArray(courseMetas)?courseMetas:[]).map(meta=>{
   const roster=Array.isArray(meta.rosterNims)?meta.rosterNims:[],activities=(Array.isArray(meta.activities)?meta.activities:[]).map(activity=>{
+   if(activity.type==='PRE_TEST'||activity.type==='POST_TEST'){
+    const saved=quizMeta.find(item=>item&&item.kode_course===meta.kode_course&&item.kode_section===activity.sectionCode&&item.quiz_type===activity.type&&(item.activity_id===activity.activityId||item.quiz_uuid===activity.activityId));
+    const rows=saved?quizRows.filter(row=>row&&row.quiz_uuid===saved.quiz_uuid):[],byNim=new Map(rows.map(row=>[row.nim,row]));
+    const complete=Boolean(saved&&saved.data_complete===true&&saved.total_participants===roster.length&&roster.length>0&&roster.every(nim=>byNim.has(nim)));
+    const participants=roster.map(nim=>{
+     const row=byNim.get(nim),attempt=row&&row.attempt_status;
+     const attempted=attempt==='graded'||attempt==='attempt_ungraded'||attempt==='invalid_grade';
+     const status=attempted?'participated':complete&&attempt==='no_record'?'not_started':'unknown';
+     return {nim,status,attemptStatus:attempt||null};
+    });
+    const participatedCount=participants.filter(item=>item.status==='participated').length,notStartedCount=participants.filter(item=>item.status==='not_started').length;
+    return {...activity,activityId:activity.activityId,dataComplete:complete,participationStatus:complete?'complete':participatedCount?'partial_or_unverified':'not_captured',rosterCount:roster.length,participatedCount,notStartedCount,unknownCount:participants.filter(item=>item.status==='unknown').length,participants};
+   }
    if(activity.type!=='FORUM')return {...activity,participationStatus:'not_supported',dataComplete:false,rosterCount:roster.length,participatedCount:0,notStartedCount:0,unknownCount:roster.length,participants:[]};
    const snapshot=snapshots.find(item=>item&&item.sectionId===activity.activityId&&item.courseCode===meta.kode_course);
    const countMap=new Map((snapshot&&Array.isArray(snapshot.directReplyCounts)?snapshot.directReplyCounts:[]).map(item=>[item.nim,Number(item.count)||0]));
@@ -141,7 +154,7 @@ function buildExport(activities,results,courseMetas,forumSnapshots){
   if(a.quiz_available===false||(a.quiz_available==null&&a.data_complete!==true)){groups.get(a.course_code).activity_metadata.push({activity_id:a.activity_id||a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,availability_status:a.availability_status||'not_open'});return;}
   groups.get(a.course_code).activities.push({quiz_uuid:a.quiz_uuid,kode_section:a.kode_section,meeting_number:a.meeting_number,quiz_type:a.quiz_type,title:a.title,total_participants:a.total_participants||0,expected_participants:CLASS_SIZE,data_complete:a.data_complete===true,captured_at:a.captured_at||null,results:a.results.sort((x,y)=>x.nim.localeCompare(y.nim))});
  });
- return {schema_version:'1.0',source:'mentari_unpam',semester:SEMESTER,batch_id:root?.crypto?.randomUUID?.()||'batch-'+Date.now(),exported_at:new Date().toISOString(),courses:[...groups.values()].sort((a,b)=>a.course_code.localeCompare(b.course_code)),activity_sync:buildActivitySyncPreview(courseMetas,forumSnapshots)};
+ return {schema_version:'1.0',source:'mentari_unpam',semester:SEMESTER,batch_id:root?.crypto?.randomUUID?.()||'batch-'+Date.now(),exported_at:new Date().toISOString(),courses:[...groups.values()].sort((a,b)=>a.course_code.localeCompare(b.course_code)),activity_sync:buildActivitySyncPreview(courseMetas,forumSnapshots,activities,results)};
 }
 const api={courseCode,meeting,extractActivities,collectCourseMetadata,normalizeForumCapture,buildActivitySyncPreview,normalizeCapture,resolveActivity,captureMismatch,buildExport,snapshotResultChanges,mergeActivityMetadata};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
@@ -219,8 +232,8 @@ function mentariBridge(){
   GM_addValueChangeListener(TICKET_KEY,async(_key,_old,value)=>{
     if(!value||!value.ticket||Date.now()-Number(value.createdAt||0)>5*60*1000)return;
     try{
-      const [activities,results]=await Promise.all([read(ACT),read(RES)]);
-      const payload=buildExport(activities,results);
+      const [activities,results,courseMetas,forumSnapshots]=await Promise.all([read(ACT),read(RES),read(COURSES),read(FORUMS)]);
+      const payload=buildExport(activities,results,courseMetas,forumSnapshots);
       GM_xmlhttpRequest({
         method:'POST',url:GRID_ORIGIN+'/api/mentari/grades/sync/upload',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+value.ticket,'X-Requested-With':'gk'},
