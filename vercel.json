@@ -7,12 +7,16 @@
       "config": {
         "includeFiles": [
           "public/**",
-          "src/core/**"
+          "src/core/**",
+          "src/features/mentari/**"
         ]
       }
     }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "server.js" }
+    {
+      "src": "/(.*)",
+      "dest": "server.js"
+    }
   ]
 }
