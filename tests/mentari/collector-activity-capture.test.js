@@ -32,12 +32,12 @@ test('forum capture counts unique student replies across direct and nested level
  ]}));
  assert.deepEqual(capture.replyCounts,[{nim:'261090100001',count:2}]);
  assert.equal(capture.capturedReplyCount,2);
- assert.equal(capture.dataComplete,false);
+ assert.equal(capture.dataComplete,true);
  assert.equal(JSON.stringify(capture).includes('secret body'),false);
  assert.equal(JSON.stringify(capture).includes('Private'),false);
 });
 
-test('forum preview marks absent roster students unknown, never not started',()=>{
+test('verified forum snapshot marks roster members without comments as not started',()=>{
  const meta=collector.collectCourseMetadata(course);
  const snapshot=collector.normalizeForumCapture(Object.assign({},topic,{data:[
   post('p1','261090100001',1,'forum-topic'),
@@ -46,8 +46,8 @@ test('forum preview marks absent roster students unknown, never not started',()=
  const preview=collector.buildActivitySyncPreview([meta],[snapshot]);
  const forum=preview.courses[0].activities.find(x=>x.type==='FORUM');
  assert.equal(forum.participatedCount,1);
- assert.equal(forum.unknownCount,1);
- assert.equal(forum.notStartedCount,0);
+ assert.equal(forum.unknownCount,0);
+ assert.equal(forum.notStartedCount,1);
 });
 
 
@@ -61,7 +61,8 @@ test('nested replies alone can complete the two-reply participation threshold',(
  const preview=collector.buildActivitySyncPreview([collector.collectCourseMetadata(course)],[snapshot]);
  const forum=preview.courses[0].activities.find(x=>x.type==='FORUM');
  assert.equal(forum.participatedCount,1);
- assert.equal(forum.unknownCount,1);
+ assert.equal(forum.unknownCount,0);
+ assert.equal(forum.participants.find(x=>x.nim==='261090100001').status,'not_started');
  assert.equal(forum.participants.find(x=>x.nim==='261090100002').status,'participated');
  assert.equal(forum.participants.find(x=>x.nim==='261090100002').replyCount,2);
 });
@@ -80,9 +81,9 @@ test('forum participation requires at least two unique student replies and keeps
  const forum=preview.courses[0].activities.find(x=>x.type==='FORUM');
  assert.equal(forum.minimumReplyCount,2);
  assert.equal(forum.participatedCount,29);
- assert.equal(forum.notStartedCount,0);
- assert.equal(forum.unknownCount,3);
- assert.equal(forum.dataComplete,false);
+ assert.equal(forum.notStartedCount,3);
+ assert.equal(forum.unknownCount,0);
+ assert.equal(forum.dataComplete,true);
 });
 
 test('unwraps nested user-course envelopes and persists course metadata shape',()=>{
@@ -108,4 +109,12 @@ test('export includes course metadata and matching forum aggregates in activity_
  assert.equal(forum.minimumReplyCount,2);
  assert.equal(forum.participants.find(item=>item.nim==='261090100001').replyCount,2);
  assert.equal(exported.activity_sync.courses[0].kode_course,course.kode_course);
+});
+
+test('without a captured forum response all absent participants remain unknown',()=>{
+ const preview=collector.buildActivitySyncPreview([collector.collectCourseMetadata(course)],[]);
+ const forum=preview.courses[0].activities.find(x=>x.type==='FORUM');
+ assert.equal(forum.dataComplete,false);
+ assert.equal(forum.notStartedCount,0);
+ assert.equal(forum.unknownCount,2);
 });

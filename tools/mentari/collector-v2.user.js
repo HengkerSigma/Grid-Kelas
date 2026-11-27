@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.3.6
+// @version      2.3.7
 // @description  Tangkap metadata aktivitas, rekap forum, dan snapshot kuis Mentari.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
@@ -105,7 +105,7 @@ function normalizeForumCapture(payload){
   if(!belongsToTopic(post))continue;
   seen.add(id);counts.set(nim,(counts.get(nim)||0)+1);
  }
- return {sectionId,courseCode:course,forumId,replyCounts:Array.from(counts,([nim,count])=>({nim,count})).sort((a,b)=>a.nim.localeCompare(b.nim)),receivedPostCount:p.data.length,capturedReplyCount:seen.size,dataComplete:false,capturedAt:new Date().toISOString()};
+ return {sectionId,courseCode:course,forumId,replyCounts:Array.from(counts,([nim,count])=>({nim,count})).sort((a,b)=>a.nim.localeCompare(b.nim)),receivedPostCount:p.data.length,capturedReplyCount:seen.size,dataComplete:true,capturedAt:new Date().toISOString()};
 }
 function buildActivitySyncPreview(courseMetas,forumSnapshots,quizActivities,quizResults){
  const snapshots=Array.isArray(forumSnapshots)?forumSnapshots:[],quizMeta=Array.isArray(quizActivities)?quizActivities:[],quizRows=Array.isArray(quizResults)?quizResults:[];
@@ -124,12 +124,13 @@ function buildActivitySyncPreview(courseMetas,forumSnapshots,quizActivities,quiz
     const participatedCount=participants.filter(item=>item.status==='participated').length,notStartedCount=participants.filter(item=>item.status==='not_started').length;
     return {...activity,activityId:activity.activityId,dataComplete:complete,participationStatus:complete?'complete':participatedCount?'partial_or_unverified':'not_captured',rosterCount:roster.length,participatedCount,notStartedCount,unknownCount:participants.filter(item=>item.status==='unknown').length,participants};
    }
-   if(activity.type!=='FORUM')return {...activity,participationStatus:'not_supported',dataComplete:false,rosterCount:roster.length,participatedCount:0,notStartedCount:0,unknownCount:roster.length,participants:[]};
+   if(activity.type!=='FORUM'){const participants=roster.map(nim=>({nim,status:'unknown',attemptStatus:null,replyCount:0}));return {...activity,participationStatus:'not_supported',dataComplete:false,rosterCount:roster.length,participatedCount:0,notStartedCount:0,unknownCount:roster.length,participants};}
    const snapshot=snapshots.find(item=>item&&item.sectionId===activity.activityId&&item.courseCode===meta.kode_course);
    const storedCounts=snapshot&&Array.isArray(snapshot.replyCounts)?snapshot.replyCounts:snapshot&&Array.isArray(snapshot.directReplyCounts)?snapshot.directReplyCounts:[];
    const countMap=new Map(storedCounts.map(item=>[item.nim,Number(item.count)||0]));
-   const participants=roster.map(nim=>{const replyCount=countMap.get(nim)||0;return {nim,replyCount,status:replyCount>=FORUM_MIN_REPLIES?'participated':'unknown'};});
-   return {...activity,forumId:snapshot&&snapshot.forumId||null,minimumReplyCount:FORUM_MIN_REPLIES,dataComplete:false,participationStatus:'partial_or_unverified',rosterCount:roster.length,participatedCount:participants.filter(x=>x.status==='participated').length,notStartedCount:0,unknownCount:participants.filter(x=>x.status==='unknown').length,participants};
+   const complete=Boolean(snapshot&&snapshot.dataComplete===true);
+   const participants=roster.map(nim=>{const replyCount=countMap.get(nim)||0;return {nim,replyCount,status:replyCount>=FORUM_MIN_REPLIES?'participated':complete?'not_started':'unknown'};});
+   return {...activity,forumId:snapshot&&snapshot.forumId||null,minimumReplyCount:FORUM_MIN_REPLIES,dataComplete:complete,participationStatus:complete?'complete':'not_captured',rosterCount:roster.length,participatedCount:participants.filter(x=>x.status==='participated').length,notStartedCount:participants.filter(x=>x.status==='not_started').length,unknownCount:participants.filter(x=>x.status==='unknown').length,participants};
   });
   return {kode_course:meta.kode_course,course_code:meta.course_code,rosterCount:roster.length,activityCount:activities.length,activities};
  })};

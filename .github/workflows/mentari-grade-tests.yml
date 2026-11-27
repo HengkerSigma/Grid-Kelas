@@ -6,6 +6,7 @@ on:
       - 'server.js'
       - 'public/app.js'
       - 'public/grade-recap.js'
+      - 'public/activity-recap.js'
       - 'public/index.html'
       - 'src/features/mentari/**'
       - 'tests/mentari/**'
@@ -29,6 +30,8 @@ jobs:
       - run: node --check server.js
       - run: node --check public/app.js
       - run: node --check public/grade-recap.js
+      - run: node --check public/activity-recap.js
+      - run: node --check src/features/mentari/activity-import.js
       - run: node --check src/features/mentari/grade-import.js
       - run: node --check tools/mentari/collector-v2.user.js
       - run: node --test tests/mentari/*.test.js tests/security/*.test.js
@@ -71,6 +74,14 @@ jobs:
             -f supabase/migrations/20261123000100_mentari_personal_grade_recap.sql
           psql -h localhost -U postgres -d gridkelas_test -v ON_ERROR_STOP=1 \
             -f supabase/migrations/20261123000200_mentari_fis_meetings_21.sql
+          psql -h localhost -U postgres -d gridkelas_test -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/20261128000100_mentari_activity_participation_sync.sql
+      - name: Exercise Mentari activity import RPC
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d gridkelas_test -v ON_ERROR_STOP=1 \
+            -f tests/mentari/activity-import.integration.sql
       - name: Exercise grade import RPC and history behavior
         env:
           PGPASSWORD: postgres

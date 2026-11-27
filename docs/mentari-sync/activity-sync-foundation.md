@@ -12,10 +12,10 @@ This module is the read-only normalization layer for activity participation, sep
 
 ## Status rules
 
-- A roster student with one or more direct level-1 replies is `participated`, even when the response is partial.
-- A roster student with no observed direct reply is `unknown` unless the caller explicitly establishes `dataComplete: true`.
-- Only then may an absent student be labeled `not_started`.
-- Lecturer posts and nested replies do not count as direct student participation.
+- A roster student with at least two unique student replies (direct or nested) is `participated`.
+- A roster student with fewer than two replies is `not_started` when a forum response was captured. This interpretation was cross-checked against the Mentari page across multiple forums.
+- A forum that has not been captured remains `unknown`.
+- Lecturer posts and replies from other topics are excluded.
 - Pre-test/Post-test and Kuesioner are discovered as activity metadata, but this module does not infer their participation from the forum endpoint. Quiz participation remains in the existing grade/quiz pipeline; Kuesioner participation remains unsupported until its endpoint is verified.
 
 ## Privacy and boundaries
@@ -42,7 +42,5 @@ It computes direct level-1 student reply counts immediately and stores only:
 - per-NIM direct reply counts,
 - capture timestamp and received row count.
 
-It does not store raw posts, post bodies, names, email, or phone numbers. The response
-has no verified pagination/completeness indicator, so forum snapshots always remain
-`dataComplete: false`; absent roster members remain `unknown`, never `not_started`.
+It does not store raw posts, post bodies, names, email, or phone numbers. The response has no explicit pagination header. The class verified that a single captured response matched the full replies shown in the Mentari page across multiple forums. A captured response is therefore marked complete for the current workflow; no capture remains unknown.
 The IndexedDB upgrade adds stores without clearing existing quiz snapshots or grade rows.
