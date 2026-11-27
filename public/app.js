@@ -49,7 +49,7 @@ function inSession(c,now){
   const p=jakartaParts(now),t=Number(p.hour)*60+Number(p.minute);
   return t>=r.s&&t<r.e;
 }
-const VIEWS=['beranda','mahasiswa','mata-kuliah','rekap-nilai','pengelola'];
+const VIEWS=['beranda','mahasiswa','mata-kuliah','rekap-nilai','mentari-aktivitas','pengelola'];
 
 let db=null,user=null,AS=null,uid=null,isAdmin=false,canWrite=true,dbState='loading';
 let AUTH=null; // diisi db.js saat berjalan lewat server.js: login diperiksa server
@@ -533,7 +533,7 @@ function setOverviewSubtab(tab){
   document.querySelectorAll('#overviewSubtabs [data-act="overview-subtab"]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===OVERVIEW_SUBTAB)));
 }
 function setView(v,scroll){
-  if(VIEWS.indexOf(v)<0||(v==='pengelola'&&!adm()))v='beranda';
+  if(VIEWS.indexOf(v)<0||(['pengelola','mentari-aktivitas'].includes(v)&&!adm()))v='beranda';
   view=v;
   if(v==='beranda')setOverviewSubtab('overview');
   toggleMobileNav(false);

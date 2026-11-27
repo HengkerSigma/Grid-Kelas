@@ -17,16 +17,15 @@ Script tidak membaca atau mengirim cookie maupun token login Mentari. Script tid
 
 Untuk versi sinkronisasi klik, pasang versi terbaru dari `tools/mentari/collector-v2.user.js` melalui Tampermonkey. Script berjalan pada dua origin yang diizinkan: Mentari dan `www.1else3.my.id`. Pastikan Tampermonkey aktif pada kedua situs. Buka Grid Kelas dan Mentari pada browser/profil yang sama, lalu login Mentari secara normal.
 
-1. Buka menu **Rekap Nilai** di Grid Kelas sebagai admin.
-2. Tekan **Sinkronkan Mentari**. Grid Kelas membuat tiket upload singkat yang hanya dapat membuat preview.
-3. Collector di tab Mentari mengirim data IndexedDB ke endpoint Grid Kelas melalui koneksi HTTPS. Tidak ada cookie atau token login Mentari yang dibaca atau dikirim.
-4. Setelah preview tampil, periksa jumlah aktivitas, baris, dan peringatan. Tekan **Konfirmasi & Simpan** hanya jika hasilnya benar.
-5. Tiket upload berlaku lima menit dan nonce tiket hanya dapat membuat satu batch preview. Konfirmasi tetap membutuhkan sesi admin Grid Kelas yang aktif.
+1. Buka menu **Aktivitas Mentari** di Grid Kelas sebagai admin.
+2. Ekspor JSON dari tombol **Ekspor JSON** pada Collector.
+3. Unggah JSON melalui **Aktivitas Mentari**, lalu tekan **Validasi & Preview**.
+4. Periksa jumlah mata kuliah, aktivitas, dan status peserta. Tekan **Konfirmasi & Simpan** hanya jika hasilnya benar.
 
 Sinkronisasi mengirim snapshot lengkap yang telah dikumpulkan sebelumnya. Kuis yang belum pernah dimuat belum otomatis dijelajahi; buka mata kuliah dan kuis melalui navigasi Mentari biasa, lalu ulangi sinkronisasi.
 
 1. Pasang Tampermonkey.
-2. Buat userscript baru dan salin seluruh isi `tools/mentari/collector-v2.user.js` (versi 2.2.0).
+2. Buat userscript baru dan salin seluruh isi `tools/mentari/collector-v2.user.js` (versi 2.3.7).
 3. Aktifkan script lalu buka Mentari melalui login resmi.
 4. Buka halaman mata kuliah terlebih dahulu agar metadata kuis tertangkap.
 5. Buka halaman kuis melalui navigasi normal. Snapshot akan tersimpan otomatis.
@@ -44,7 +43,7 @@ Jika halaman kuis terbuka sebelum metadata aktivitas tertangkap, kembali ke hala
 - Snapshot hanya ditandai lengkap bila tepat 32 baris dan 32 NIM unik valid terdeteksi. Ini pemeriksaan struktural, bukan jaminan roster sumber tidak terpotong.
 - Nilai 0 valid. Nilai numerik 0–100 termasuk desimal diterima; nilai di luar rentang diberi status `invalid_grade` dan diekspor sebagai null.
 - Snapshot forum menghitung balasan unik mahasiswa pada level 1 dan level 2 atau lebih, selama rantai `id_parent` terhubung ke topik forum yang sedang dibuka. Balasan dosen, duplikasi ID, dan balasan dari topik lain tidak dihitung.
-- Aturan partisipasi forum pada rekap adalah minimal dua balasan mahasiswa pada satu topik. Satu balasan yang terlihat belum memenuhi ambang; peserta dengan kurang dari dua balasan tetap `unknown` karena respons forum tidak menyediakan penanda kelengkapan/paginasi.
+- Berdasarkan pemeriksaan silang respons API dengan halaman Mentari pada beberapa forum, respons satu request diperlakukan sebagai snapshot lengkap. Minimal dua balasan berarti `participated`; kurang dari dua berarti `not_started`. Jika forum belum pernah tertangkap, status tetap `unknown`.
 - `no_record` hanya berarti respons saat itu tidak berisi objek percobaan, bukan bukti bahwa mahasiswa tidak pernah mengerjakan kuis. Metadata aktivitas dengan `quiz: null` dicatat sebagai `not_open` (belum dibuka) berdasarkan struktur respons Mentari yang telah diverifikasi; entri tersebut dikirim terpisah sebagai `activity_metadata`, tidak dimasukkan ke daftar kuis/nilai yang diimpor.
 
 ## Privasi
@@ -58,7 +57,7 @@ IndexedDB tidak otomatis terenkripsi. Gunakan perangkat pribadi yang terkunci, b
 - Sinkronisasi klik mengirim snapshot lokal ke preview Grid Kelas; penulisan nilai ke database tetap memerlukan konfirmasi admin.
 - Collector tidak menavigasi atau membuka kuis yang belum pernah dimuat. Pengumpulan awal tetap melalui navigasi Mentari normal.
 - Hook fetch/XHR hanya memeriksa endpoint yang cocok dan tetap mengembalikan respons asli ke Mentari.
-- Rekap forum tidak menyimpulkan `not_started` dari respons yang belum terverifikasi lengkap; peserta di bawah ambang dua balasan tetap `unknown`.
+- Rekap forum hanya memberi status `not_started` setelah snapshot forum berhasil ditangkap; forum yang belum tertangkap tetap `unknown`.
 - Pengujian browser pada akun berwenang tetap diperlukan sebelum pemakaian rutin.
 
 ## Tes
