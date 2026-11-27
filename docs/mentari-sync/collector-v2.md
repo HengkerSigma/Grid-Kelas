@@ -9,8 +9,9 @@ Userscript Tampermonkey ini menangkap snapshot nilai Pre-test/Post-test dari res
 Untuk pengumpulan di Mentari, hanya endpoint same-origin berikut yang diamati:
 - `/api/user-course/{kode_course}` untuk metadata aktivitas kuis.
 - `/api/quiz/peserta/{quiz_uuid}` untuk hasil peserta.
+- `/api/forum/reply/{forum_id}` untuk kontribusi forum yang dimuat melalui navigasi normal Mentari.
 
-Script tidak membaca atau mengirim cookie maupun token login Mentari. Script tidak menyimpan authorization header, nama, email, nomor telepon, jawaban, atau body mentah. Data minimal disimpan di IndexedDB lokal: ID aktivitas/UUID kuis, mata kuliah, pertemuan, jenis kuis, ketersediaan kuis, NIM, nilai, status, dan waktu pengerjaan.
+Script tidak membaca atau mengirim cookie maupun token login Mentari. Script tidak menyimpan authorization header, nama, email, nomor telepon, jawaban, atau body mentah. Data minimal disimpan di IndexedDB lokal: ID aktivitas/UUID kuis, mata kuliah, pertemuan, jenis kuis, ketersediaan kuis, NIM, nilai, status, waktu pengerjaan, dan agregat jumlah balasan forum per NIM. Isi postingan, nama, email, dan nomor telepon tidak disimpan.
 
 ## Instalasi dan penggunaan
 
@@ -42,6 +43,8 @@ Jika halaman kuis terbuka sebelum metadata aktivitas tertangkap, kembali ke hala
 - Hanya snapshot lengkap (32 baris dan 32 NIM unik valid) yang menggantikan seluruh hasil sebelumnya untuk UUID kuis yang sama dalam satu transaksi IndexedDB. Snapshot tidak lengkap tidak disimpan dan tidak menghapus atau mengubah hasil sebelumnya; hasil kuis lain tetap dipertahankan.
 - Snapshot hanya ditandai lengkap bila tepat 32 baris dan 32 NIM unik valid terdeteksi. Ini pemeriksaan struktural, bukan jaminan roster sumber tidak terpotong.
 - Nilai 0 valid. Nilai numerik 0–100 termasuk desimal diterima; nilai di luar rentang diberi status `invalid_grade` dan diekspor sebagai null.
+- Snapshot forum menghitung balasan unik mahasiswa pada level 1 dan level 2 atau lebih, selama rantai `id_parent` terhubung ke topik forum yang sedang dibuka. Balasan dosen, duplikasi ID, dan balasan dari topik lain tidak dihitung.
+- Aturan partisipasi forum pada rekap adalah minimal dua balasan mahasiswa pada satu topik. Satu balasan yang terlihat belum memenuhi ambang; peserta dengan kurang dari dua balasan tetap `unknown` karena respons forum tidak menyediakan penanda kelengkapan/paginasi.
 - `no_record` hanya berarti respons saat itu tidak berisi objek percobaan, bukan bukti bahwa mahasiswa tidak pernah mengerjakan kuis. Metadata aktivitas dengan `quiz: null` dicatat sebagai `not_open` (belum dibuka) berdasarkan struktur respons Mentari yang telah diverifikasi; entri tersebut dikirim terpisah sebagai `activity_metadata`, tidak dimasukkan ke daftar kuis/nilai yang diimpor.
 
 ## Privasi
@@ -55,6 +58,7 @@ IndexedDB tidak otomatis terenkripsi. Gunakan perangkat pribadi yang terkunci, b
 - Sinkronisasi klik mengirim snapshot lokal ke preview Grid Kelas; penulisan nilai ke database tetap memerlukan konfirmasi admin.
 - Collector tidak menavigasi atau membuka kuis yang belum pernah dimuat. Pengumpulan awal tetap melalui navigasi Mentari normal.
 - Hook fetch/XHR hanya memeriksa endpoint yang cocok dan tetap mengembalikan respons asli ke Mentari.
+- Rekap forum tidak menyimpulkan `not_started` dari respons yang belum terverifikasi lengkap; peserta di bawah ambang dua balasan tetap `unknown`.
 - Pengujian browser pada akun berwenang tetap diperlukan sebelum pemakaian rutin.
 
 ## Tes

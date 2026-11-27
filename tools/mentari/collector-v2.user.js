@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Grid Kelas - Mentari Collector v2
 // @namespace    https://www.1else3.my.id/
-// @version      2.3.5
+// @version      2.3.6
 // @description  Tangkap metadata aktivitas, rekap forum, dan snapshot kuis Mentari.
 // @match        https://mentari.unpam.ac.id/*
 // @match        https://www.1else3.my.id/*
@@ -19,6 +19,7 @@ const DB='grid-kelas-mentari-collector', VERSION=2, CLASS_SIZE=32, SEMESTER='202
 const PATCH='__gkMentariCollectorV2', ACT='activities', RES='results', COURSES='course_meta', FORUMS='forum_activity';
 const MAP={'26TEL0004':'KIM','26PAM0007':'WRG','26PAM0008':'IND','26PAM0010':'ENG','26FTK0021':'FIS','26FTK0011':'KAL','26TEL0003':'ELE','26TEL0002':'ALJ','26TEL0001':'PRG'};
 const TYPES=new Set(['PRE_TEST','POST_TEST']);
+const FORUM_MIN_REPLIES=2;
 const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:null;
 const str=v=>typeof v==='string'?v.trim():'';
 function unwrapCoursePayload(payload,courseCodeHint){
@@ -79,17 +80,32 @@ function collectCourseMetadata(payload,courseCodeHint){
 function normalizeForumCapture(payload){
  const p=obj(payload),sectionId=str(p&&p.id_trx_course_sub_section),forumId=str(p&&p.id),course=str(p&&p.kode_course);
  if(!p||!sectionId||!forumId||!course||!Array.isArray(p.data))return null;
+ const posts=p.data.map(obj).filter(Boolean),byId=new Map();
+ for(const post of posts){const id=str(post.id);if(id&&!byId.has(id))byId.set(id,post);}
+ const belongsToTopic=post=>{
+  let parentId=str(post.id_parent);const visited=new Set();
+  while(parentId&&!visited.has(parentId)){
+   if(parentId===forumId)return true;
+   visited.add(parentId);
+   const parent=byId.get(parentId);if(!parent)return false;
+   const parentSection=str(parent.id_trx_course_sub_section);
+   if(parentSection&&parentSection!==sectionId)return false;
+   if(str(parent.post_type).toUpperCase()!=='REPLY')return false;
+   parentId=str(parent.id_parent);
+  }
+  return false;
+ };
  const counts=new Map(),seen=new Set();
- for(const raw of p.data){
-  const post=obj(raw);if(!post)continue;
-  const id=str(post.id),nim=str(post.nim)||str(obj(post.mahasiswa)&&post.mahasiswa.nim);
-  if(!id||seen.has(id)||!/^[0-9]{6,20}$/.test(nim))continue;
-  if(str(post.post_type).toUpperCase()!=='REPLY'||Number(post.reply_level)!==1||str(post.id_parent)!==forumId)continue;
+ for(const post of posts){
+  const id=str(post.id),nim=str(post.nim)||str(obj(post.mahasiswa)&&post.mahasiswa.nim),level=Number(post.reply_level);
+  if(!id||seen.has(id)||!/^[0-9]{6,20}$/.test(nim)||!Number.isInteger(level)||level<1)continue;
+  if(str(post.post_type).toUpperCase()!=='REPLY')continue;
   const postSection=str(post.id_trx_course_sub_section);
   if(postSection&&postSection!==sectionId)continue;
+  if(!belongsToTopic(post))continue;
   seen.add(id);counts.set(nim,(counts.get(nim)||0)+1);
  }
- return {sectionId,courseCode:course,forumId,directReplyCounts:Array.from(counts,([nim,count])=>({nim,count})).sort((a,b)=>a.nim.localeCompare(b.nim)),receivedPostCount:p.data.length,dataComplete:false,capturedAt:new Date().toISOString()};
+ return {sectionId,courseCode:course,forumId,replyCounts:Array.from(counts,([nim,count])=>({nim,count})).sort((a,b)=>a.nim.localeCompare(b.nim)),receivedPostCount:p.data.length,capturedReplyCount:seen.size,dataComplete:false,capturedAt:new Date().toISOString()};
 }
 function buildActivitySyncPreview(courseMetas,forumSnapshots,quizActivities,quizResults){
  const snapshots=Array.isArray(forumSnapshots)?forumSnapshots:[],quizMeta=Array.isArray(quizActivities)?quizActivities:[],quizRows=Array.isArray(quizResults)?quizResults:[];
@@ -110,9 +126,10 @@ function buildActivitySyncPreview(courseMetas,forumSnapshots,quizActivities,quiz
    }
    if(activity.type!=='FORUM')return {...activity,participationStatus:'not_supported',dataComplete:false,rosterCount:roster.length,participatedCount:0,notStartedCount:0,unknownCount:roster.length,participants:[]};
    const snapshot=snapshots.find(item=>item&&item.sectionId===activity.activityId&&item.courseCode===meta.kode_course);
-   const countMap=new Map((snapshot&&Array.isArray(snapshot.directReplyCounts)?snapshot.directReplyCounts:[]).map(item=>[item.nim,Number(item.count)||0]));
-   const participants=roster.map(nim=>{const directReplyCount=countMap.get(nim)||0;return {nim,directReplyCount,status:directReplyCount>0?'participated':'unknown'};});
-   return {...activity,forumId:snapshot&&snapshot.forumId||null,dataComplete:false,participationStatus:'partial_or_unverified',rosterCount:roster.length,participatedCount:participants.filter(x=>x.status==='participated').length,notStartedCount:0,unknownCount:participants.filter(x=>x.status==='unknown').length,participants};
+   const storedCounts=snapshot&&Array.isArray(snapshot.replyCounts)?snapshot.replyCounts:snapshot&&Array.isArray(snapshot.directReplyCounts)?snapshot.directReplyCounts:[];
+   const countMap=new Map(storedCounts.map(item=>[item.nim,Number(item.count)||0]));
+   const participants=roster.map(nim=>{const replyCount=countMap.get(nim)||0;return {nim,replyCount,status:replyCount>=FORUM_MIN_REPLIES?'participated':'unknown'};});
+   return {...activity,forumId:snapshot&&snapshot.forumId||null,minimumReplyCount:FORUM_MIN_REPLIES,dataComplete:false,participationStatus:'partial_or_unverified',rosterCount:roster.length,participatedCount:participants.filter(x=>x.status==='participated').length,notStartedCount:0,unknownCount:participants.filter(x=>x.status==='unknown').length,participants};
   });
   return {kode_course:meta.kode_course,course_code:meta.course_code,rosterCount:roster.length,activityCount:activities.length,activities};
  })};
