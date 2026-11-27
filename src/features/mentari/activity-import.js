@@ -18,7 +18,7 @@ function normalizeImport(payload,accountIndex,now=Date.now()){
   if(Number(course.rosterCount)!==32||!Array.isArray(course.activities)){errors.push({code:'E_ROSTER_INCOMPLETE',course:code});continue;}
   for(const activity of course.activities){
    if(!obj(activity)){errors.push({code:'E_ACTIVITY_INVALID',course:code});continue;}
-   const id=str(activity.activityId),type=str(activity.type).toUpperCase(),meeting=Number(activity.meetingNumber),section=str(activity.sectionCode),max=mapped==='FIS'?21:16;
+   const id=str(activity.activityId),type=str(activity.type).toUpperCase(),meeting=Number(activity.meetingNumber),section=str(activity.sectionCode),max=(mapped==='FIS'||mapped==='KAL')?21:16;
    if(!id||id.length>200||!TYPES.has(type)||!Number.isInteger(meeting)||meeting<1||meeting>max||section!=='PERTEMUAN_'+meeting||seenActivities.has(mapped+'|'+id)){errors.push({code:'E_ACTIVITY_INVALID',course:code});continue;}seenActivities.add(mapped+'|'+id);
    const rows=Array.isArray(activity.participants)?activity.participants:[];
    if(rows.length!==32){errors.push({code:'E_PARTICIPANTS_INCOMPLETE',activity:id});continue;}

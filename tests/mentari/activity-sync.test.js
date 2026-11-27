@@ -102,3 +102,63 @@ test('discovers activities from the array-shaped Mentari user-course payload', (
   ]);
   assert.equal(activities.every(item => item.sectionCode === 'PERTEMUAN_1'), true);
 });
+
+
+const activityImporter = require('../../src/features/mentari/activity-import.js');
+const importNims = Array.from({ length: 32 }, (_, i) => String(261090100100 + i));
+const importAccounts = new Map(importNims.map((nim, i) => [nim, { key: 'akun/' + String(i + 1).padStart(2, '0') }]));
+
+function activityImportPayload(courseCode, courseSuffix, meetingNumber) {
+  const participants = importNims.map(nim => ({ nim, status: 'unknown', replyCount: 0, attemptStatus: null }));
+  return {
+    schema_version: '1.0',
+    source: 'mentari_unpam',
+    semester: '20261',
+    batch_id: 'batch-' + courseCode + '-' + meetingNumber,
+    exported_at: new Date().toISOString(),
+    activity_sync: {
+      schemaVersion: '1.0',
+      capturedAt: new Date().toISOString(),
+      courses: [{
+        kode_course: '20261-01ELSE003-' + courseSuffix,
+        course_code: courseCode,
+        rosterCount: 32,
+        activities: [{
+          activityId: 'activity-' + courseCode + '-' + meetingNumber,
+          meetingNumber,
+          sectionCode: 'PERTEMUAN_' + meetingNumber,
+          type: 'PRE_TEST',
+          title: 'Pre-test',
+          dataComplete: false,
+          rosterCount: 32,
+          participatedCount: 0,
+          notStartedCount: 0,
+          unknownCount: 32,
+          participants
+        }]
+      }]
+    }
+  };
+}
+
+test('activity import accepts KAL meetings through meeting 21', () => {
+  const result = activityImporter.normalizeImport(activityImportPayload('KAL', '26FTK0011', 21), importAccounts);
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+});
+
+test('activity import rejects KAL meeting 22', () => {
+  const result = activityImporter.normalizeImport(activityImportPayload('KAL', '26FTK0011', 22), importAccounts);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some(error => error.code === 'E_ACTIVITY_INVALID'));
+});
+
+test('activity import keeps FIS meetings through meeting 21', () => {
+  const result = activityImporter.normalizeImport(activityImportPayload('FIS', '26FTK0021', 21), importAccounts);
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+});
+
+test('activity import keeps other courses limited to meeting 16', () => {
+  const result = activityImporter.normalizeImport(activityImportPayload('WRG', '26PAM0007', 17), importAccounts);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some(error => error.code === 'E_ACTIVITY_INVALID'));
+});
